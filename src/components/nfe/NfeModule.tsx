@@ -23,11 +23,30 @@ import {
   Check,
   TrendingUp,
   Percent,
-  Trash2
+  Trash2,
+  Building2,
+  HelpCircle,
+  CreditCard,
+  Clock,
+  ShieldCheck,
+  Tag,
+  Receipt
 } from 'lucide-react';
-import { Expense, CompanyProfile, InventoryItem } from '../../types';
-import { formatCurrencyBRL, formatDateBR, getStoredInventory, saveStoredInventory, saveStoredExpenses, getStoredExpenses } from '../../lib/storage';
-import { formatCpfCnpj } from '../../lib/formatters';
+import { Expense, CompanyProfile, InventoryItem, Supplier, CostCenter, ExpenseCategory, PaymentMethod } from '../../types';
+import { 
+  formatCurrencyBRL, 
+  formatDateBR, 
+  getStoredInventory, 
+  saveStoredInventory, 
+  saveStoredExpenses, 
+  getStoredExpenses,
+  getStoredSuppliers,
+  saveStoredSuppliers,
+  getStoredCostCenters,
+  saveStoredCostCenters
+} from '../../lib/storage';
+import { formatCpfCnpj, formatPhone, formatCep, cleanDigits } from '../../lib/formatters';
+import { SupplierModal } from '../suppliers/SupplierModal';
 
 interface ParsedNfeItem {
   code: string;
@@ -41,19 +60,39 @@ interface ParsedNfeItem {
   linkedInventoryId?: string;
 }
 
+interface ParsedNfeInstallment {
+  number: string;
+  dueDate: string;
+  amount: number;
+}
+
 interface ParsedNfeData {
   accessKey?: string;
   invoiceNumber: string;
   series?: string;
   supplier: string;
+  supplierTradeName?: string;
   supplierCnpj?: string;
+  supplierIe?: string;
+  supplierIm?: string;
+  supplierPhone?: string;
+  supplierAddress?: string;
+  supplierNeighborhood?: string;
+  supplierCity?: string;
+  supplierState?: string;
+  supplierZipCode?: string;
   recipient?: string;
   recipientCnpj?: string;
   totalAmount: number;
   productsAmount?: number;
   issueDate: string;
+  dueDate?: string;
+  paymentMethod?: PaymentMethod;
+  installments?: ParsedNfeInstallment[];
   itemsSummary: string;
   suggestedCategory: string;
+  costCenterId?: string;
+  costCenterName?: string;
   items?: ParsedNfeItem[];
 }
 
@@ -315,6 +354,10 @@ function buildNfeDataFromExpense(
     totalAmount,
     productsAmount: totalAmount,
     issueDate,
+    dueDate: exp.dueDate,
+    paymentMethod: exp.paymentMethod,
+    costCenterId: exp.costCenterId,
+    costCenterName: exp.costCenterName,
     itemsSummary: `${items.length} produto(s) registrado(s) na nota`,
     suggestedCategory,
     items
@@ -325,14 +368,19 @@ function buildNfeDataFromExpense(
   return reconstructed;
 }
 
-interface NfeModuleProps {
+export interface NfeModuleProps {
   expenses: Expense[];
   companyProfile?: CompanyProfile;
-  onAddExpenseFromNfe: (expense: Partial<Expense>) => void;
+  onAddExpenseFromNfe: (expense: Partial<Expense> | Partial<Expense>[]) => void;
   onDeleteExpense?: (id: string) => void;
   viewMode?: 'import' | 'list';
   inventory?: InventoryItem[];
   onSaveInventory?: (inventory: InventoryItem[]) => void;
+  suppliers?: Supplier[];
+  onSaveSuppliers?: (suppliers: Supplier[]) => void;
+  costCenters?: CostCenter[];
+  onSaveCostCenters?: (costCenters: CostCenter[]) => void;
+  categories?: ExpenseCategory[];
 }
 
 export const NfeModule: React.FC<NfeModuleProps> = ({
@@ -343,6 +391,11 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
   viewMode = 'import',
   inventory,
   onSaveInventory,
+  suppliers,
+  onSaveSuppliers,
+  costCenters,
+  onSaveCostCenters,
+  categories,
 }) => {
   // Estado dedicado reativo para Notas Fiscais Lançadas (NF-e)
   const [notasLancadas, setNotasLancadas] = useState<Expense[]>(() => {
@@ -365,6 +418,123 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [notaParaExcluir, setNotaParaExcluir] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Fornecedores locais e sincronização
+  const [localSuppliers, setLocalSuppliers] = useState<Supplier[]>(() => {
+    return (suppliers && suppliers.length > 0) ? suppliers : getStoredSuppliers();
+  });
+
+  useEffect(() => {
+    if (suppliers && suppliers.length > 0) {
+      setLocalSuppliers(suppliers);
+    }
+  }, [suppliers]);
+
+  const saveSuppliers = (updated: Supplier[]) => {
+    setLocalSuppliers(updated);
+    if (onSaveSuppliers) {
+      onSaveSuppliers(updated);
+    }
+    saveStoredSuppliers(updated);
+  };
+
+  // Centros de Custo locais e sincronização
+  const [localCostCenters, setLocalCostCenters] = useState<CostCenter[]>(() => {
+    return (costCenters && costCenters.length > 0) ? costCenters : getStoredCostCenters();
+  });
+
+  useEffect(() => {
+    if (costCenters && costCenters.length > 0) {
+      setLocalCostCenters(costCenters);
+    }
+  }, [costCenters]);
+
+  const saveCostCenters = (updated: CostCenter[]) => {
+    setLocalCostCenters(updated);
+    if (onSaveCostCenters) {
+      onSaveCostCenters(updated);
+    }
+    saveStoredCostCenters(updated);
+  };
+
+  // Seleção e validação de Centro de Custo obrigatório
+  const [selectedCostCenterId, setSelectedCostCenterId] = useState<string>('');
+  const [costCenterError, setCostCenterError] = useState<boolean>(false);
+
+  // Modal para adicionar novo Centro de Custo rapidamente
+  const [isQuickCostCenterOpen, setIsQuickCostCenterOpen] = useState<boolean>(false);
+  const [newCostCenterName, setNewCostCenterName] = useState<string>('');
+  const [newCostCenterType, setNewCostCenterType] = useState<CostCenter['type']>('geral');
+
+  // Modal de validação/conferência de fornecedor
+  const [isSupplierModalOpen, setIsSupplierModalOpen] = useState<boolean>(false);
+  const [supplierForModal, setSupplierForModal] = useState<Supplier | null>(null);
+  const [supplierValidationNotice, setSupplierValidationNotice] = useState<{
+    isNew: boolean;
+    name: string;
+    cnpjOrCpf?: string;
+  } | null>(null);
+
+  // Criação rápida de Centro de Custo no fluxo da NF-e
+  const handleCreateQuickCostCenter = () => {
+    if (!newCostCenterName.trim()) return;
+    const newCC: CostCenter = {
+      id: `cc_${Date.now()}`,
+      name: newCostCenterName.trim(),
+      type: newCostCenterType || 'geral',
+    };
+    const updated = [...localCostCenters, newCC];
+    saveCostCenters(updated);
+    setSelectedCostCenterId(newCC.id);
+    setCostCenterError(false);
+    setNewCostCenterName('');
+    setIsQuickCostCenterOpen(false);
+    setSuccessMessage(`Centro de Custo "${newCC.name}" criado e selecionado com sucesso!`);
+    setTimeout(() => setSuccessMessage(''), 4000);
+  };
+
+  // Salva / valida dados do fornecedor vindo do SupplierModal
+  const handleSaveSupplierFromModal = (savedSupplier: Supplier) => {
+    const existingIndex = localSuppliers.findIndex(s => s.id === savedSupplier.id);
+    let updated: Supplier[];
+    if (existingIndex >= 0) {
+      updated = [...localSuppliers];
+      updated[existingIndex] = savedSupplier;
+    } else {
+      updated = [savedSupplier, ...localSuppliers];
+    }
+    saveSuppliers(updated);
+    setSupplierForModal(savedSupplier);
+
+    if (parsedData) {
+      setParsedData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          supplier: savedSupplier.name,
+          supplierTradeName: savedSupplier.tradeName || prev.supplierTradeName,
+          supplierCnpj: savedSupplier.cnpjOrCpf ? cleanDigits(savedSupplier.cnpjOrCpf) : prev.supplierCnpj,
+          supplierIe: savedSupplier.stateRegistration || prev.supplierIe,
+          supplierIm: savedSupplier.municipalRegistration || prev.supplierIm,
+          supplierAddress: savedSupplier.address || prev.supplierAddress,
+          supplierNeighborhood: savedSupplier.neighborhood || prev.supplierNeighborhood,
+          supplierCity: savedSupplier.city || prev.supplierCity,
+          supplierState: savedSupplier.state || prev.supplierState,
+          supplierZipCode: savedSupplier.zipCode || prev.supplierZipCode,
+          supplierPhone: savedSupplier.phone || prev.supplierPhone,
+        };
+      });
+    }
+
+    setSupplierValidationNotice({
+      isNew: false,
+      name: savedSupplier.name,
+      cnpjOrCpf: savedSupplier.cnpjOrCpf,
+    });
+
+    setSuccessMessage(`Fornecedor "${savedSupplier.name}" validado e salvo com sucesso!`);
+    setTimeout(() => setSuccessMessage(''), 4000);
+  };
 
   // Estado local do inventário sincronizado com props ou storage
   const [localInventory, setLocalInventory] = useState<InventoryItem[]>(() => {
@@ -531,10 +701,31 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
         issueDate = new Date().toISOString().split('T')[0];
       }
 
-      // 4. Emitente (Fornecedor) com valores padrão
+      // 4. Emitente (Fornecedor) com valores padrão e dados fiscais completos do XML
       const emit = getEl(xmlDoc, 'emit');
       const supplierName = (emit ? (getTag(emit, 'xNome') || getTag(emit, 'xFant')) : '') || getTag(xmlDoc, 'xNome') || 'Fornecedor Identificado no XML';
+      const supplierTradeName = emit ? getTag(emit, 'xFant') : '';
       const supplierCnpj = (emit ? (getTag(emit, 'CNPJ') || getTag(emit, 'CPF')) : '') || getTag(xmlDoc, 'CNPJ') || getTag(xmlDoc, 'CPF') || '';
+      const supplierIe = emit ? (getTag(emit, 'IE') || getTag(emit, 'ie')) : '';
+      const supplierIm = emit ? (getTag(emit, 'IM') || getTag(emit, 'im')) : '';
+
+      // Endereço e contato do emitente (<enderEmit>)
+      const enderEmit = emit ? getEl(emit, 'enderEmit') : null;
+      const xLgr = enderEmit ? getTag(enderEmit, 'xLgr') : '';
+      const nro = enderEmit ? getTag(enderEmit, 'nro') : '';
+      const xCpl = enderEmit ? getTag(enderEmit, 'xCpl') : '';
+      const xBairro = enderEmit ? getTag(enderEmit, 'xBairro') : '';
+      const xMun = enderEmit ? getTag(enderEmit, 'xMun') : '';
+      const ufEmit = enderEmit ? getTag(enderEmit, 'UF') : '';
+      const cepEmit = enderEmit ? getTag(enderEmit, 'CEP') : '';
+      const foneEmit = enderEmit ? getTag(enderEmit, 'fone') : '';
+
+      const supplierAddress = [xLgr, nro ? `nº ${nro}` : '', xCpl].filter(Boolean).join(', ');
+      const supplierNeighborhood = xBairro;
+      const supplierCity = xMun;
+      const supplierState = ufEmit || 'PR';
+      const supplierZipCode = cepEmit;
+      const supplierPhone = foneEmit;
 
       // 5. Destinatário com valores padrão (Permite qualquer CNPJ ou CPF sem bloqueios)
       const dest = getEl(xmlDoc, 'dest');
@@ -552,7 +743,37 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       let totalAmount = parseFloat(vNFStr) || parseFloat(vProdStr) || 0;
       let productsAmount = parseFloat(vProdStr) || totalAmount || 0;
 
-      // 7. Itens da Nota Fiscal (<det>) com valores padrão
+      // 7. Cobrança e Duplicatas (<cobr> -> <dup>)
+      const cobr = getEl(xmlDoc, 'cobr');
+      const dupElements = cobr ? getAllEls(cobr, 'dup') : getAllEls(xmlDoc, 'dup');
+      const installments: ParsedNfeInstallment[] = dupElements.map((dup, idx) => {
+        const nDup = getTag(dup, 'nDup') || String(idx + 1);
+        let dVenc = getTag(dup, 'dVenc') || '';
+        if (dVenc.includes('T')) dVenc = dVenc.split('T')[0];
+        const vDup = parseFloat(getTag(dup, 'vDup')) || 0;
+        return {
+          number: nDup,
+          dueDate: dVenc,
+          amount: vDup,
+        };
+      }).filter(inst => inst.amount > 0 || Boolean(inst.dueDate));
+
+      // 8. Forma de Pagamento (<pag> / <detPag> / <tPag>)
+      const tPag = getTag(xmlDoc, 'tPag') || '15';
+      let paymentMethod: PaymentMethod = 'boleto';
+      if (tPag === '01') paymentMethod = 'dinheiro';
+      else if (tPag === '02') paymentMethod = 'transferencia';
+      else if (tPag === '03') paymentMethod = 'cartao_credito';
+      else if (tPag === '04') paymentMethod = 'cartao_debito';
+      else if (tPag === '17') paymentMethod = 'pix';
+      else paymentMethod = 'boleto';
+
+      // Data de Vencimento prioritária
+      const primaryDueDate = (installments.length > 0 && installments[0].dueDate) 
+        ? installments[0].dueDate 
+        : issueDate;
+
+      // 9. Itens da Nota Fiscal (<det>) com valores padrão
       const detElements = getAllEls(xmlDoc, 'det');
       const items: ParsedNfeItem[] = detElements.map((det, index) => {
         const prod = getEl(det, 'prod') || det;
@@ -576,7 +797,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
         productsAmount = totalAmount;
       }
 
-      // 8. Sugestão automática de categoria
+      // 10. Sugestão automática de categoria
       const allText = (supplierName + ' ' + items.map(i => i.description).join(' ')).toLowerCase();
       let suggestedCategory = 'cat_insumos';
       if (allText.includes('diesel') || allText.includes('combustivel') || allText.includes('combustível') || allText.includes('s10') || allText.includes('arla')) {
@@ -592,12 +813,24 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
         invoiceNumber,
         series: serie || '',
         supplier: supplierName || 'Fornecedor Identificado no XML',
+        supplierTradeName: supplierTradeName || undefined,
         supplierCnpj: supplierCnpj || '',
+        supplierIe: supplierIe || undefined,
+        supplierIm: supplierIm || undefined,
+        supplierPhone: supplierPhone || undefined,
+        supplierAddress: supplierAddress || undefined,
+        supplierNeighborhood: supplierNeighborhood || undefined,
+        supplierCity: supplierCity || undefined,
+        supplierState: supplierState || 'PR',
+        supplierZipCode: supplierZipCode || undefined,
         recipient: recipientName || '',
         recipientCnpj: recipientCnpj || '',
         totalAmount: totalAmount || 0,
         productsAmount: productsAmount || totalAmount || 0,
         issueDate: issueDate || new Date().toISOString().split('T')[0],
+        dueDate: primaryDueDate,
+        paymentMethod,
+        installments,
         itemsSummary: items.length > 0 ? `${items.length} produto(s) listado(s)` : 'Sem detalhamento de itens',
         suggestedCategory,
         items
@@ -646,12 +879,110 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
         });
       }
 
+      // =========================================================================
+      // INTELIGÊNCIA ANTI-DUPLICIDADE NO CADASTRO DO FORNECEDOR
+      // =========================================================================
+      const rawSupplierDigits = cleanDigits(result.supplierCnpj || '');
+      let existingSupplier = localSuppliers.find(s => {
+        if (!rawSupplierDigits) return false;
+        const sDigits = cleanDigits(s.cnpjOrCpf || '');
+        return sDigits.length >= 11 && sDigits === rawSupplierDigits;
+      });
+
+      if (!existingSupplier && result.supplier) {
+        existingSupplier = localSuppliers.find(s => 
+          s.name.trim().toLowerCase() === result.supplier.trim().toLowerCase()
+        );
+      }
+
+      let supplierForValidation: Supplier;
+
+      if (existingSupplier) {
+        // Vincula a nota ao fornecedor existente SEM duplicar o registro
+        supplierForValidation = {
+          ...existingSupplier,
+          tradeName: existingSupplier.tradeName || result.supplierTradeName || undefined,
+          stateRegistration: existingSupplier.stateRegistration || result.supplierIe || undefined,
+          municipalRegistration: existingSupplier.municipalRegistration || result.supplierIm || undefined,
+          address: existingSupplier.address || result.supplierAddress || undefined,
+          neighborhood: existingSupplier.neighborhood || result.supplierNeighborhood || undefined,
+          city: existingSupplier.city || result.supplierCity || undefined,
+          state: existingSupplier.state || result.supplierState || undefined,
+          zipCode: existingSupplier.zipCode || (result.supplierZipCode ? formatCep(result.supplierZipCode) : undefined),
+          phone: existingSupplier.phone || (result.supplierPhone ? formatPhone(result.supplierPhone) : ''),
+        };
+
+        setSupplierValidationNotice({
+          isNew: false,
+          name: existingSupplier.name,
+          cnpjOrCpf: existingSupplier.cnpjOrCpf,
+        });
+      } else {
+        // Fornecedor novo não encontrado: inicia novo cadastro em segundo plano com dados extraídos
+        let inferredCat: Supplier['category'] = 'Combustível';
+        const allText = (result.supplier + ' ' + (result.items || []).map(i => i.description).join(' ')).toLowerCase();
+        if (allText.includes('diesel') || allText.includes('combustivel') || allText.includes('petro') || allText.includes('arla') || allText.includes('posto')) {
+          inferredCat = 'Combustível';
+        } else if (allText.includes('lona') || allText.includes('filme') || allText.includes('embalagem') || allText.includes('plastico')) {
+          inferredCat = 'Lonas & Embalagens';
+        } else if (allText.includes('peca') || allText.includes('peça') || allText.includes('filtro') || allText.includes('faca') || allText.includes('oficina') || allText.includes('mecanica') || allText.includes('trator')) {
+          inferredCat = 'Peças & Oficinas';
+        } else if (allText.includes('semente') || allText.includes('adubo') || allText.includes('fertilizante') || allText.includes('inoculante') || allText.includes('agro')) {
+          inferredCat = 'Sementes & Insumos';
+        }
+
+        const newSupplier: Supplier = {
+          id: `sup_nfe_${Date.now()}`,
+          name: result.supplier,
+          tradeName: result.supplierTradeName || undefined,
+          category: inferredCat,
+          cnpjOrCpf: result.supplierCnpj ? formatCpfCnpj(result.supplierCnpj) : undefined,
+          stateRegistration: result.supplierIe || undefined,
+          municipalRegistration: result.supplierIm || undefined,
+          phone: result.supplierPhone ? formatPhone(result.supplierPhone) : '',
+          email: '',
+          zipCode: result.supplierZipCode ? formatCep(result.supplierZipCode) : undefined,
+          address: result.supplierAddress || undefined,
+          neighborhood: result.supplierNeighborhood || undefined,
+          city: result.supplierCity || undefined,
+          state: result.supplierState || 'PR',
+          notes: `Cadastrado automaticamente via leitura XML da NF-e ${result.invoiceNumber}`,
+          createdAt: new Date().toISOString(),
+        };
+
+        const updatedSuppliersList = [newSupplier, ...localSuppliers];
+        saveSuppliers(updatedSuppliersList);
+        supplierForValidation = newSupplier;
+
+        setSupplierValidationNotice({
+          isNew: true,
+          name: newSupplier.name,
+          cnpjOrCpf: newSupplier.cnpjOrCpf,
+        });
+      }
+
+      // =========================================================================
+      // ABERTURA IMEDIATA DO MODAL "CADASTRO FORNECEDOR" PARA VALIDAÇÃO
+      // =========================================================================
+      setSupplierForModal(supplierForValidation);
+      setIsSupplierModalOpen(true);
+
+      // Reseta erros e seleção anterior de Centro de Custo para forçar seleção
+      setSelectedCostCenterId('');
+      setCostCenterError(false);
+
       setParsedData(result);
       setXmlContent(text);
       setEditingExpenseId(null);
       saveCachedNfe(result);
-      setSuccessMessage(`NF-e ${result.invoiceNumber} importada com sucesso! Confira os dados abaixo.`);
-      setTimeout(() => setSuccessMessage(''), 4000);
+      setSuccessMessage(
+        `NF-e ${result.invoiceNumber} importada com sucesso! ` +
+        (existingSupplier 
+          ? `Fornecedor vinculado: "${existingSupplier.name}".` 
+          : `Novo fornecedor cadastrado: "${supplierForValidation.name}".`) +
+        ` A janela de validação de dados foi aberta na tela.`
+      );
+      setTimeout(() => setSuccessMessage(''), 5000);
     } catch (error: any) {
       console.error("Erro detalhado do XML:", error);
       setParsedData(null);
@@ -988,10 +1319,46 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
     });
   };
 
+  // Função auxiliar para deduzir categoria do item no estoque
+  const deduceItemCategory = (desc: string): InventoryItem['category'] => {
+    const d = (desc || '').toLowerCase();
+    if (d.includes('diesel') || d.includes('combustivel') || d.includes('combustível') || d.includes('s10') || d.includes('arla')) {
+      return 'combustivel';
+    }
+    if (d.includes('lona') || d.includes('filme') || d.includes('embalagem') || d.includes('plastico') || d.includes('plástico')) {
+      return 'lona_embalagem';
+    }
+    if (d.includes('inoculante') || d.includes('biologico') || d.includes('biológico') || d.includes('aditivo')) {
+      return 'inoculante';
+    }
+    if (d.includes('semente') || d.includes('milho') || d.includes('sorgo') || d.includes('capim')) {
+      return 'sementes';
+    }
+    if (d.includes('adubo') || d.includes('fertilizante') || d.includes('ureia')) {
+      return 'adubo';
+    }
+    if (d.includes('peca') || d.includes('peça') || d.includes('filtro') || d.includes('faca') || d.includes('oleo') || d.includes('óleo') || d.includes('correia') || d.includes('rolamento')) {
+      return 'pecas';
+    }
+    return 'outro';
+  };
+
   const handleConfirmImport = () => {
     if (!parsedData) return;
 
-    // 1. Bloqueio de Nota Duplicada (ignora a própria nota em modo de edição)
+    // 1. BLOQUEIO OBRIGATÓRIO DE CENTRO DE CUSTO
+    if (!selectedCostCenterId) {
+      setCostCenterError(true);
+      setErrorMessage('Bloqueio de Validação: Selecione obrigatoriamente a qual Centro de Custo esta despesa pertence.');
+      const selectEl = document.getElementById('select-centro-de-custo-nfe');
+      if (selectEl) {
+        selectEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        selectEl.focus();
+      }
+      return;
+    }
+
+    // 2. Bloqueio de Nota Duplicada (ignora a própria nota em modo de edição)
     const listToCheck = editingExpenseId 
       ? expenses.filter(e => e.id !== editingExpenseId) 
       : expenses;
@@ -1002,11 +1369,11 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       return;
     }
 
-    // 2. Entrada Automática no Estoque
+    // 3. ENTRADA AUTOMÁTICA NO ESTOQUE (Itens Vinculados e Novos Itens Extraídos)
     let updatedInventory = [...localInventory];
     const updatedSummary: string[] = [];
 
-    parsedData.items?.forEach((item) => {
+    parsedData.items?.forEach((item, idx) => {
       if (item.linkedInventoryId) {
         const invIndex = updatedInventory.findIndex(i => i.id === item.linkedInventoryId);
         if (invIndex !== -1) {
@@ -1020,7 +1387,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
             updatedSummary.push(`${invItem.name} (+${addQty} ${invItem.unit || 'UN'} | Saldo: ${invItem.quantity})`);
           }
 
-          // Atualize também o "Preço de Custo" desse produto no cadastro usando o valor "Unitário" vindo da nota
+          // Atualiza também o "Preço de Custo" desse produto no cadastro usando o valor "Unitário" vindo da nota
           const newUnitCost = Number(item.unitPrice) || 0;
           if (newUnitCost > 0) {
             invItem.unitCost = newUnitCost;
@@ -1033,6 +1400,36 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
 
           updatedInventory[invIndex] = invItem;
         }
+      } else {
+        // Item sem vínculo manual prévio: lança novo cadastro automático no estoque e incrementa quantidade física
+        if (!editingExpenseId) {
+          const autoCat = deduceItemCategory(item.description);
+          const autoUnit = (item.unit || 'UN').toUpperCase();
+          const autoQty = Number(item.quantity) || 1;
+          const autoCost = Number(item.unitPrice) || 0;
+          const newProdId = `inv_auto_${Date.now()}_${idx}`;
+
+          const newInvItem: InventoryItem = {
+            id: newProdId,
+            name: item.description,
+            fiscalName: item.description,
+            code: item.code || `PRD${Date.now().toString().slice(-4)}`,
+            barcode: item.barcode || undefined,
+            unit: autoUnit,
+            category: autoCat,
+            unitCost: autoCost,
+            profitMargin: 30,
+            salePrice: Math.round((autoCost * 1.3) * 100) / 100,
+            quantity: autoQty,
+            minQuantity: 5,
+            maxQuantity: 100,
+            location: 'Barracão Principal'
+          };
+
+          updatedInventory.push(newInvItem);
+          item.linkedInventoryId = newProdId;
+          updatedSummary.push(`${newInvItem.name} (+${autoQty} ${autoUnit} cadastrado e lançado no estoque)`);
+        }
       }
     });
 
@@ -1040,7 +1437,8 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       saveInventory(updatedInventory);
     }
 
-    // 3. Finalização do Fluxo: Adiciona ou atualiza despesa na lista de Notas Lançadas
+    // 4. AUTOMAÇÃO FINANCEIRA (Geração em Contas a Pagar com Centro de Custo)
+    const selectedCC = localCostCenters.find(c => c.id === selectedCostCenterId);
     const stockNote = updatedSummary.length > 0
       ? ` Entrada de estoque registrada: ${updatedSummary.join(', ')}.`
       : '';
@@ -1058,46 +1456,88 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                      parsedData.suggestedCategory === 'cat_inoculante' ? '#2563eb' :
                      parsedData.suggestedCategory === 'cat_manutencao' ? '#dc2626' : '#64748b';
 
-    const newExpenseRecord: Expense = {
-      id: expenseId,
-      description: `Compra ${parsedData.invoiceNumber} - ${parsedData.supplier}`,
-      amount: parsedData.totalAmount,
-      categoryId: parsedData.suggestedCategory,
-      categoryName: catName,
-      categoryColor: catColor,
-      dueDate: parsedData.issueDate,
-      supplier: parsedData.supplier,
-      invoiceNumber: parsedData.invoiceNumber,
-      status: 'pago',
-      paymentMethod: 'boleto',
-      notes: `Lançamento automático via NF-e XML. Chave: ${parsedData.accessKey || 'N/A'}. ${parsedData.itemsSummary}.${stockNote}\n${itemsEmbed}`,
-      nfeItems: parsedData.items,
-      createdAt: new Date().toISOString(),
-    };
+    // Se houver múltiplas parcelas registradas no XML da NF-e, gera despesas vinculadas em Contas a Pagar
+    const hasMultipleInstallments = parsedData.installments && parsedData.installments.length > 1;
 
-    onAddExpenseFromNfe(newExpenseRecord);
+    let primaryExpenseRecord: Expense;
 
-    setNotasLancadas(prev => {
-      const idx = prev.findIndex(e => e.id === expenseId);
-      if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx] = newExpenseRecord;
-        return copy;
-      }
-      return [newExpenseRecord, ...prev];
-    });
+    if (hasMultipleInstallments && parsedData.installments) {
+      const installmentRecords: Expense[] = parsedData.installments.map((inst, idx) => {
+        const instId = idx === 0 ? expenseId : `${expenseId}_parc_${idx + 1}`;
+        return {
+          id: instId,
+          description: `Compra ${parsedData.invoiceNumber} (${inst.number || `${idx + 1}/${parsedData.installments!.length}`}) - ${parsedData.supplier}`,
+          amount: inst.amount,
+          categoryId: parsedData.suggestedCategory,
+          categoryName: catName,
+          categoryColor: catColor,
+          dueDate: inst.dueDate || parsedData.issueDate,
+          supplier: parsedData.supplier,
+          invoiceNumber: `${parsedData.invoiceNumber} (${inst.number || `${idx + 1}/${parsedData.installments!.length}`})`,
+          status: 'pendente',
+          paymentMethod: parsedData.paymentMethod || 'boleto',
+          costCenterId: selectedCC?.id,
+          costCenterName: selectedCC?.name,
+          notes: `Lançamento automático via NF-e XML. Parcela ${inst.number || `${idx + 1}/${parsedData.installments!.length}`}. Chave: ${parsedData.accessKey || 'N/A'}.${stockNote}\n${itemsEmbed}`,
+          nfeItems: parsedData.items,
+          createdAt: new Date().toISOString(),
+        };
+      });
 
-    saveCachedNfe(parsedData, expenseId);
+      primaryExpenseRecord = installmentRecords[0];
+      onAddExpenseFromNfe(installmentRecords);
+
+      setNotasLancadas(prev => {
+        const remaining = prev.filter(e => !installmentRecords.some(r => r.id === e.id));
+        return [...installmentRecords, ...remaining];
+      });
+    } else {
+      primaryExpenseRecord = {
+        id: expenseId,
+        description: `Compra ${parsedData.invoiceNumber} - ${parsedData.supplier}`,
+        amount: parsedData.totalAmount,
+        categoryId: parsedData.suggestedCategory,
+        categoryName: catName,
+        categoryColor: catColor,
+        dueDate: parsedData.dueDate || parsedData.issueDate,
+        supplier: parsedData.supplier,
+        invoiceNumber: parsedData.invoiceNumber,
+        status: 'pendente',
+        paymentMethod: parsedData.paymentMethod || 'boleto',
+        costCenterId: selectedCC?.id,
+        costCenterName: selectedCC?.name,
+        notes: `Lançamento automático via NF-e XML. Chave: ${parsedData.accessKey || 'N/A'}. ${parsedData.itemsSummary}.${stockNote}\n${itemsEmbed}`,
+        nfeItems: parsedData.items,
+        createdAt: new Date().toISOString(),
+      };
+
+      onAddExpenseFromNfe(primaryExpenseRecord);
+
+      setNotasLancadas(prev => {
+        const idx = prev.findIndex(e => e.id === expenseId);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = primaryExpenseRecord;
+          return copy;
+        }
+        return [primaryExpenseRecord, ...prev];
+      });
+    }
+
+    saveCachedNfe({
+      ...parsedData,
+      costCenterId: selectedCC?.id,
+      costCenterName: selectedCC?.name,
+    }, expenseId);
 
     const isEdit = Boolean(editingExpenseId);
-    // Limpa os dados da tela após o salvamento bem-sucedido e exibe mensagem de sucesso
     setErrorMessage('');
     setSuccessMessage(
       isEdit 
-        ? `Nota Fiscal ${parsedData.invoiceNumber} atualizada com sucesso!`
-        : `Nota Fiscal ${parsedData.invoiceNumber} importada e convertida em despesa com sucesso! ${
+        ? `Nota Fiscal ${parsedData.invoiceNumber} atualizada com sucesso no Centro de Custo "${selectedCC?.name}"!`
+        : `Nota Fiscal ${parsedData.invoiceNumber} importada com sucesso! Lançamento gerado em Contas a Pagar no Centro de Custo "${selectedCC?.name}". ${
             updatedSummary.length > 0
-              ? `${updatedSummary.length} produto(s) tiveram entrada adicionada ao estoque.`
+              ? `${updatedSummary.length} movimentação(ões) física(s) adicionada(s) ao estoque.`
               : ''
           }`
     );
@@ -1105,6 +1545,8 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
     setXmlContent('');
     setSearchNfeNumber('');
     setEditingExpenseId(null);
+    setSelectedCostCenterId('');
+    setCostCenterError(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -1116,15 +1558,17 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
   const handleEditNota = (exp: Expense) => {
     setErrorMessage('');
     const nfeData = buildNfeDataFromExpense(exp, localInventory, companyProfile);
-    // Garante que o estado interno receba a lista detalhada completa dos itens/sub-produtos da nota
     setParsedData({
       ...nfeData,
-      items: nfeData.items || []
+      items: nfeData.items || [],
+      costCenterId: exp.costCenterId,
+      costCenterName: exp.costCenterName
     });
+    setSelectedCostCenterId(exp.costCenterId || '');
+    setCostCenterError(false);
     setEditingExpenseId(exp.id);
     setSuccessMessage(`Nota ${exp.invoiceNumber || 'selecionada'} aberta para edição com ${nfeData.items?.length || 0} produto(s).`);
     setTimeout(() => setSuccessMessage(''), 4000);
-    // Rola a página suavemente para os detalhes abertos da nota
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -1380,14 +1824,41 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                     </div>
                     <div>
                       <span className="text-stone-500 block text-xs">Emitente / Fornecedor:</span>
-                      <span className="font-bold text-stone-900 dark:text-stone-100 block text-sm">
+                      <span className="font-bold text-stone-900 dark:text-stone-100 block text-sm truncate" title={parsedData.supplier}>
                         {parsedData.supplier}
                       </span>
                       {parsedData.supplierCnpj && (
-                        <span className="text-xs text-stone-500 font-mono">
+                        <span className="text-xs text-stone-500 font-mono block">
                           CNPJ: {formatCpfCnpj(parsedData.supplierCnpj)}
                         </span>
                       )}
+                      <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          supplierValidationNotice?.isNew
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                        }`}>
+                          {supplierValidationNotice?.isNew ? 'Novo Fornecedor' : 'Fornecedor Cadastrado'}
+                        </span>
+                        <button
+                          type="button"
+                          id="btn-revisar-fornecedor-nfe"
+                          onClick={() => {
+                            const rawDigits = cleanDigits(parsedData.supplierCnpj || '');
+                            const s = localSuppliers.find(sup => 
+                              (rawDigits && cleanDigits(sup.cnpjOrCpf || '') === rawDigits) ||
+                              sup.name.trim().toLowerCase() === parsedData.supplier.trim().toLowerCase()
+                            ) || supplierForModal;
+                            if (s) setSupplierForModal(s);
+                            setIsSupplierModalOpen(true);
+                          }}
+                          className="text-[11px] font-bold text-sky-600 hover:text-sky-700 dark:text-sky-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                          title="Validar dados e ficha cadastral do fornecedor"
+                        >
+                          <Building2 className="w-3 h-3" />
+                          <span>Validar Ficha</span>
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <span className="text-stone-500 block text-xs">Destinatário:</span>
@@ -1542,6 +2013,110 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                       </div>
                     </div>
                   )}
+
+                  {/* Card de Validação Financeira & Seleção Obrigatória de Centro de Custo */}
+                  <div className={`p-4 sm:p-5 rounded-2xl border transition-all ${
+                    costCenterError 
+                      ? 'bg-rose-50/70 dark:bg-rose-950/30 border-rose-400 dark:border-rose-700 ring-2 ring-rose-500/20' 
+                      : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-700 shadow-xs'
+                  }`}>
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                      <div className="flex-1 space-y-1.5">
+                        <div className="flex items-center space-x-2">
+                          <Building2 className={`w-4 h-4 ${costCenterError ? 'text-rose-600' : 'text-sky-600'}`} />
+                          <h4 className="text-xs font-black uppercase tracking-wider text-stone-800 dark:text-stone-200">
+                            Classificação Financeira & Centro de Custo
+                          </h4>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                            Seleção Obrigatória
+                          </span>
+                        </div>
+                        <p className="text-xs text-stone-500 leading-relaxed">
+                          Antes de finalizar o salvamento da nota importada, informe a qual Centro de Custo esta despesa pertence (Safra, Maquinários, Administrativo ou Geral) para integração com o Contas a Pagar.
+                        </p>
+                      </div>
+
+                      <div className="lg:w-96 flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between">
+                          <label 
+                            htmlFor="select-centro-de-custo-nfe"
+                            className="block text-xs font-bold text-stone-700 dark:text-stone-300"
+                          >
+                            Centro de Custo <span className="text-rose-600 font-black">*</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setIsQuickCostCenterOpen(true)}
+                            className="text-[11px] font-bold text-sky-600 hover:text-sky-700 dark:text-sky-400 cursor-pointer inline-flex items-center gap-1"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>Novo Centro</span>
+                          </button>
+                        </div>
+                        <select
+                          id="select-centro-de-custo-nfe"
+                          value={selectedCostCenterId}
+                          onChange={(e) => {
+                            setSelectedCostCenterId(e.target.value);
+                            if (e.target.value) setCostCenterError(false);
+                          }}
+                          className={`w-full px-3 py-2.5 text-xs font-semibold rounded-xl border bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-hidden transition cursor-pointer ${
+                            costCenterError 
+                              ? 'border-rose-500 focus:ring-2 focus:ring-rose-500/30' 
+                              : 'border-stone-300 dark:border-stone-700 focus:ring-2 focus:ring-sky-500/20'
+                          }`}
+                        >
+                          <option value="">-- Selecione o Centro de Custo (Obrigatório) --</option>
+                          {localCostCenters.map(cc => (
+                            <option key={cc.id} value={cc.id}>
+                              {cc.name} ({cc.type.toUpperCase()})
+                            </option>
+                          ))}
+                        </select>
+                        {costCenterError && (
+                          <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1 mt-0.5">
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            Bloqueio de Validação: Escolha o Centro de Custo para salvar a nota.
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Informações Financeiras Complementares Extraídas do XML */}
+                    <div className="mt-4 pt-3 border-t border-stone-200/80 dark:border-stone-800 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="w-4 h-4 text-stone-400" />
+                        <div>
+                          <span className="text-stone-500 block text-[11px]">Vencimento Principal:</span>
+                          <span className="font-bold text-stone-800 dark:text-stone-200">
+                            {formatDateBR(parsedData.dueDate || parsedData.issueDate)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <CreditCard className="w-4 h-4 text-stone-400" />
+                        <div>
+                          <span className="text-stone-500 block text-[11px]">Forma de Pagamento:</span>
+                          <span className="font-bold text-stone-800 dark:text-stone-200 capitalize">
+                            {parsedData.paymentMethod || 'Boleto Bancário'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Receipt className="w-4 h-4 text-stone-400" />
+                        <div>
+                          <span className="text-stone-500 block text-[11px]">Condição / Cobrança:</span>
+                          <span className="font-bold text-stone-800 dark:text-stone-200">
+                            {parsedData.installments && parsedData.installments.length > 1
+                              ? `${parsedData.installments.length} parcelas identificadas no XML`
+                              : 'Parcela única / À vista'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
                   {/* Card de Resumo Horizontal no Rodapé (100% de Largura) */}
                   <div className="p-4 sm:p-5 rounded-2xl bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-700 w-full shadow-xs">
@@ -2134,6 +2709,87 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal de Criação Rápida de Centro de Custo */}
+      {isQuickCostCenterOpen && (
+        <div className="fixed inset-0 z-80 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200 dark:border-stone-800">
+              <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-sky-600" />
+                <span>Novo Centro de Custo</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsQuickCostCenterOpen(false)}
+                className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-stone-600 dark:text-stone-400 mb-1">
+                  Nome do Centro de Custo <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newCostCenterName}
+                  onChange={(e) => setNewCostCenterName(e.target.value)}
+                  placeholder="Ex: Safra 2024/2025, Maquinários, Administrativo"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-sky-500/20 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-stone-600 dark:text-stone-400 mb-1">
+                  Tipo de Classificação
+                </label>
+                <select
+                  value={newCostCenterType}
+                  onChange={(e) => setNewCostCenterType(e.target.value as CostCenter['type'])}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-sky-500/20"
+                >
+                  <option value="safra">Safra / Lavoura</option>
+                  <option value="maquinario">Maquinário & Frotas</option>
+                  <option value="operacional">Operacional / Galpão</option>
+                  <option value="administrativo">Administrativo & Escritório</option>
+                  <option value="geral">Geral</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-end space-x-2">
+              <button
+                type="button"
+                onClick={() => setIsQuickCostCenterOpen(false)}
+                className="px-4 py-2 text-xs font-bold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateQuickCostCenter}
+                disabled={!newCostCenterName.trim()}
+                className="px-4 py-2 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 disabled:opacity-50 rounded-xl shadow-xs transition flex items-center space-x-1.5 cursor-pointer"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Criar e Selecionar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Validação / Cadastro de Fornecedor acionado automaticamente na leitura de XML */}
+      <SupplierModal
+        isOpen={isSupplierModalOpen}
+        onClose={() => setIsSupplierModalOpen(false)}
+        onSave={handleSaveSupplierFromModal}
+        editingSupplier={supplierForModal}
+        zIndexClass="z-70"
+      />
 
     </div>
   );

@@ -643,27 +643,40 @@ export default function App() {
                 viewMode="import"
                 inventory={inventory}
                 onSaveInventory={(updatedInv) => setInventory(updatedInv)}
+                suppliers={suppliers}
+                onSaveSuppliers={(updatedSuppliers) => setSuppliers(updatedSuppliers)}
+                costCenters={costCenters}
+                onSaveCostCenters={(updatedCostCenters) => setCostCenters(updatedCostCenters)}
+                categories={categories}
                 onDeleteExpense={(idOrNumber) => {
                   setExpenses((prev) => prev.filter((e) => e.id !== idOrNumber && e.invoiceNumber !== idOrNumber));
                 }}
-                onAddExpenseFromNfe={(newExp) => {
-                  const created: Expense = {
-                    id: newExp.id || `exp_nfe_${Date.now()}`,
-                    description: newExp.description || 'Despesa Importada via NF-e',
-                    amount: newExp.amount || 0,
-                    categoryId: newExp.categoryId || 'cat_combustivel',
-                    categoryName: categories.find(c => c.id === newExp.categoryId)?.name || 'Combustível & Arla (Diesel)',
-                    categoryColor: categories.find(c => c.id === newExp.categoryId)?.color || '#d97706',
-                    dueDate: newExp.dueDate || new Date().toISOString().split('T')[0],
-                    status: newExp.status || 'pago',
-                    paymentMethod: newExp.paymentMethod || 'boleto',
-                    supplier: newExp.supplier || 'Fornecedor NF-e',
-                    invoiceNumber: newExp.invoiceNumber || 'NF-e',
-                    notes: newExp.notes,
-                    nfeItems: newExp.nfeItems,
-                    createdAt: newExp.createdAt || new Date().toISOString(),
-                  };
-                  handleSaveExpense(created);
+                onAddExpenseFromNfe={(newExpOrList) => {
+                  const list = Array.isArray(newExpOrList) ? newExpOrList : [newExpOrList];
+                  const createdList: Expense[] = list.map((newExp, idx) => {
+                    const cat = categories.find(c => c.id === newExp.categoryId);
+                    const cc = costCenters.find(c => c.id === newExp.costCenterId);
+                    return {
+                      id: newExp.id || `exp_nfe_${Date.now()}_${idx}`,
+                      description: newExp.description || 'Despesa Importada via NF-e',
+                      amount: newExp.amount || 0,
+                      categoryId: newExp.categoryId || 'cat_combustivel',
+                      categoryName: newExp.categoryName || cat?.name || 'Combustível & Arla (Diesel)',
+                      categoryColor: newExp.categoryColor || cat?.color || '#d97706',
+                      dueDate: newExp.dueDate || new Date().toISOString().split('T')[0],
+                      paymentDate: newExp.paymentDate,
+                      status: newExp.status || 'pendente',
+                      paymentMethod: newExp.paymentMethod || 'boleto',
+                      supplier: newExp.supplier || 'Fornecedor NF-e',
+                      invoiceNumber: newExp.invoiceNumber || 'NF-e',
+                      costCenterId: newExp.costCenterId || cc?.id,
+                      costCenterName: newExp.costCenterName || cc?.name,
+                      notes: newExp.notes,
+                      nfeItems: newExp.nfeItems,
+                      createdAt: newExp.createdAt || new Date().toISOString(),
+                    };
+                  });
+                  handleSaveExpense(createdList.length === 1 ? createdList[0] : createdList);
                 }}
               />
             </div>
