@@ -3093,35 +3093,21 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                   <div className="p-4 sm:p-5 rounded-2xl bg-[#b0d2ed] dark:bg-stone-800/40 border border-[#96c1e5] dark:border-stone-700 w-full shadow-2xs text-black">
                     <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                       
-                      {/* Grid Horizontal dos 4 Blocos de Informação */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 flex-1">
+                      {/* Grid Horizontal dos 3 Blocos Restantes de Informação */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 flex-1">
                         
                         {/* Bloco 1: Total dos Produtos */}
-                        <div className="p-3.5 bg-white/90 dark:bg-stone-900 rounded-xl border border-[#96c1e5] dark:border-stone-700/80 flex flex-col justify-between shadow-2xs">
+                        <div className="p-3.5 bg-white dark:bg-stone-900 rounded-xl border border-[#96c1e5] dark:border-stone-700/80 flex flex-col justify-between shadow-2xs">
                           <span className="text-[11px] font-black uppercase tracking-wider text-black block mb-1">
                             Total dos Produtos
                           </span>
-                          <span className="text-base font-black text-black dark:text-stone-100 font-mono">
+                          <span className="text-base sm:text-lg font-black text-black dark:text-stone-100 font-mono">
                             {formatCurrencyBRL(parsedData.productsAmount || parsedData.totalAmount)}
                           </span>
                         </div>
 
-                        {/* Bloco 2: Categoria Sugerida */}
-                        <div className="p-3.5 bg-white/90 dark:bg-stone-900 rounded-xl border border-[#96c1e5] dark:border-stone-700/80 flex flex-col justify-between shadow-2xs">
-                          <span className="text-[11px] font-black uppercase tracking-wider text-black block mb-1">
-                            Categoria Sugerida
-                          </span>
-                          <div>
-                            <span className="inline-block font-black px-2.5 py-1 rounded-lg bg-sky-100 text-sky-950 border border-sky-200 text-xs">
-                              {parsedData.suggestedCategory === 'cat_combustivel' ? 'Combustível & Arla' : 
-                               parsedData.suggestedCategory === 'cat_manutencao' ? 'Peças & Manutenção' : 
-                               parsedData.suggestedCategory === 'cat_lona_embalagem' ? 'Lonas & Embalagens' : 'Insumos Agrícolas'}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Bloco 3: Vinculação ao Estoque */}
-                        <div className="p-3.5 bg-white/90 dark:bg-stone-900 rounded-xl border border-[#96c1e5] dark:border-stone-700/80 flex flex-col justify-between shadow-2xs">
+                        {/* Bloco 2: Vinculação ao Estoque */}
+                        <div className="p-3.5 bg-white dark:bg-stone-900 rounded-xl border border-[#96c1e5] dark:border-stone-700/80 flex flex-col justify-between shadow-2xs">
                           <div className="flex items-center justify-between gap-1 mb-1">
                             <span className="text-[11px] font-black uppercase tracking-wider text-black flex items-center space-x-1">
                               <Package className="w-3.5 h-3.5 text-sky-800" />
@@ -3142,32 +3128,32 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                           </span>
                         </div>
 
-                        {/* Bloco 4: Valor Total NF-e */}
-                        <div className="p-3.5 bg-white/95 dark:bg-emerald-950/30 rounded-xl border-2 border-emerald-500 shadow-2xs flex flex-col justify-between">
-                          <span className="text-[11px] font-black uppercase tracking-wider text-emerald-900 block mb-1">
+                        {/* Bloco 3: Valor Total NF-e */}
+                        <div className="p-3.5 bg-white dark:bg-stone-900 rounded-xl border-2 border-emerald-500 shadow-2xs flex flex-col justify-between">
+                          <span className="text-[11px] font-black uppercase tracking-wider text-black block mb-1">
                             Valor Total NF-e
                           </span>
-                          <span className="text-xl font-black text-emerald-700 font-mono leading-none">
+                          <span className="text-xl font-black text-emerald-700 dark:text-emerald-400 font-mono leading-none">
                             {formatCurrencyBRL(parsedData.totalAmount)}
                           </span>
                         </div>
 
                       </div>
 
-                      {/* Botão de Ação: Salvar Alterações da Nota no canto inferior direito */}
-                      <div className="xl:w-72 shrink-0 flex flex-col justify-center gap-2">
+                      {/* Botões de Ação alinhados à direita */}
+                      <div className="xl:w-80 shrink-0 flex flex-col justify-center gap-2">
                         {errorMessage && (
                           <div className="p-2.5 bg-rose-50 dark:bg-rose-950/70 border border-rose-200 dark:border-rose-800 rounded-xl flex items-center space-x-2 text-rose-700 dark:text-rose-300 text-xs font-bold animate-in fade-in">
                             <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
                             <span>{errorMessage}</span>
                           </div>
                         )}
-                        <div className="flex flex-col sm:flex-row items-center gap-2.5">
+                        <div className="flex flex-col sm:flex-row items-center gap-2.5 justify-end">
                           <button
                             type="button"
                             id="btn-voltar-para-lista-rodape"
                             onClick={handleBackToList}
-                            className="w-full sm:w-auto px-4 py-3.5 bg-white/90 hover:bg-white text-black font-bold rounded-xl border border-[#96c1e5] transition flex items-center justify-center space-x-2 cursor-pointer text-sm min-h-[50px] shadow-2xs"
+                            className="w-full sm:w-auto px-4 py-3.5 bg-white hover:bg-stone-50 text-black font-bold rounded-xl border border-[#96c1e5] transition flex items-center justify-center space-x-2 cursor-pointer text-sm min-h-[50px] shadow-2xs"
                           >
                             <X className="w-4 h-4" />
                             <span>Cancelar</span>
@@ -3176,11 +3162,11 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                             type="button"
                             id="btn-confirmar-importacao-nfe"
                             onClick={handleProceedToInstallments}
-                            className="w-full sm:flex-1 py-3.5 px-5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black rounded-xl shadow-md transition flex items-center justify-center space-x-2 cursor-pointer active:scale-98 text-sm min-h-[50px]"
-                            title="Avançar para a Janela 2 (Parcelas Geradas com Base no XML)"
+                            className="w-full sm:flex-1 py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black rounded-xl shadow-md transition flex items-center justify-center space-x-2 cursor-pointer active:scale-98 text-sm min-h-[50px]"
+                            title="Salvar alterações e avançar para detalhamento de parcelas"
                           >
                             <Check className="w-5 h-5 stroke-[2.5]" />
-                            <span>Salvar Alterações da Nota (Avançar para Parcelas)</span>
+                            <span>Salvar Alterações da Nota</span>
                           </button>
                         </div>
                       </div>
