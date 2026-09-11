@@ -224,25 +224,25 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className={`fixed inset-0 ${zIndexClass} flex items-center justify-center p-2 sm:p-3 bg-stone-950/70 backdrop-blur-xs overflow-y-auto`}>
-      <div className="bg-white dark:bg-stone-900 rounded-xl max-w-2xl w-full shadow-2xl border border-stone-200 dark:border-stone-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-auto">
+    <div className={`fixed inset-0 ${zIndexClass} flex items-center justify-center p-3 sm:p-4 bg-stone-950/70 backdrop-blur-xs overflow-y-auto`}>
+      <div className="bg-white dark:bg-stone-900 rounded-2xl w-[90vw] max-w-6xl shadow-2xl border border-stone-200 dark:border-stone-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-auto">
         
         {/* Header */}
-        <div className="px-4 py-2 sm:py-2.5 bg-[#0963cb] text-white flex items-center justify-between">
-          <h3 className="text-sm sm:text-base font-bold tracking-tight text-white">
+        <div className="px-5 py-3 bg-[#0963cb] text-white flex items-center justify-between">
+          <h3 className="text-base sm:text-lg font-bold tracking-tight text-white">
             Cadastro Cliente
           </h3>
           <button
             onClick={onClose}
-            className="p-1 rounded-md text-white/80 hover:text-white hover:bg-white/20 transition cursor-pointer"
+            className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Feedback message */}
         {feedback && (
-          <div className={`px-3 py-1.5 text-xs font-bold text-white flex items-center justify-between ${
+          <div className={`px-4 py-2 text-xs font-bold text-white flex items-center justify-between ${
             feedback.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'
           }`}>
             <span>{feedback.message}</span>
@@ -251,13 +251,13 @@ export const ClientModal: React.FC<ClientModalProps> = ({
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-2.5 sm:p-3 space-y-2 bg-stone-100/60 dark:bg-stone-900 max-h-[92vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-3 sm:p-4 space-y-3 bg-stone-100/60 dark:bg-stone-900 max-h-[92vh] overflow-y-auto">
           
           {/* Card 1: Identificação & Contato Principal */}
-          <div className="bg-[#b0d2ed] p-2 sm:p-2.5 rounded-lg border border-[#96c1e5] shadow-2xs space-y-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="bg-[#b0d2ed] p-3 sm:p-3.5 rounded-xl border border-[#96c1e5] shadow-2xs space-y-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-0.5">
+                <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
                   NOME DO PRODUTOR / RESPONSÁVEL <span className="text-rose-600">*</span>
                 </label>
                 <input
@@ -266,12 +266,12 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ex: Carlos Eduardo Fontes"
-                  className="w-full px-2.5 py-1 sm:py-1.5 rounded-lg border border-stone-300 bg-white text-black placeholder:text-black text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-0.5">
+                <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
                   NOME DA FAZENDA / PROPRIEDADE <span className="text-rose-600">*</span>
                 </label>
                 <input
@@ -280,21 +280,21 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   value={farmName}
                   onChange={(e) => setFarmName(e.target.value)}
                   placeholder="Ex: Fazenda Bela Vista"
-                  className="w-full px-2.5 py-1 sm:py-1.5 rounded-lg border border-stone-300 bg-white text-black placeholder:text-black text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
             </div>
 
             {/* CPF / CNPJ, Inscrição Estadual (IE) / CADPRO e Telefone */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <div className="flex items-center justify-between mb-0.5">
-                  <label className="block text-[10px] font-bold text-black uppercase tracking-wider">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-black uppercase tracking-wider">
                     CPF OU CNPJ (AUTO-BUSCA)
                   </label>
                   {isLoadingCnpj && (
-                    <span className="text-[9px] text-black font-bold flex items-center space-x-1">
-                      <Loader2 className="w-2.5 h-2.5 animate-spin text-[#0963cb]" />
+                    <span className="text-[10px] text-black font-bold flex items-center space-x-1">
+                      <Loader2 className="w-3 h-3 animate-spin text-[#0963cb]" />
                       <span>Buscando...</span>
                     </span>
                   )}
@@ -306,22 +306,22 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                     onChange={(e) => handleCpfCnpjChange(e.target.value)}
                     placeholder="000.000.000-00 ou 00.000.000/0000-00"
                     maxLength={18}
-                    className="w-full px-2.5 py-1 sm:py-1.5 rounded-lg border border-stone-300 bg-white text-black placeholder:text-black text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] pr-7"
+                    className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] pr-8"
                   />
                   <button
                     type="button"
                     onClick={() => searchCnpj()}
                     disabled={isLoadingCnpj}
                     title="Buscar dados deste CNPJ na Receita Federal"
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-black hover:text-[#0963cb] rounded transition cursor-pointer"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-black hover:text-[#0963cb] rounded-md transition cursor-pointer"
                   >
-                    <Search className="w-3 h-3" />
+                    <Search className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-0.5">
+                <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
                   INSCRIÇÃO ESTADUAL (IE) / CADPRO
                 </label>
                 <input
@@ -329,12 +329,12 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   value={stateRegistration}
                   onChange={(e) => setStateRegistration(e.target.value)}
                   placeholder="Ex: 90812345-67 ou PR-123456"
-                  className="w-full px-2.5 py-1 sm:py-1.5 rounded-lg border border-stone-300 bg-white text-black placeholder:text-black text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-0.5">
+                <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
                   WHATSAPP / TELEFONE
                 </label>
                 <input
@@ -343,23 +343,23 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   onChange={(e) => setPhone(formatPhone(e.target.value))}
                   placeholder="(42) 99823-1144"
                   maxLength={15}
-                  className="w-full px-2.5 py-1 sm:py-1.5 rounded-lg border border-stone-300 bg-white text-black placeholder:text-black text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
             </div>
           </div>
 
           {/* Card 2: CEP, Endereço, Cidade e UF */}
-          <div className="bg-[#b0d2ed] p-2 sm:p-2.5 rounded-lg border border-[#96c1e5] shadow-2xs space-y-2">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="bg-[#b0d2ed] p-3 sm:p-3.5 rounded-xl border border-[#96c1e5] shadow-2xs space-y-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <div className="flex items-center justify-between mb-0.5">
-                  <label className="block text-[10px] font-bold text-black uppercase tracking-wider">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-black uppercase tracking-wider">
                     CEP
                   </label>
                   {isLoadingCep && (
-                    <span className="text-[9px] text-black font-bold flex items-center space-x-1">
-                      <Loader2 className="w-2.5 h-2.5 animate-spin text-[#0963cb]" />
+                    <span className="text-[10px] text-black font-bold flex items-center space-x-1">
+                      <Loader2 className="w-3 h-3 animate-spin text-[#0963cb]" />
                       <span>Buscando...</span>
                     </span>
                   )}
@@ -371,22 +371,22 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                     onChange={(e) => handleCepChange(e.target.value)}
                     placeholder="00000-000"
                     maxLength={9}
-                    className="w-full px-2.5 py-1 sm:py-1.5 rounded-lg border border-stone-300 bg-white text-black placeholder:text-black text-xs font-medium focus:ring-2 focus:ring-[#0963cb] pr-7"
+                    className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#0963cb] pr-8"
                   />
                   <button
                     type="button"
                     onClick={() => searchCep()}
                     disabled={isLoadingCep}
                     title="Buscar endereço deste CEP"
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-black hover:text-[#0963cb] rounded transition cursor-pointer"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-black hover:text-[#0963cb] rounded-md transition cursor-pointer"
                   >
-                    <Search className="w-3 h-3" />
+                    <Search className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-0.5">
+                <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
                   ENDEREÇO / LINHA RURAL
                 </label>
                 <input
@@ -394,14 +394,14 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="Ex: Linha Alto Alegre, Km 04"
-                  className="w-full px-2.5 py-1 sm:py-1.5 rounded-lg border border-stone-300 bg-white text-black placeholder:text-black text-xs font-medium focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-0.5">
+                <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
                   BAIRRO / COMUNIDADE
                 </label>
                 <input
@@ -409,12 +409,12 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   value={neighborhood}
                   onChange={(e) => setNeighborhood(e.target.value)}
                   placeholder="Ex: Zona Rural"
-                  className="w-full px-2.5 py-1 sm:py-1.5 rounded-lg border border-stone-300 bg-white text-black placeholder:text-black text-xs font-medium focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-0.5">
+                <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
                   CIDADE
                 </label>
                 <input
@@ -422,12 +422,12 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="Ex: Castro"
-                  className="w-full px-2.5 py-1 sm:py-1.5 rounded-lg border border-stone-300 bg-white text-black placeholder:text-black text-xs font-medium focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-0.5">
+                <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
                   UF / ESTADO
                 </label>
                 <input
@@ -436,24 +436,24 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   onChange={(e) => setState(e.target.value.toUpperCase())}
                   placeholder="PR"
                   maxLength={2}
-                  className="w-full px-2.5 py-1 sm:py-1.5 rounded-lg border border-stone-300 bg-white text-black placeholder:text-black text-xs font-medium uppercase focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium uppercase focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
             </div>
           </div>
 
           {/* Card 3: Atividade Pecuária, Cabeças & Demanda */}
-          <div className="bg-[#b0d2ed] p-2 sm:p-2.5 rounded-lg border border-[#96c1e5] shadow-2xs">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="bg-[#b0d2ed] p-3 sm:p-3.5 rounded-xl border border-[#96c1e5] shadow-2xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-0.5">
+                <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
                   ATIVIDADE PECUÁRIA
                 </label>
                 <div className="relative">
                   <select
                     value={cattleType}
                     onChange={(e) => setCattleType(e.target.value as any)}
-                    className="w-full px-2.5 py-1 sm:py-1.5 text-xs rounded-lg border border-stone-300 bg-white text-black focus:ring-2 focus:ring-[#0963cb] font-medium appearance-none pr-7 cursor-pointer"
+                    className="w-full px-3 py-1.5 sm:py-2 text-xs sm:text-sm rounded-xl border border-stone-300 bg-white text-black focus:ring-2 focus:ring-[#0963cb] font-medium appearance-none pr-8 cursor-pointer"
                   >
                     <option value="leite">Gado de Leite</option>
                     <option value="confinamento">Confinamento de Corte</option>
@@ -461,12 +461,12 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                     <option value="corte">Cria & Recria de Corte</option>
                     <option value="outro">Equinos / Ovinos / Outro</option>
                   </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-black absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <ChevronDown className="w-4 h-4 text-black absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-0.5">
+                <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
                   Nº DE CABEÇAS
                 </label>
                 <input
@@ -474,12 +474,12 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   value={headCount}
                   onChange={(e) => handleHeadCountChange(e.target.value)}
                   placeholder="Ex: 180"
-                  className="w-full px-2.5 py-1 sm:py-1.5 text-xs rounded-lg border border-stone-300 bg-white text-black placeholder:text-black focus:ring-2 focus:ring-[#0963cb] font-medium"
+                  className="w-full px-3 py-1.5 sm:py-2 text-xs sm:text-sm rounded-xl border border-stone-300 bg-white text-black placeholder:text-black focus:ring-2 focus:ring-[#0963cb] font-medium"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-0.5">
+                <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
                   DEMANDA ESTIMADA (TON/MÊS)
                 </label>
                 <input
@@ -487,24 +487,24 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   value={monthlyDemandTons}
                   onChange={(e) => setMonthlyDemandTons(e.target.value)}
                   placeholder="Ex: 65"
-                  className="w-full px-2.5 py-1 sm:py-1.5 text-xs rounded-lg border border-stone-300 bg-white text-black placeholder:text-black focus:ring-2 focus:ring-[#0963cb] font-medium"
+                  className="w-full px-3 py-1.5 sm:py-2 text-xs sm:text-sm rounded-xl border border-stone-300 bg-white text-black placeholder:text-black focus:ring-2 focus:ring-[#0963cb] font-medium"
                 />
               </div>
             </div>
           </div>
 
           {/* Card 4: CRM, E-mail & Observações */}
-          <div className="bg-[#b0d2ed] p-2 sm:p-2.5 rounded-lg border border-[#96c1e5] shadow-2xs space-y-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="bg-[#b0d2ed] p-3 sm:p-3.5 rounded-xl border border-[#96c1e5] shadow-2xs space-y-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-0.5">
+                <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
                   STATUS NO FUNIL CRM
                 </label>
                 <div className="relative">
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as any)}
-                    className="w-full px-2.5 py-1 sm:py-1.5 rounded-lg border border-stone-300 bg-white text-black text-xs font-medium focus:ring-2 focus:ring-[#0963cb] appearance-none pr-7 cursor-pointer"
+                    className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#0963cb] appearance-none pr-8 cursor-pointer"
                   >
                     <option value="lead">Lead / Novo Contato</option>
                     <option value="contatado">Contatado / Em Qualificação</option>
@@ -512,12 +512,12 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                     <option value="cliente_ativo">Cliente Ativo (Comprando)</option>
                     <option value="inativo">Inativo / Pausado</option>
                   </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-black absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <ChevronDown className="w-4 h-4 text-black absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-0.5">
+                <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
                   E-MAIL (OPCIONAL)
                 </label>
                 <input
@@ -525,13 +525,13 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="carlos@fazenda.com.br"
-                  className="w-full px-2.5 py-1 sm:py-1.5 rounded-lg border border-stone-300 bg-white text-black placeholder:text-black text-xs font-medium focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-0.5">
+              <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
                 OBSERVAÇÕES TÉCNICAS / PREFERÊNCIAS
               </label>
               <textarea
@@ -539,23 +539,23 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Ex: Prefere silagem com teor de matéria seca em 33-35%, grãos bem triturados..."
-                className="w-full px-2.5 py-1 sm:py-1.5 rounded-lg border border-stone-300 bg-white text-black placeholder:text-black text-xs font-medium focus:ring-2 focus:ring-[#0963cb] resize-none h-11 sm:h-12 leading-relaxed"
+                className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#0963cb] resize-none h-14 sm:h-16 leading-relaxed"
               />
             </div>
           </div>
 
           {/* Footer */}
-          <div className="pt-2 border-t border-stone-200 dark:border-stone-800 flex justify-end space-x-2.5">
+          <div className="pt-2.5 border-t border-stone-200 dark:border-stone-800 flex justify-end space-x-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-1.5 rounded-lg border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-semibold hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+              className="px-5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs sm:text-sm font-semibold hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-5 py-1.5 rounded-lg bg-[#0963cb] hover:bg-[#0852a8] text-white text-xs font-bold shadow-xs transition cursor-pointer"
+              className="px-6 py-2 rounded-xl bg-[#0963cb] hover:bg-[#0852a8] text-white text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
             >
               {editingClient ? 'Atualizar Cliente' : 'Salvar Cliente'}
             </button>
