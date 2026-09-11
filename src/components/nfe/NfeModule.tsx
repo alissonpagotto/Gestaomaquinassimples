@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Upload,
   UploadCloud, 
@@ -395,6 +395,73 @@ export function saveStoredFiscalRecords(records: Expense[]): void {
 }
 
 /**
+ * Extrai o número limpo da NF-e removendo qualquer formatação de parcela:
+ * Ex: "(01/04)", "(1/4)", "(01 de 04)", "- Parcela 01", "/01", "P01"
+ */
+export function getCleanInvoiceNumber(rawNumber?: string): string {
+  if (!rawNumber) return 'NF-e';
+  const cleaned = rawNumber
+    .replace(/\s*\(\s*\d+\s*[\/\-de\s]+\s*\d+\s*\)/gi, '')
+    .replace(/\s*[-–/]\s*parc(ela)?\.?\s*\d+/gi, '')
+    .replace(/\s*parc(ela)?\.?\s*\d+/gi, '')
+    .replace(/\s*\(?\s*P\d+\s*\)?/gi, '')
+    .trim();
+  return cleaned || rawNumber.trim();
+}
+
+/**
+ * Extrai a chave canônica da NF-e para agrupamento estrito de 1 linha por documento fiscal:
+ * 1. Chave de Acesso da NF-e (44 dígitos contínuos)
+ * 2. Número da NF limpo (dígitos normalizados sem zeros à esquerda) + fornecedor
+ * 3. Raiz do ID sem o sufixo _parc_
+ */
+export function getCanonicalNfeKey(item: { 
+  invoiceNumber?: string; 
+  accessKey?: string; 
+  notes?: string; 
+  id?: string; 
+  supplier?: string;
+}): string {
+  // 1. Chave de acesso de 44 dígitos
+  const keyCandidate = item.accessKey || '';
+  if (keyCandidate && /^\d{44}$/.test(keyCandidate.trim())) {
+    return `key_${keyCandidate.trim()}`;
+  }
+
+  const keyMatch = item.notes?.match(/Chave:\s*([0-9A-Za-z]+)/i) || 
+                   item.notes?.match(/\b(\d{44})\b/);
+  if (keyMatch) {
+    const found = (keyMatch[1] || keyMatch[0]).trim();
+    if (found.length === 44 && /^\d+$/.test(found)) {
+      return `key_${found}`;
+    }
+  }
+
+  // 2. Extrai número numérico da NF-e limpo
+  const cleanStr = getCleanInvoiceNumber(item.invoiceNumber);
+  const digits = cleanStr.replace(/\D/g, '');
+  if (digits) {
+    const normalizedDigits = digits.replace(/^0+/, '') || '0';
+    const supp = (item.supplier || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '')
+      .slice(0, 15);
+    return `doc_${normalizedDigits}_${supp}`;
+  }
+
+  // 3. Fallback: Raiz do ID
+  const rootId = (item.id || '')
+    .split('_parc_')[0]
+    .replace(/^nfe_fisc_/, '')
+    .replace(/^exp_nfe_/, '')
+    .trim()
+    .toLowerCase();
+  return `id_${rootId || 'desconhecido'}`;
+}
+
+/**
  * Constrói e unifica o Histórico de Notas Fiscais para garantir que NENHUMA nota
  * fiscal possua múltiplas linhas na tabela fiscal decorrentes de desdobramento de parcelas.
  * Cada nota fiscal é consolidada em EXATAMENTE 1 ÚNICA LINHA exibindo o Valor Total Bruto.
@@ -402,79 +469,155 @@ export function saveStoredFiscalRecords(records: Expense[]): void {
 export function buildUnifiedFiscalRecords(expensesList: Expense[]): Expense[] {
   const storedFiscal = getStoredFiscalRecords();
   const cachedMap = getCachedNfeMap();
-  const fiscalMap = new Map<string, Expense>();
 
-  // 1. Prioriza os registros fiscais explicitamente gravados
-  storedFiscal.forEach(fisc => {
-    const cleanNum = (fisc.invoiceNumber || '').replace(/\s*\(\d+\/\d+\)/g, '').trim().toLowerCase();
-    const key = fisc.accessKey || cleanNum || fisc.id;
-    if (key) {
-      fiscalMap.set(key, fisc);
-    }
-  });
+  // Coleta todos os registros elegíveis de ambas as fontes
+  const allCandidates: Expense[] = [
+    ...storedFiscal,
+    ...(expensesList || []).filter(e => {
+      if (!e) return false;
+      const num = (e.invoiceNumber || '').toLowerCase();
+      const notes = (e.notes || '').toLowerCase();
+      const id = (e.id || '').toLowerCase();
+      return (
+        num.includes('nf') || 
+        num.includes('danfe') ||
+        notes.includes('nf-e') || 
+        notes.includes('chave:') || 
+        notes.includes('lançamento de parcela via nf-e') ||
+        id.includes('nfe') || 
+        id.includes('_parc_') ||
+        Boolean(e.nfeItems && e.nfeItems.length > 0)
+      );
+    })
+  ];
 
-  // 2. Agrupa despesas de NF-e presentes em expensesList para unificar notas legadas ou sincronizadas
-  const nfeExpenses = (expensesList || []).filter(e => e.invoiceNumber && e.invoiceNumber.toLowerCase().includes('nf'));
+  // Agrupa os itens pela chave canônica da NF-e
   const groups = new Map<string, Expense[]>();
 
-  nfeExpenses.forEach(exp => {
-    const keyMatch = exp.notes?.match(/Chave:\s*([0-9A-Za-z]+)/i) || exp.notes?.match(/\b\d{44}\b/);
-    const accessKey = keyMatch ? (keyMatch[1] || keyMatch[0]) : '';
-    const cleanNum = (exp.invoiceNumber || '').replace(/\s*\(\d+\/\d+\)/g, '').trim().toLowerCase();
-    const groupKey = accessKey || cleanNum || exp.id.split('_parc_')[0];
-
-    if (!groups.has(groupKey)) {
-      groups.set(groupKey, []);
+  allCandidates.forEach(item => {
+    const key = getCanonicalNfeKey(item);
+    if (!groups.has(key)) {
+      groups.set(key, []);
     }
-    groups.get(groupKey)!.push(exp);
+    groups.get(key)!.push(item);
   });
 
-  // 3. Consolida grupos em registros únicos com o Valor Total Bruto
-  groups.forEach((groupExpList, groupKey) => {
-    const existing = fiscalMap.get(groupKey);
-    if (existing) {
-      // Já existe registro fiscal com o valor bruto consolidado; apenas atualiza status e IDs
-      const allPaid = groupExpList.length > 0 && groupExpList.every(g => g.status === 'pago');
-      existing.status = allPaid ? 'pago' : 'pendente';
-      return;
+  const consolidatedList: Expense[] = [];
+
+  groups.forEach((items, groupKey) => {
+    if (!items || items.length === 0) return;
+
+    // 1. Identifica se existe no cache da NF-e o registro bruto original do XML
+    let cachedTotal: number | null = null;
+    let cachedItems: any[] | null = null;
+    let cachedSupplier = '';
+    let cachedInvoiceNum = '';
+    let cachedAccessKey = '';
+
+    for (const item of items) {
+      const cleanNum = getCleanInvoiceNumber(item.invoiceNumber);
+      const digits = cleanNum.replace(/\D/g, '');
+      const keyMatch = item.notes?.match(/\b(\d{44})\b/);
+      const keyStr = keyMatch ? keyMatch[1] : '';
+
+      const candidate = (item.id && cachedMap[item.id]) ||
+                        (item.invoiceNumber && cachedMap[item.invoiceNumber.toLowerCase().trim()]) ||
+                        (cleanNum && cachedMap[cleanNum.toLowerCase().trim()]) ||
+                        (digits && cachedMap[digits]) ||
+                        (keyStr && cachedMap[keyStr]) ||
+                        cachedMap[groupKey];
+
+      if (candidate && candidate.totalAmount && Number(candidate.totalAmount) > 0) {
+        cachedTotal = Number(candidate.totalAmount);
+        cachedItems = candidate.items || null;
+        cachedSupplier = candidate.supplier || '';
+        cachedInvoiceNum = candidate.invoiceNumber || '';
+        cachedAccessKey = candidate.accessKey || '';
+        break;
+      }
     }
 
-    // Se ainda não estava no armazenamento fiscal, reconstrói 1 único registro consolidado
-    const firstExp = groupExpList[0];
-    const cleanInvoiceNumber = (firstExp.invoiceNumber || '').replace(/\s*\(\d+\/\d+\)/g, '').trim();
-    const cachedCandidate = cachedMap[firstExp.id] || 
-      (firstExp.invoiceNumber && cachedMap[firstExp.invoiceNumber.toLowerCase().trim()]) ||
-      cachedMap[groupKey];
+    // 2. Calcula o Valor Total Bruto Consolidado da Nota Fiscal:
+    // Garante SEMPRE o valor cheio (ex: R$ 600,00), NUNCA o valor fracionado de uma parcela (ex: R$ 150,00)
+    let consolidatedAmount = 0;
 
-    const consolidatedAmount = (cachedCandidate?.totalAmount && cachedCandidate.totalAmount > 0)
-      ? cachedCandidate.totalAmount
-      : groupExpList.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    if (cachedTotal && cachedTotal > 0) {
+      consolidatedAmount = cachedTotal;
+    } else {
+      // Itens que são explicitamente pai (não são parcelas)
+      const explicitParents = items.filter(i => 
+        !i.id.includes('_parc_') && 
+        !i.invoiceNumber?.match(/\(\s*\d+\s*[\/\-]\s*\d+\s*\)/) &&
+        !i.notes?.includes('Lançamento de parcela')
+      );
+
+      // Itens que são parcelas individuais
+      const installmentItems = items.filter(i => 
+        i.id.includes('_parc_') || 
+        Boolean(i.invoiceNumber?.match(/\(\s*\d+\s*[\/\-]\s*\d+\s*\)/)) ||
+        Boolean(i.notes?.includes('Lançamento de parcela'))
+      );
+
+      if (installmentItems.length > 1) {
+        // Se temos várias parcelas (ex: 4 parcelas de 150), a soma delas reconstitui o valor total bruto (600)
+        const sumInstallments = installmentItems.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+        const maxParent = explicitParents.length > 0 ? Math.max(...explicitParents.map(p => Number(p.amount) || 0)) : 0;
+        consolidatedAmount = Math.max(maxParent, sumInstallments);
+      } else if (explicitParents.length > 0) {
+        consolidatedAmount = Math.max(...explicitParents.map(p => Number(p.amount) || 0));
+      } else {
+        consolidatedAmount = Math.max(...items.map(i => Number(i.amount) || 0));
+      }
+    }
+
+    // 3. Escolhe o melhor item representativo da nota (priorizando registro pai)
+    const primaryItem = items.find(i => 
+      !i.id.includes('_parc_') && 
+      !i.invoiceNumber?.match(/\(\s*\d+\s*[\/\-]\s*\d+\s*\)/)
+    ) || items[0];
+
+    const cleanInvoiceNumber = cachedInvoiceNum || getCleanInvoiceNumber(primaryItem.invoiceNumber);
+    const supplierName = cachedSupplier || primaryItem.supplier || 'Fornecedor NF-e';
+
+    // 4. Status consolidado: 'pago' apenas se todas as despesas da nota estiverem pagas
+    const allPaid = items.every(i => i.status === 'pago');
+    const status = allPaid ? 'pago' : 'pendente';
+
+    // 5. Itens e produtos da NF-e
+    const nfeProducts = cachedItems || primaryItem.nfeItems || items.find(i => i.nfeItems && i.nfeItems.length > 0)?.nfeItems;
+
+    // 6. Monta o Registro Único Fiscal da NF-e
+    const rootId = primaryItem.id.split('_parc_')[0];
+    const finalId = rootId.startsWith('nfe_fisc_') ? rootId : `nfe_fisc_${rootId.replace(/^exp_nfe_/, '')}`;
 
     const consolidatedRecord: Expense = {
-      id: firstExp.id.split('_parc_')[0] || `nfe_fisc_${Date.now()}`,
+      ...primaryItem,
+      id: finalId,
       invoiceNumber: cleanInvoiceNumber,
-      supplier: firstExp.supplier || 'Fornecedor NF-e',
-      description: `Compra ${cleanInvoiceNumber} - ${firstExp.supplier || ''}${groupExpList.length > 1 ? ` (${groupExpList.length} parcelas)` : ''}`,
-      amount: consolidatedAmount, // VALOR TOTAL BRUTO CONSOLIDADO DA NF-E
-      dueDate: firstExp.dueDate,
-      status: groupExpList.every(g => g.status === 'pago') ? 'pago' : 'pendente',
-      categoryId: firstExp.categoryId,
-      categoryName: firstExp.categoryName,
-      categoryColor: firstExp.categoryColor,
-      paymentMethod: firstExp.paymentMethod,
-      costCenterId: firstExp.costCenterId,
-      costCenterName: firstExp.costCenterName,
-      notes: firstExp.notes,
-      nfeItems: firstExp.nfeItems || cachedCandidate?.items,
-      createdAt: firstExp.createdAt || new Date().toISOString(),
+      supplier: supplierName,
+      description: `Compra ${cleanInvoiceNumber} - ${supplierName}`,
+      amount: consolidatedAmount, // VALOR TOTAL BRUTO CONSOLIDADO (R$ 600,00)
+      dueDate: primaryItem.dueDate,
+      status,
+      nfeItems: nfeProducts,
+      accessKey: cachedAccessKey || primaryItem.accessKey,
+      notes: primaryItem.notes,
     };
 
-    fiscalMap.set(groupKey, consolidatedRecord);
+    consolidatedList.push(consolidatedRecord);
   });
 
-  const result = Array.from(fiscalMap.values());
-  result.sort((a, b) => new Date(b.createdAt || b.dueDate).getTime() - new Date(a.createdAt || a.dueDate).getTime());
-  return result;
+  // Ordena decrescente por data
+  consolidatedList.sort((a, b) => {
+    const dateA = new Date(a.createdAt || a.dueDate).getTime();
+    const dateB = new Date(b.createdAt || b.dueDate).getTime();
+    return dateB - dateA;
+  });
+
+  // Salva no storage de registros fiscais a lista limpa e sem resíduos de parcelas
+  saveStoredFiscalRecords(consolidatedList);
+
+  return consolidatedList;
 }
 
 export interface NfeModuleProps {
@@ -517,6 +660,11 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       setNotasLancadas(buildUnifiedFiscalRecords(expenses));
     }
   }, [expenses]);
+
+  // Lista de Notas Fiscais rigorosamente consolidada para exibição na tabela fiscal (1 linha por documento fiscal com Valor Total Bruto)
+  const notasFiscaisExibicao = useMemo(() => {
+    return buildUnifiedFiscalRecords(expenses && expenses.length > 0 ? expenses : notasLancadas);
+  }, [expenses, notasLancadas]);
 
   const [xmlContent, setXmlContent] = useState('');
   const [parsedData, setParsedData] = useState<ParsedNfeData | null>(null);
@@ -1846,14 +1994,18 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
   const handleEditNota = (exp: Expense) => {
     setErrorMessage('');
     const nfeData = buildNfeDataFromExpense(exp, localInventory, companyProfile);
+    const targetKey = getCanonicalNfeKey(exp);
+    const cleanNum = getCleanInvoiceNumber(exp.invoiceNumber);
+    const cleanNumLower = cleanNum.toLowerCase();
     
-    // Identifica parcelas vinculadas a essa nota no Contas a Pagar
-    const cleanInvoiceNum = (exp.invoiceNumber || '').replace(/\s*\(\d+\/\d+\)/g, '').trim().toLowerCase();
+    // Identifica todas as parcelas vinculadas a essa nota no Contas a Pagar
     const relatedExpenses = expenses.filter(e => {
-      const eNum = (e.invoiceNumber || '').replace(/\s*\(\d+\/\d+\)/g, '').trim().toLowerCase();
-      return (eNum && cleanInvoiceNum && eNum === cleanInvoiceNum) || 
-             (exp.id && e.id.startsWith(exp.id)) ||
-             (e.notes && exp.notes && exp.notes.includes('Chave:') && e.notes.includes(exp.notes.slice(0, 30)));
+      if (getCanonicalNfeKey(e) === targetKey) return true;
+      const eNum = getCleanInvoiceNumber(e.invoiceNumber).toLowerCase();
+      if (eNum && cleanNumLower && eNum === cleanNumLower) return true;
+      if (exp.id && e.id.startsWith(exp.id)) return true;
+      if (e.notes && exp.notes && exp.notes.includes('Chave:') && e.notes.includes(exp.notes.slice(0, 30))) return true;
+      return false;
     });
 
     let existingInstallments = nfeData.installments;
@@ -1865,12 +2017,10 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       }));
     }
 
-    const cleanNum = (exp.invoiceNumber || '').replace(/\s*\(\d+\/\d+\)/g, '').trim();
-
     setParsedData({
       ...nfeData,
       invoiceNumber: cleanNum || nfeData.invoiceNumber,
-      totalAmount: exp.amount || nfeData.totalAmount, // Garante o valor consolidado bruto
+      totalAmount: exp.amount || nfeData.totalAmount, // Garante o valor consolidado bruto cheio
       items: nfeData.items || [],
       installments: existingInstallments,
       costCenterId: exp.costCenterId,
@@ -1892,32 +2042,46 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
     const notaId = notaParaExcluir;
 
     // 1. Identifica a nota no Histórico Fiscal
-    const nota = notasLancadas.find(n => n.id === notaId || n.invoiceNumber === notaId);
-    const cleanNum = (nota?.invoiceNumber || '').replace(/\s*\(\d+\/\d+\)/g, '').trim().toLowerCase();
+    const nota = notasFiscaisExibicao.find(n => n.id === notaId || n.invoiceNumber === notaId);
+    const targetKey = nota ? getCanonicalNfeKey(nota) : '';
+    const cleanNum = nota ? getCleanInvoiceNumber(nota.invoiceNumber).toLowerCase() : '';
 
     // 2. Remove do armazenamento permanente de registros fiscais
     const storedFiscal = getStoredFiscalRecords();
-    const updatedFiscal = storedFiscal.filter(f => 
-      f.id !== notaId && 
-      (f.invoiceNumber || '').replace(/\s*\(\d+\/\d+\)/g, '').trim().toLowerCase() !== cleanNum
-    );
+    const updatedFiscal = storedFiscal.filter(f => {
+      if (f.id === notaId) return false;
+      if (targetKey && getCanonicalNfeKey(f) === targetKey) return false;
+      if (cleanNum && getCleanInvoiceNumber(f.invoiceNumber).toLowerCase() === cleanNum) return false;
+      return true;
+    });
     saveStoredFiscalRecords(updatedFiscal);
 
     // 3. Remove do estado de notas lançadas da tela
-    setNotasLancadas(prev => prev.filter(n => 
-      n.id !== notaId && 
-      (n.invoiceNumber || '').replace(/\s*\(\d+\/\d+\)/g, '').trim().toLowerCase() !== cleanNum
-    ));
+    setNotasLancadas(prev => prev.filter(n => {
+      if (n.id === notaId) return false;
+      if (targetKey && getCanonicalNfeKey(n) === targetKey) return false;
+      if (cleanNum && getCleanInvoiceNumber(n.invoiceNumber).toLowerCase() === cleanNum) return false;
+      return true;
+    }));
 
     // 4. Remove TODAS as parcelas associadas no Contas a Pagar (Financeiro)
     const idsToRemove = new Set<string>();
     if (notaId) idsToRemove.add(notaId);
 
-    // Localiza todas as despesas em expenses com o mesmo número limpo ou que iniciem com notaId
+    // Localiza todas as despesas em expenses com o mesmo número limpo, chave canônica ou que iniciem com notaId
     expenses.forEach(e => {
-      const eCleanNum = (e.invoiceNumber || '').replace(/\s*\(\d+\/\d+\)/g, '').trim().toLowerCase();
-      if (cleanNum && eCleanNum === cleanNum) idsToRemove.add(e.id);
-      if (notaId && e.id.startsWith(notaId)) idsToRemove.add(e.id);
+      if (e.id === notaId || (notaId && e.id.startsWith(notaId))) {
+        idsToRemove.add(e.id);
+        return;
+      }
+      if (targetKey && getCanonicalNfeKey(e) === targetKey) {
+        idsToRemove.add(e.id);
+        return;
+      }
+      const eCleanNum = getCleanInvoiceNumber(e.invoiceNumber).toLowerCase();
+      if (cleanNum && eCleanNum === cleanNum) {
+        idsToRemove.add(e.id);
+      }
     });
 
     try {
@@ -2692,9 +2856,9 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
         <div className="flex items-center justify-between">
           <h3 className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-1.5">
             <ReceiptText className="w-3.5 h-3.5 text-sky-600" />
-            <span>Histórico de Notas Fiscais Lançadas ({notasLancadas.length})</span>
+            <span>Histórico de Notas Fiscais Lançadas ({notasFiscaisExibicao.length})</span>
           </h3>
-          {notasLancadas.length > 0 && (
+          {notasFiscaisExibicao.length > 0 && (
             <span className="text-[11px] sm:text-xs text-black hidden sm:inline-block">
               Clique em uma linha ou em "Abrir & Editar" para visualizar ou editar os itens.
             </span>
@@ -2716,7 +2880,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
-                {notasLancadas.map((exp) => (
+                {notasFiscaisExibicao.map((exp) => (
                   <tr 
                     key={exp.id} 
                     id={`row-nfe-${exp.id}`}
@@ -2805,7 +2969,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                     </td>
                   </tr>
                 ))}
-                {notasLancadas.length === 0 && (
+                {notasFiscaisExibicao.length === 0 && (
                   <tr>
                     <td colSpan={7} className="py-8 text-center text-stone-400">
                       <ReceiptText className="w-7 h-7 mx-auto mb-1.5 opacity-50" />
