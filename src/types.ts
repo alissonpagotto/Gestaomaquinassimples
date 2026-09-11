@@ -79,6 +79,9 @@ export interface Expense {
   unitPrice?: number;
   nfeItems?: any[]; // Array completo de itens/sub-produtos da NF-e (cProd, xProd, qCom, vUnCom, vProd, etc.)
   isRecurring?: boolean;
+  accessKey?: string;
+  installmentsCount?: number;
+  expenseIds?: string[];
   createdAt: string;
 }
 

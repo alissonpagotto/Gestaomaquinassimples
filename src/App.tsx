@@ -338,7 +338,11 @@ export default function App() {
   // Expense Handlers
   const handleSaveExpense = (newOrUpdated: Expense | Expense[]) => {
     if (Array.isArray(newOrUpdated)) {
-      setExpenses((prev) => [...newOrUpdated, ...prev]);
+      setExpenses((prev) => {
+        const newIds = new Set(newOrUpdated.map((n) => n.id));
+        const filtered = prev.filter((e) => !newIds.has(e.id));
+        return [...newOrUpdated, ...filtered];
+      });
     } else {
       setExpenses((prev) => {
         const index = prev.findIndex((e) => e.id === newOrUpdated.id);
