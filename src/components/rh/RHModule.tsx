@@ -93,7 +93,7 @@ export const RHModule: React.FC<RHModuleProps> = ({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="w-full max-w-none space-y-4 sm:space-y-6">
       
       {/* Top Header com Título e Subtítulo */}
       <div className="no-print flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/20 pb-3">

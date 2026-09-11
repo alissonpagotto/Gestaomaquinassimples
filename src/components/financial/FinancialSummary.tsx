@@ -236,7 +236,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
   }, [quickPeriod, capitalizedMonthName, currentYear, startDate, endDate]);
 
   return (
-    <div id="financial-module" className="space-y-4">
+    <div id="financial-module" className="w-full max-w-none space-y-4 sm:space-y-5">
       
       {/* 1. Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">

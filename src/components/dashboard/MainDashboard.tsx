@@ -92,10 +92,10 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
   });
 
   return (
-    <div id="main-dashboard-view" className="space-y-3.5">
+    <div id="main-dashboard-view" className="w-full max-w-none space-y-4 sm:space-y-5">
       
       {/* Top 4 Stat Cards Row matching screenshot */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         
         {/* Card 1: DESPESAS DO MÊS */}
         <div 
@@ -203,11 +203,11 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
                   <BarChart3 className="w-5 h-5" />
                 </div>
                 
-                <h3 className="text-sm font-bold text-black max-w-md">
+                <h3 className="text-sm sm:text-base font-bold text-black max-w-xl">
                   Gráficos e tabelas da safra & custos operacionais
                 </h3>
                 
-                <p className="text-xs text-black/80 font-medium mt-1 max-w-md">
+                <p className="text-xs sm:text-sm text-black/80 font-medium mt-1 max-w-xl">
                   Acompanhe custos por safra, consumo de diesel das ensiladeiras, contratos de venda e fluxo financeiro.
                 </p>
 

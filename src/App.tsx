@@ -569,14 +569,10 @@ export default function App() {
           onOpenTrialInfo={() => setIsTrialInfoOpen(true)}
         />
 
-        {/* Dynamic Page Content */}
+        {/* Dynamic Page Content (100% Full Width across all modules) */}
         <main 
           id="crm-main-content"
-          className={`flex-1 p-3 sm:p-4 lg:p-5 w-full ${
-            ['frotas', 'veiculos', 'manutencoes', 'combustivel', 'motoristas', 'equipe', 'rodizio', 'rodizio_pneus'].includes(activeTab)
-              ? 'max-w-none px-2 sm:px-4 lg:px-6'
-              : 'max-w-7xl mx-auto'
-          }`}
+          className="flex-1 p-3 sm:p-4 lg:p-6 w-full max-w-none"
         >
           
           {/* TAB 1: Main Dashboard (Matching Screenshot) */}
@@ -669,7 +665,7 @@ export default function App() {
 
           {/* TAB: Fiscal (NF-e, Notas Fiscais Eletrônicas, Importação XML) */}
           {(activeTab === 'fiscal' || activeTab === 'nfe_importar' || activeTab === 'nfe_notas') && (
-            <div id="fiscal-module-container" className="space-y-6">
+            <div id="fiscal-module-container" className="w-full max-w-none space-y-6">
               <NfeModule
                 expenses={expenses}
                 companyProfile={companyProfile}

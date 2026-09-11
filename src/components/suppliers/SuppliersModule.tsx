@@ -66,7 +66,7 @@ export const SuppliersModule: React.FC<SuppliersModuleProps> = ({
   };
 
   return (
-    <div id="suppliers-module" className="bg-[#0a8bc1] rounded-2xl p-4 sm:p-6 shadow-xl space-y-4 text-black border-2 border-white/20">
+    <div id="suppliers-module" className="w-full max-w-none bg-[#0a8bc1] rounded-2xl p-4 sm:p-6 shadow-xl space-y-4 text-black border-2 border-white/20">
       
       {/* 1. Cabeçalho: Título "Fornecedores" no topo esquerdo e Botão verde no topo direito */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/20 pb-3">

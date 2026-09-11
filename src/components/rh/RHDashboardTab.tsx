@@ -60,7 +60,7 @@ export const RHDashboardTab: React.FC<RHDashboardTabProps> = ({
   const activeLeaves = leaves.filter(l => l.status === 'ativo');
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="w-full max-w-none space-y-4 sm:space-y-6">
       
       {/* 4 Cards de Métricas Principais (Exatamente como no print) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

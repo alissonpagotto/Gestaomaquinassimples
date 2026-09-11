@@ -190,7 +190,7 @@ export const ServicesModule: React.FC<ServicesModuleProps> = ({
 
   return (
     <div 
-      className="w-full min-h-screen bg-[#2e65aa] text-black antialiased p-3 sm:p-4 lg:p-5 space-y-2.5 rounded-2xl shadow-md"
+      className="w-full max-w-none min-h-screen bg-[#2e65aa] text-black antialiased p-3 sm:p-4 lg:p-6 space-y-3.5 rounded-2xl shadow-md"
       style={{ backgroundColor: '#2e65aa' }}
     >
       

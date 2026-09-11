@@ -156,7 +156,7 @@ export const VendaModule: React.FC<VendaModuleProps> = ({
   return (
     <div 
       id="venda-module-root"
-      className="w-full min-h-screen bg-[#2e65aa] text-black antialiased p-3 sm:p-4 lg:p-5 space-y-2.5 rounded-2xl shadow-md"
+      className="w-full max-w-none min-h-screen bg-[#2e65aa] text-black antialiased p-3 sm:p-4 lg:p-6 space-y-3.5 rounded-2xl shadow-md"
       style={{ backgroundColor: '#2e65aa' }}
     >
       {/* 1. CABEÇALHO */}
@@ -192,7 +192,7 @@ export const VendaModule: React.FC<VendaModuleProps> = ({
       </header>
 
       {/* 2. CARDS DE INDICADORES (KPIS) */}
-      <section aria-label="Indicadores de Vendas" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+      <section aria-label="Indicadores de Vendas" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white/10 backdrop-blur-xs border border-white/20 rounded-lg p-2.5 text-white">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-blue-100">Total Faturado</span>

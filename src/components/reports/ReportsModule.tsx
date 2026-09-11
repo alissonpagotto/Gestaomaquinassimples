@@ -241,7 +241,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   ];
 
   return (
-    <div className="space-y-4 sm:space-y-5 animate-fade-in">
+    <div className="w-full max-w-none space-y-4 sm:space-y-5 animate-fade-in">
       
       {/* 1. Header do Módulo (Conforme Print) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

@@ -86,7 +86,7 @@ export const CrmModule: React.FC<CrmModuleProps> = ({
   ];
 
   return (
-    <div className="space-y-3.5">
+    <div className="w-full max-w-none space-y-4">
       
       {/* Top Banner / Summary */}
       <div className="crm-card bg-[#87AFE3] dark:bg-stone-900 p-3 sm:p-3.5 rounded-2xl border border-slate-400 dark:border-stone-800 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 text-black dark:text-white">
@@ -136,7 +136,7 @@ export const CrmModule: React.FC<CrmModuleProps> = ({
 
       {/* Filters Bar */}
       <div className="bg-white dark:bg-stone-900 p-2.5 rounded-2xl border border-stone-200 dark:border-stone-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 text-xs shadow-xs">
-        <div className="relative flex-1 max-w-sm">
+        <div className="relative flex-1 w-full">
           <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-stone-400" />
           <input
             type="text"

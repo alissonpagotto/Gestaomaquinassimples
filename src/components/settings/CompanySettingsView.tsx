@@ -259,7 +259,7 @@ export const CompanySettingsView: React.FC<CompanySettingsViewProps> = ({
   };
 
   return (
-    <div id="company-settings-view" className="space-y-3.5 animate-in fade-in duration-200">
+    <div id="company-settings-view" className="w-full max-w-none space-y-4 animate-in fade-in duration-200">
       
       {/* Toast Notification */}
       {savedSuccess && (

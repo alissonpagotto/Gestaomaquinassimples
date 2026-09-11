@@ -97,12 +97,12 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
   };
 
   return (
-    <div id="inventory-module" className="space-y-2.5">
+    <div id="inventory-module" className="w-full max-w-none space-y-4 sm:space-y-5">
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200 dark:border-stone-800 pb-2">
         <div>
-          <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 tracking-tight font-['Outfit']">
+          <h2 className="text-sm sm:text-base font-bold text-stone-900 dark:text-stone-100 tracking-tight font-['Outfit']">
             Controle de Estoque & Insumos de Silagem
           </h2>
           <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
@@ -120,7 +120,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div className="crm-card bg-[#87AFE3] dark:bg-stone-900 border border-blue-200/80 dark:border-stone-800 rounded-lg p-2.5 flex items-center justify-between text-black dark:text-white">
           <div>
             <span className="text-[10px] font-black uppercase tracking-wider text-black dark:text-stone-300">
