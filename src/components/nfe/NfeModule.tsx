@@ -672,23 +672,35 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
     location: 'Barracão Principal'
   });
 
+  // Mensagem amigável padronizada para falhas de XML corrompido, incompleto ou com estrutura inválida
+  const XML_CORRUPTED_FRIENDLY_ERROR = 
+    'O arquivo XML selecionado está corrompido ou possui uma estrutura inválida. Por favor, verifique se o download da nota foi concluído corretamente e tente carregar o arquivo novamente.';
+
   // XML Parser robusto para NF-e SEFAZ Brasil com suporte a namespaces e fallbacks
   const parseXmlNFe = (xmlText: string): ParsedNfeData => {
     try {
       const cleanXml = (xmlText || '').replace(/^\uFEFF/, '').trim();
       if (!cleanXml) {
-        throw new Error('Conteúdo do arquivo XML está vazio.');
+        throw new Error(XML_CORRUPTED_FRIENDLY_ERROR);
+      }
+
+      // 3. Validação Prévia do Arquivo:
+      // Antes de processar as tags internas, valida se o arquivo enviado contém a tag principal <nfeProc> ou <infNFe>
+      const hasNfeProcOrInfNfe = /<(?:[a-zA-Z0-9_]+:)?(?:nfeProc|infNFe)\b/i.test(cleanXml);
+      if (!hasNfeProcOrInfNfe) {
+        console.warn("Validação prévia rejeitada: XML não contém as tags principais <nfeProc> ou <infNFe>");
+        throw new Error(XML_CORRUPTED_FRIENDLY_ERROR);
       }
 
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(cleanXml, 'application/xml');
 
-      // Verifica erros de sintaxe XML
+      // Verifica erros de sintaxe XML (como 'tag mismatch', tags não fechadas, erro de parsing)
       const parseErrors = xmlDoc.getElementsByTagName('parsererror');
-      if (parseErrors.length > 0) {
-        const errorText = parseErrors[0]?.textContent || 'Erro de sintaxe desconhecido';
-        console.error("Erro detalhado do XML (sintaxe DOMParser):", errorText);
-        throw new Error(`Sintaxe XML corrompida ou inválida: ${errorText.slice(0, 120)}`);
+      if (parseErrors.length > 0 || (xmlDoc.documentElement && xmlDoc.documentElement.nodeName === 'parsererror')) {
+        const errorText = parseErrors[0]?.textContent || xmlDoc.documentElement?.textContent || 'parsererror';
+        console.error("Erro detalhado do XML (sintaxe DOMParser capturada):", errorText);
+        throw new Error(XML_CORRUPTED_FRIENDLY_ERROR);
       }
 
       // Helper seguro para leitura de tags, tolerante a namespaces (ex: <nfe:emit> ou <emit>)
@@ -916,22 +928,33 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       };
     } catch (error) {
       console.error("Erro detalhado do XML:", error);
-      throw error;
+      throw new Error(XML_CORRUPTED_FRIENDLY_ERROR);
     }
   };
 
   // Processa diretamente a string XML extraída sem depender de estado assíncrono intermediário
   const processXmlDirectly = (text: string) => {
     setErrorMessage('');
-    if (!text || !text.trim()) {
-      console.error("Conteúdo lido está vazio");
-      setErrorMessage('Não foi possível ler o conteúdo do arquivo XML (conteúdo em branco).');
-      setParsedData(null);
-      return;
-    }
-
     try {
-      const result = parseXmlNFe(text);
+      if (!text || !text.trim()) {
+        console.error("Conteúdo lido está vazio");
+        setErrorMessage(XML_CORRUPTED_FRIENDLY_ERROR);
+        setParsedData(null);
+        return;
+      }
+
+      // 3. Validação Prévia do Arquivo:
+      // Verifica se o arquivo contém as tags essenciais da NF-e antes de processar tags internas
+      const clean = text.replace(/^\uFEFF/, '').trim();
+      const hasValidRootTags = /<(?:[a-zA-Z0-9_]+:)?(?:nfeProc|infNFe)\b/i.test(clean);
+      if (!hasValidRootTags) {
+        console.warn("Validação prévia: XML não possui as tags principais <nfeProc> ou <infNFe>");
+        setErrorMessage(XML_CORRUPTED_FRIENDLY_ERROR);
+        setParsedData(null);
+        return;
+      }
+
+      const result = parseXmlNFe(clean);
 
       // Validação não-bloqueante de CNPJ: apenas exibe aviso amigável sem interromper a importação
       const systemCnpj = companyProfile?.cnpjCpf?.replace(/\D/g, '') || '';
@@ -1063,9 +1086,10 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       );
       setTimeout(() => setSuccessMessage(''), 5000);
     } catch (error: any) {
-      console.error("Erro detalhado do XML:", error);
+      console.error("Erro detalhado do XML no processamento:", error);
       setParsedData(null);
-      setErrorMessage(error?.message || 'Falha ao processar o arquivo XML da NF-e.');
+      // Substitui qualquer erro técnico por mensagem amigável padronizada
+      setErrorMessage(XML_CORRUPTED_FRIENDLY_ERROR);
     }
   };
 
@@ -1073,30 +1097,49 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
     processXmlDirectly(text);
   };
 
-  // Upload direto e simples via FileReader nativo
+  // Upload direto e simples via FileReader nativo protegido contra quebra de interface
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     setErrorMessage('');
     setSuccessMessage('');
 
-    const file = event.target.files?.[0];
-    if (!file) return;
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      if (!text) {
-        console.error("Conteúdo lido está vazio");
-        setErrorMessage('Conteúdo lido do arquivo está vazio.');
-        return;
+      // Reseta o input para permitir selecionar o mesmo arquivo novamente caso corrigido
+      if (event.target) {
+        event.target.value = '';
       }
-      // Chame a função de parse diretamente passando o 'text'
-      processXmlDirectly(text);
-    };
-    reader.onerror = (err) => {
-      console.error("Erro detalhado do XML:", err);
-      setErrorMessage('Erro ao ler o arquivo no navegador.');
-    };
-    reader.readAsText(file);
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const text = e.target?.result as string;
+          if (!text || !text.trim()) {
+            console.error("Conteúdo lido do arquivo está vazio");
+            setErrorMessage(XML_CORRUPTED_FRIENDLY_ERROR);
+            setParsedData(null);
+            return;
+          }
+          // Processa o conteúdo XML com validação completa e try-catch
+          processXmlDirectly(text);
+        } catch (readErr) {
+          console.error("Erro ao ler conteúdo do arquivo XML:", readErr);
+          setErrorMessage(XML_CORRUPTED_FRIENDLY_ERROR);
+          setParsedData(null);
+        }
+      };
+      reader.onerror = (err) => {
+        console.error("Erro no FileReader ao ler arquivo no navegador:", err);
+        setErrorMessage(XML_CORRUPTED_FRIENDLY_ERROR);
+        setParsedData(null);
+      };
+      reader.readAsText(file);
+    } catch (uploadErr) {
+      console.error("Erro inesperado no manipulador de upload:", uploadErr);
+      setErrorMessage(XML_CORRUPTED_FRIENDLY_ERROR);
+      setParsedData(null);
+    }
   };
 
   // Busca por Número da NF-e (ou leitor de código)
@@ -1740,17 +1783,26 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       )}
 
       {errorMessage && (
-        <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-xl flex items-center justify-between text-rose-800 dark:text-rose-200 text-xs sm:text-sm font-semibold animate-in fade-in">
-          <div className="flex items-center space-x-2.5">
-            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-            <span>{errorMessage}</span>
+        <div 
+          id="alerta-erro-xml-corrompido"
+          className="relative p-4 sm:p-5 bg-rose-50 dark:bg-rose-950/80 border-2 border-rose-300 dark:border-rose-800 rounded-2xl shadow-sm text-rose-900 dark:text-rose-100 text-xs sm:text-sm font-bold animate-in fade-in transition"
+        >
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-center max-w-3xl mx-auto px-6">
+            <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-300 flex items-center justify-center shrink-0 shadow-2xs">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <p className="leading-relaxed text-center font-bold">
+              {errorMessage}
+            </p>
           </div>
           <button 
             type="button" 
+            id="btn-fechar-alerta-erro-xml"
             onClick={() => setErrorMessage('')} 
-            className="text-rose-500 hover:text-rose-700 p-1 rounded-md cursor-pointer"
+            className="absolute top-3 right-3 p-1.5 text-rose-500 hover:text-rose-800 dark:hover:text-rose-200 hover:bg-rose-100 dark:hover:bg-rose-900/50 rounded-lg cursor-pointer transition"
+            title="Fechar aviso de erro"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       )}
