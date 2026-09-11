@@ -282,9 +282,11 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
   return (
     <div id="main-dashboard-view" className="w-full max-w-none space-y-4 sm:space-y-5">
       
-      {/* Top 4 Stat Cards Row matching screenshot */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        
+      {/* Linha 1 (Topo Máximo): Cards de Resumos e Indicadores Globais */}
+      <div 
+        id="top-summary-cards-row" 
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full"
+      >
         {/* Card 1: DESPESAS DO MÊS */}
         <div 
           id="stat-card-despesas-mes"
@@ -324,8 +326,8 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
               {totalExpensesCount} registros
             </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-700 flex items-center justify-center text-white shadow-md shadow-emerald-700/20 group-hover:scale-105 transition shrink-0">
-            <Receipt className="w-5 h-5 stroke-[2.2]" />
+          <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-600/20 group-hover:scale-105 transition shrink-0">
+            <DollarSign className="w-5 h-5 stroke-[2.5]" />
           </div>
         </div>
 
@@ -372,6 +374,101 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
             <Tractor className="w-5 h-5 stroke-[2.2]" />
           </div>
         </div>
+      </div>
+
+      {/* Linha 2 (Intermediária): Cards de Atalhos e Lançamentos Rápidos */}
+      <div 
+        id="top-shortcut-cards-row" 
+        className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full"
+      >
+        
+        {/* Card 1: Despesas / Lançamentos */}
+        <button 
+          id="shortcut-card-despesas"
+          onClick={() => onNavigate('despesas')}
+          className="crm-card bg-[#b0d2ed] dark:bg-stone-900 border border-blue-200/80 dark:border-stone-800 rounded-xl p-3.5 sm:p-4 shadow-xs hover:border-blue-400 hover:shadow-md transition flex items-center justify-between cursor-pointer group text-black dark:text-white text-left w-full"
+        >
+          <div className="min-w-0 pr-2">
+            <span className="text-[10px] font-black tracking-wider text-black dark:text-stone-300 uppercase block">
+              Despesas
+            </span>
+            <div className="text-base sm:text-lg font-black text-black dark:text-white mt-0.5 font-['Outfit'] truncate">
+              Lançamentos
+            </div>
+            <span className="text-[11px] font-bold text-black/80 dark:text-stone-300 block truncate mt-0.5">
+              {formatCurrencyBRL(currentMonthTotal)} ({currentMonthCount})
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition shadow-2xs">
+            <Receipt className="w-5 h-5 stroke-[2.2]" />
+          </div>
+        </button>
+
+        {/* Card 2: Serviços / Ensilagem */}
+        <button 
+          id="shortcut-card-servicos"
+          onClick={() => onNavigate('servicos')}
+          className="crm-card bg-[#b0d2ed] dark:bg-stone-900 border border-blue-200/80 dark:border-stone-800 rounded-xl p-3.5 sm:p-4 shadow-xs hover:border-blue-400 hover:shadow-md transition flex items-center justify-between cursor-pointer group text-black dark:text-white text-left w-full"
+        >
+          <div className="min-w-0 pr-2">
+            <span className="text-[10px] font-black tracking-wider text-black dark:text-stone-300 uppercase block">
+              Serviços
+            </span>
+            <div className="text-base sm:text-lg font-black text-black dark:text-white mt-0.5 font-['Outfit'] truncate">
+              Ensilagem
+            </div>
+            <span className="text-[11px] font-bold text-black/80 dark:text-stone-300 block truncate mt-0.5">
+              {services.length} ordens de corte
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-950/70 text-green-800 dark:text-green-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition shadow-2xs">
+            <Tractor className="w-5 h-5 stroke-[2.2]" />
+          </div>
+        </button>
+
+        {/* Card 3: Estoque / Insumos */}
+        <button 
+          id="shortcut-card-estoque"
+          onClick={() => onNavigate('estoque')}
+          className="crm-card bg-[#b0d2ed] dark:bg-stone-900 border border-blue-200/80 dark:border-stone-800 rounded-xl p-3.5 sm:p-4 shadow-xs hover:border-blue-400 hover:shadow-md transition flex items-center justify-between cursor-pointer group text-black dark:text-white text-left w-full"
+        >
+          <div className="min-w-0 pr-2">
+            <span className="text-[10px] font-black tracking-wider text-black dark:text-stone-300 uppercase block">
+              Estoque
+            </span>
+            <div className="text-base sm:text-lg font-black text-black dark:text-white mt-0.5 font-['Outfit'] truncate">
+              Insumos
+            </div>
+            <span className="text-[11px] font-bold text-black/80 dark:text-stone-300 block truncate mt-0.5">
+              {inventory.length} itens controlados
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition shadow-2xs">
+            <ShieldCheck className="w-5 h-5 stroke-[2.2]" />
+          </div>
+        </button>
+
+        {/* Card 4: Clientes / Produtores */}
+        <button 
+          id="shortcut-card-clientes"
+          onClick={() => onNavigate('clientes')}
+          className="crm-card bg-[#b0d2ed] dark:bg-stone-900 border border-blue-200/80 dark:border-stone-800 rounded-xl p-3.5 sm:p-4 shadow-xs hover:border-blue-400 hover:shadow-md transition flex items-center justify-between cursor-pointer group text-black dark:text-white text-left w-full"
+        >
+          <div className="min-w-0 pr-2">
+            <span className="text-[10px] font-black tracking-wider text-black dark:text-stone-300 uppercase block">
+              Clientes
+            </span>
+            <div className="text-base sm:text-lg font-black text-black dark:text-white mt-0.5 font-['Outfit'] truncate">
+              Produtores
+            </div>
+            <span className="text-[11px] font-bold text-black/80 dark:text-stone-300 block truncate mt-0.5">
+              {clientsCount} cadastrados
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950/70 text-purple-800 dark:text-purple-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition shadow-2xs">
+            <Users className="w-5 h-5 stroke-[2.2]" />
+          </div>
+        </button>
 
       </div>
 
@@ -722,53 +819,6 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
 
             </div>
 
-          </div>
-
-          {/* Quick Shortcuts Bar below main box */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <button
-              onClick={() => onNavigate('despesas')}
-              className="p-2.5 crm-card bg-[#87AFE3] dark:bg-stone-900 border border-blue-200/80 dark:border-stone-800 rounded-xl hover:border-blue-400 transition text-left cursor-pointer group shadow-xs text-black dark:text-white"
-            >
-              <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 flex items-center justify-center mb-1.5 group-hover:scale-105 transition">
-                <Receipt className="w-3.5 h-3.5" />
-              </div>
-              <p className="text-xs font-bold text-black dark:text-white">Despesas</p>
-              <p className="text-[10px] text-black/75 dark:text-stone-400 font-medium">Lançamentos</p>
-            </button>
-
-            <button
-              onClick={() => onNavigate('servicos')}
-              className="p-2.5 crm-card bg-[#87AFE3] dark:bg-stone-900 border border-blue-200/80 dark:border-stone-800 rounded-xl hover:border-blue-400 transition text-left cursor-pointer group shadow-xs text-black dark:text-white"
-            >
-              <div className="w-7 h-7 rounded-lg bg-green-100 dark:bg-green-950/60 text-green-800 dark:text-green-300 flex items-center justify-center mb-1.5 group-hover:scale-105 transition">
-                <Tractor className="w-3.5 h-3.5" />
-              </div>
-              <p className="text-xs font-bold text-black dark:text-white">Serviços</p>
-              <p className="text-[10px] text-black/75 dark:text-stone-400 font-medium">Ensilagem</p>
-            </button>
-
-            <button
-              onClick={() => onNavigate('estoque')}
-              className="p-2.5 crm-card bg-[#87AFE3] dark:bg-stone-900 border border-blue-200/80 dark:border-stone-800 rounded-xl hover:border-blue-400 transition text-left cursor-pointer group shadow-xs text-black dark:text-white"
-            >
-              <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 flex items-center justify-center mb-1.5 group-hover:scale-105 transition">
-                <ShieldCheck className="w-3.5 h-3.5" />
-              </div>
-              <p className="text-xs font-bold text-black dark:text-white">Estoque</p>
-              <p className="text-[10px] text-black/75 dark:text-stone-400 font-medium">Insumos</p>
-            </button>
-
-            <button
-              onClick={() => onNavigate('clientes')}
-              className="p-2.5 crm-card bg-[#87AFE3] dark:bg-stone-900 border border-blue-200/80 dark:border-stone-800 rounded-xl hover:border-blue-400 transition text-left cursor-pointer group shadow-xs text-black dark:text-white"
-            >
-              <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 flex items-center justify-center mb-1.5 group-hover:scale-105 transition">
-                <Users className="w-3.5 h-3.5" />
-              </div>
-              <p className="text-xs font-bold text-black dark:text-white">Clientes</p>
-              <p className="text-[10px] text-black/75 dark:text-stone-400 font-medium">Produtores</p>
-            </button>
           </div>
 
         </div>
