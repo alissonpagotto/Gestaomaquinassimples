@@ -572,7 +572,7 @@ export default function App() {
         {/* Dynamic Page Content (100% Full Width across all modules) */}
         <main 
           id="crm-main-content"
-          className="flex-1 p-3 sm:p-4 lg:p-6 w-full max-w-none"
+          className="flex-1 p-2.5 sm:p-3 lg:p-3.5 w-full max-w-none"
         >
           
           {/* TAB 1: Main Dashboard (Matching Screenshot) */}
