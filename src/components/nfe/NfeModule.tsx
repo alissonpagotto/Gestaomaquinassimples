@@ -31,7 +31,8 @@ import {
   ShieldCheck,
   Tag,
   Receipt,
-  Pencil
+  Pencil,
+  AlertTriangle
 } from 'lucide-react';
 import { Expense, CompanyProfile, InventoryItem, Supplier, CostCenter, ExpenseCategory, PaymentMethod } from '../../types';
 import { 
@@ -368,6 +369,272 @@ function buildNfeDataFromExpense(
   exp.nfeItems = items;
   saveCachedNfe(reconstructed, exp.id);
   return reconstructed;
+}
+
+// Estrutura de análise de estorno de itens no estoque
+export interface StockReversalDetail {
+  productName: string;
+  nfeQuantity: number;
+  unit: string;
+  inventoryItemId?: string;
+  currentStock: number;
+  projectedStock: number;
+  isNegative: boolean;
+  matchedByNameOrCode: boolean;
+}
+
+export interface StockReversalAnalysis {
+  reversalItems: StockReversalDetail[];
+  hasNegativeStock: boolean;
+  totalProductsToReverse: number;
+}
+
+// Localiza o item correspondente no estoque a partir dos dados do item da NF-e
+export function findInventoryItemForNfeItem(
+  item: ParsedNfeItem,
+  inventory: InventoryItem[]
+): InventoryItem | undefined {
+  if (!inventory || inventory.length === 0) return undefined;
+
+  // 1. Vinculação direta por ID do estoque
+  if (item.linkedInventoryId) {
+    const foundById = inventory.find(i => i.id === item.linkedInventoryId);
+    if (foundById) return foundById;
+  }
+
+  const itemCode = (item.code || '').trim().toLowerCase();
+  const itemBarcode = (item.barcode || '').trim();
+  const itemDesc = (item.description || '').trim().toLowerCase();
+
+  // 2. Vinculação por Código exato
+  if (itemCode && itemCode !== '001' && itemCode !== '0001' && itemCode !== '1') {
+    const foundByCode = inventory.find(i => i.code && i.code.trim().toLowerCase() === itemCode);
+    if (foundByCode) return foundByCode;
+  }
+
+  // 3. Vinculação por Código de Barras (GTIN/EAN)
+  if (itemBarcode && itemBarcode !== 'SEM GTIN' && itemBarcode.length >= 8) {
+    const foundByBarcode = inventory.find(i => i.barcode && i.barcode.trim() === itemBarcode);
+    if (foundByBarcode) return foundByBarcode;
+  }
+
+  // 4. Vinculação por Nome Fiscal ou Nome de Cadastro exato
+  const foundExactName = inventory.find(i => {
+    const fn = (i.fiscalName || '').trim().toLowerCase();
+    const nm = (i.name || '').trim().toLowerCase();
+    return (fn && fn === itemDesc) || (nm && nm === itemDesc);
+  });
+  if (foundExactName) return foundExactName;
+
+  // 5. Vinculação por Código simples se houver match exato
+  if (itemCode) {
+    const foundByCode = inventory.find(i => i.code && i.code.trim().toLowerCase() === itemCode);
+    if (foundByCode) return foundByCode;
+  }
+
+  // 6. Vinculação por aproximação de Nome / Substring
+  const foundBySubstring = inventory.find(i => {
+    const nm = (i.name || '').trim().toLowerCase();
+    const fn = (i.fiscalName || '').trim().toLowerCase();
+    if (nm && (itemDesc.includes(nm) || nm.includes(itemDesc))) return true;
+    if (fn && (itemDesc.includes(fn) || fn.includes(itemDesc))) return true;
+    return false;
+  });
+  if (foundBySubstring) return foundBySubstring;
+
+  // 7. Vinculação inteligente por Domínio / Palavras-chave agrícolas
+  if (itemDesc.includes('diesel') || itemDesc.includes('s10') || itemDesc.includes('s-10') || itemDesc.includes('combustivel') || itemDesc.includes('combustível')) {
+    const dieselItem = inventory.find(i => 
+      i.category === 'combustivel' || 
+      i.name.toLowerCase().includes('diesel') || 
+      (i.fiscalName && i.fiscalName.toLowerCase().includes('diesel'))
+    );
+    if (dieselItem) return dieselItem;
+  }
+
+  if (itemDesc.includes('lona') || itemDesc.includes('filme') || itemDesc.includes('plastico') || itemDesc.includes('plástico')) {
+    const lonaItem = inventory.find(i => 
+      i.category === 'lona_embalagem' || 
+      i.name.toLowerCase().includes('lona')
+    );
+    if (lonaItem) return lonaItem;
+  }
+
+  if (itemDesc.includes('inoculante') || itemDesc.includes('aditivo') || itemDesc.includes('biologico') || itemDesc.includes('biológico')) {
+    const inocItem = inventory.find(i => 
+      i.category === 'inoculante' || 
+      i.name.toLowerCase().includes('inoculante')
+    );
+    if (inocItem) return inocItem;
+  }
+
+  if (itemDesc.includes('semente') || itemDesc.includes('milho') || itemDesc.includes('sorgo') || itemDesc.includes('capim')) {
+    const sementeItem = inventory.find(i => 
+      i.category === 'sementes' || 
+      i.name.toLowerCase().includes('semente')
+    );
+    if (sementeItem) return sementeItem;
+  }
+
+  if (itemDesc.includes('adubo') || itemDesc.includes('fertilizante') || itemDesc.includes('ureia') || itemDesc.includes('uréia')) {
+    const aduboItem = inventory.find(i => 
+      i.category === 'adubo' || 
+      i.name.toLowerCase().includes('adubo') || 
+      i.name.toLowerCase().includes('ureia')
+    );
+    if (aduboItem) return aduboItem;
+  }
+
+  if (itemDesc.includes('peça') || itemDesc.includes('peca') || itemDesc.includes('filtro') || itemDesc.includes('faca') || itemDesc.includes('óleo') || itemDesc.includes('oleo')) {
+    const pecasItem = inventory.find(i => 
+      i.category === 'pecas' || 
+      i.name.toLowerCase().includes('filtro') || 
+      i.name.toLowerCase().includes('óleo') || 
+      i.name.toLowerCase().includes('oleo')
+    );
+    if (pecasItem) return pecasItem;
+  }
+
+  return undefined;
+}
+
+// Analisa todos os produtos de uma nota fiscal para apurar o impacto de estorno e risco de saldo negativo
+export function getStockReversalAnalysis(
+  nota: Expense,
+  allExpenses: Expense[],
+  inventoryList: InventoryItem[],
+  companyProfile?: CompanyProfile
+): StockReversalAnalysis {
+  let items: ParsedNfeItem[] = [];
+
+  // A. Itens diretos no registro fiscal da nota
+  if (nota.nfeItems && Array.isArray(nota.nfeItems) && nota.nfeItems.length > 0) {
+    items = nota.nfeItems;
+  }
+
+  // B. Se não houver itens diretos, busca em despesas/parcelas associadas à mesma nota
+  if (items.length === 0) {
+    const cleanNum = getCleanInvoiceNumber(nota.invoiceNumber).toLowerCase();
+    const targetKey = getCanonicalNfeKey(nota);
+
+    const related = allExpenses.find(e => {
+      if (e.nfeItems && e.nfeItems.length > 0) {
+        if (e.id === nota.id || (nota.id && e.id.startsWith(nota.id))) return true;
+        if (targetKey && getCanonicalNfeKey(e) === targetKey) return true;
+        if (cleanNum && getCleanInvoiceNumber(e.invoiceNumber).toLowerCase() === cleanNum) return true;
+      }
+      return false;
+    });
+
+    if (related?.nfeItems && related.nfeItems.length > 0) {
+      items = related.nfeItems;
+    }
+  }
+
+  // C. Se ainda não houver itens, busca por JSON embutido em notes
+  if (items.length === 0) {
+    const searchNotes = [nota.notes, ...allExpenses.map(e => e.notes)].filter(Boolean);
+    for (const noteText of searchNotes) {
+      if (!noteText) continue;
+      const jsonMatch = noteText.match(/<!--\s*NFE_ITEMS_JSON:(.*?)\s*-->/s) || 
+                        noteText.match(/\[ITENS_NFE:(.*?)\]/s);
+      if (jsonMatch && jsonMatch[1]) {
+        try {
+          const parsed = JSON.parse(jsonMatch[1]);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            items = parsed;
+            break;
+          }
+        } catch (e) {
+          // ignora falha de parse
+        }
+      }
+    }
+  }
+
+  // D. Se ainda não houver itens, busca no cache local da NF-e
+  if (items.length === 0) {
+    const map = getCachedNfeMap();
+    const cleanNum = getCleanInvoiceNumber(nota.invoiceNumber);
+    const keyMatch = nota.notes?.match(/Chave:\s*([0-9A-Za-z]+)/i) || nota.notes?.match(/\b\d{44}\b/);
+    const foundKey = keyMatch ? keyMatch[1] || keyMatch[0] : '';
+
+    const cachedCandidate = (nota.id && map[nota.id]) ||
+                            (nota.invoiceNumber && map[nota.invoiceNumber.toLowerCase().trim()]) ||
+                            (cleanNum && map[cleanNum]) ||
+                            (foundKey && map[foundKey]);
+    if (cachedCandidate?.items && cachedCandidate.items.length > 0) {
+      items = cachedCandidate.items;
+    }
+  }
+
+  // E. Fallback completo via buildNfeDataFromExpense
+  if (items.length === 0) {
+    const fallbackNfe = buildNfeDataFromExpense(nota, inventoryList, companyProfile);
+    if (fallbackNfe?.items && fallbackNfe.items.length > 0) {
+      items = fallbackNfe.items;
+    }
+  }
+
+  // Agrupa os itens por produto do estoque para consolidar as quantidades totais da nota
+  const productMap = new Map<string, {
+    productName: string;
+    quantityToReverse: number;
+    unit: string;
+    inventoryItemId?: string;
+    currentStock: number;
+  }>();
+
+  items.forEach(item => {
+    const qty = Number(item.quantity) || 0;
+    if (qty <= 0) return;
+
+    const matchedInv = findInventoryItemForNfeItem(item, inventoryList);
+    const key = matchedInv ? matchedInv.id : `unmatched_${item.description.trim().toLowerCase()}`;
+    const name = matchedInv ? matchedInv.name : item.description;
+    const unit = matchedInv?.unit || item.unit || 'UN';
+    const currentStock = matchedInv ? Number(matchedInv.quantity) || 0 : 0;
+
+    const existing = productMap.get(key);
+    if (existing) {
+      existing.quantityToReverse = Math.round((existing.quantityToReverse + qty) * 100) / 100;
+    } else {
+      productMap.set(key, {
+        productName: name,
+        quantityToReverse: qty,
+        unit,
+        inventoryItemId: matchedInv?.id,
+        currentStock,
+      });
+    }
+  });
+
+  const reversalItems: StockReversalDetail[] = [];
+  let hasNegativeStock = false;
+
+  productMap.forEach(val => {
+    const projectedStock = Math.round((val.currentStock - val.quantityToReverse) * 100) / 100;
+    const isNegative = val.inventoryItemId ? projectedStock < 0 : false;
+    if (isNegative) {
+      hasNegativeStock = true;
+    }
+    reversalItems.push({
+      productName: val.productName,
+      nfeQuantity: val.quantityToReverse,
+      unit: val.unit,
+      inventoryItemId: val.inventoryItemId,
+      currentStock: val.currentStock,
+      projectedStock,
+      isNegative,
+      matchedByNameOrCode: Boolean(val.inventoryItemId),
+    });
+  });
+
+  return {
+    reversalItems,
+    hasNegativeStock,
+    totalProductsToReverse: reversalItems.filter(r => r.inventoryItemId).length,
+  };
 }
 
 // Chave para persistência dedicada e única do Histórico Fiscal de Notas Fiscais
@@ -904,6 +1171,24 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
     }
     saveStoredInventory(updated);
   };
+
+  // Dados consolidados e análise de estorno para a nota fiscal selecionada para exclusão
+  const notaEmExclusao = useMemo(() => {
+    if (!notaParaExcluir) return null;
+    return notasFiscaisExibicao.find(n => n.id === notaParaExcluir || n.invoiceNumber === notaParaExcluir) ||
+           notasLancadas.find(n => n.id === notaParaExcluir || n.invoiceNumber === notaParaExcluir) ||
+           expenses.find(n => n.id === notaParaExcluir || n.invoiceNumber === notaParaExcluir) || null;
+  }, [notaParaExcluir, notasFiscaisExibicao, notasLancadas, expenses]);
+
+  const analiseEstornoExclusao = useMemo(() => {
+    if (!notaEmExclusao) return null;
+    return getStockReversalAnalysis(
+      notaEmExclusao,
+      expenses,
+      localInventory,
+      companyProfile
+    );
+  }, [notaEmExclusao, expenses, localInventory, companyProfile]);
 
   // IDs dos produtos cadastrados durante a sessão atual de importação
   const [sessionCreatedProductIds, setSessionCreatedProductIds] = useState<Set<string>>(new Set());
@@ -2036,17 +2321,54 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Exclusão de nota fiscal confirmada: remove o registro fiscal único E todas as parcelas do Contas a Pagar
+  // Exclusão de nota fiscal confirmada: realiza estorno de estoque, remove o registro fiscal único E todas as parcelas do Contas a Pagar
   const handleConfirmarExclusao = () => {
     if (!notaParaExcluir) return;
     const notaId = notaParaExcluir;
 
-    // 1. Identifica a nota no Histórico Fiscal
-    const nota = notasFiscaisExibicao.find(n => n.id === notaId || n.invoiceNumber === notaId);
+    // 1. Identifica a nota no Histórico Fiscal ou lista de despesas
+    const nota = notasFiscaisExibicao.find(n => n.id === notaId || n.invoiceNumber === notaId) ||
+                 notasLancadas.find(n => n.id === notaId || n.invoiceNumber === notaId) ||
+                 expenses.find(n => n.id === notaId || n.invoiceNumber === notaId);
     const targetKey = nota ? getCanonicalNfeKey(nota) : '';
     const cleanNum = nota ? getCleanInvoiceNumber(nota.invoiceNumber).toLowerCase() : '';
 
-    // 2. Remove do armazenamento permanente de registros fiscais
+    // 2. ESTORNO AUTOMÁTICO DE QUANTIDADES NO ESTOQUE (Requisito 1)
+    // Para cada produto identificado, subtrai automaticamente a quantidade correspondente do saldo atual do Estoque
+    const estornoLogs: string[] = [];
+    if (nota) {
+      const reversalAnalysis = getStockReversalAnalysis(
+        nota,
+        expenses,
+        localInventory,
+        companyProfile
+      );
+
+      if (reversalAnalysis.reversalItems.length > 0) {
+        let updatedInventory = [...localInventory];
+
+        reversalAnalysis.reversalItems.forEach(item => {
+          if (item.inventoryItemId && item.nfeQuantity > 0) {
+            const invIdx = updatedInventory.findIndex(i => i.id === item.inventoryItemId);
+            if (invIdx !== -1) {
+              const currentQty = Number(updatedInventory[invIdx].quantity) || 0;
+              const newQty = Math.round((currentQty - item.nfeQuantity) * 100) / 100;
+              updatedInventory[invIdx] = {
+                ...updatedInventory[invIdx],
+                quantity: newQty
+              };
+              estornoLogs.push(`${updatedInventory[invIdx].name} (-${item.nfeQuantity} ${updatedInventory[invIdx].unit || item.unit})`);
+            }
+          }
+        });
+
+        if (estornoLogs.length > 0) {
+          saveInventory(updatedInventory);
+        }
+      }
+    }
+
+    // 3. Remove do armazenamento permanente de registros fiscais
     const storedFiscal = getStoredFiscalRecords();
     const updatedFiscal = storedFiscal.filter(f => {
       if (f.id === notaId) return false;
@@ -2056,7 +2378,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
     });
     saveStoredFiscalRecords(updatedFiscal);
 
-    // 3. Remove do estado de notas lançadas da tela
+    // 4. Remove do estado de notas lançadas da tela
     setNotasLancadas(prev => prev.filter(n => {
       if (n.id === notaId) return false;
       if (targetKey && getCanonicalNfeKey(n) === targetKey) return false;
@@ -2064,7 +2386,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       return true;
     }));
 
-    // 4. Remove TODAS as parcelas associadas no Contas a Pagar (Financeiro)
+    // 5. Remove TODAS as parcelas associadas no Contas a Pagar (Financeiro)
     const idsToRemove = new Set<string>();
     if (notaId) idsToRemove.add(notaId);
 
@@ -2097,15 +2419,18 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       idsToRemove.forEach(id => onDeleteExpense(id));
     }
 
-    // 5. Se a nota excluída for a que estava aberta para edição, limpa e fecha o formulário
+    // 6. Se a nota excluída for a que estava aberta para edição, limpa e fecha o formulário
     if (editingExpenseId === notaId || (parsedData && (parsedData.invoiceNumber === notaId || parsedData.accessKey === notaId))) {
       setParsedData(null);
       setEditingExpenseId(null);
     }
 
     setNotaParaExcluir(null);
-    setSuccessMessage('Nota fiscal e suas parcelas financeiras foram excluídas com sucesso!');
-    setTimeout(() => setSuccessMessage(''), 4000);
+    const estornoMsg = estornoLogs.length > 0 
+      ? ` com estorno de estoque efetuado: ${estornoLogs.join(', ')}`
+      : '';
+    setSuccessMessage(`Nota fiscal ${cleanNum ? `nº ${cleanNum.toUpperCase()}` : ''} e suas parcelas financeiras foram excluídas${estornoMsg}!`);
+    setTimeout(() => setSuccessMessage(''), 5000);
   };
 
   // Cancela ou retorna da visualização de detalhes
@@ -3272,47 +3597,139 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
         </div>
       )}
 
-      {/* Modal Customizado de Confirmação de Exclusão de NF-e */}
-      {notaParaExcluir && (
+      {/* Modal Customizado de Confirmação de Exclusão de NF-e com Estorno de Estoque & Prevenção de Saldo Negativo */}
+      {notaParaExcluir && notaEmExclusao && (
         <div 
           id="modal-confirm-delete-nfe"
-          className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-150"
           onClick={() => setNotaParaExcluir(null)}
         >
           <div 
-            className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4"
+            className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-5 sm:p-6 max-w-lg w-full shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Cabeçalho */}
             <div className="flex items-start space-x-3.5">
-              <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-                <Trash2 className="w-5 h-5" />
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                analiseEstornoExclusao?.hasNegativeStock
+                  ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'
+                  : 'bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
+              }`}>
+                {analiseEstornoExclusao?.hasNegativeStock ? (
+                  <AlertTriangle className="w-5 h-5" />
+                ) : (
+                  <Trash2 className="w-5 h-5" />
+                )}
               </div>
-              <div className="space-y-1">
+              <div className="space-y-0.5 flex-1">
                 <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
-                  Excluir Nota Fiscal
+                  {analiseEstornoExclusao?.hasNegativeStock
+                    ? 'Atenção: Saldo de Estoque Insuficiente'
+                    : 'Excluir Nota Fiscal & Estornar Estoque'}
                 </h3>
-                <p className="text-sm text-stone-600 dark:text-stone-300">
-                  Tem certeza que deseja excluir esta nota fiscal?
+                <p className="text-xs text-stone-600 dark:text-stone-400">
+                  Esta ação excluirá o documento fiscal, estornará as quantidades do estoque e cancelará os títulos no financeiro.
                 </p>
-                <p className="text-xs text-stone-500 dark:text-stone-400">
-                  Esta ação não poderá ser desfeita.
-                </p>
-                {(() => {
-                  const nota = notasLancadas.find(n => n.id === notaParaExcluir);
-                  if (nota) {
-                    return (
-                      <div className="mt-2 p-2.5 bg-stone-50 dark:bg-stone-800/60 rounded-lg text-xs font-mono text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-800">
-                        <div className="font-bold text-sky-600 dark:text-sky-400">{nota.invoiceNumber}</div>
-                        <div className="truncate">{nota.supplier} • {formatCurrencyBRL(nota.amount)}</div>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
               </div>
             </div>
 
-            <div className="pt-2 flex items-center justify-end space-x-2.5">
+            {/* Resumo da Nota Fiscal */}
+            <div className="p-3 bg-stone-50 dark:bg-stone-800/60 rounded-xl text-xs text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-800 flex items-center justify-between">
+              <div className="min-w-0 pr-2">
+                <span className="font-bold text-sky-600 dark:text-sky-400 block font-mono">
+                  {notaEmExclusao.invoiceNumber}
+                </span>
+                <span className="text-stone-600 dark:text-stone-300 truncate block">
+                  {notaEmExclusao.supplier}
+                </span>
+              </div>
+              <div className="text-right shrink-0">
+                <span className="text-[10px] text-stone-400 block uppercase">Valor Total</span>
+                <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                  {formatCurrencyBRL(notaEmExclusao.amount)}
+                </span>
+              </div>
+            </div>
+
+            {/* AVISO CRÍTICO DE PREVENÇÃO DE ESTOQUE NEGATIVO (Requisito 2) */}
+            {analiseEstornoExclusao?.hasNegativeStock && (
+              <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-400 dark:border-amber-600/80 rounded-xl space-y-1.5 animate-in fade-in">
+                <div className="flex items-start space-x-2 text-amber-900 dark:text-amber-200">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <span className="text-xs sm:text-sm font-bold leading-snug">
+                    Atenção: Os produtos desta nota já foram parcialmente utilizados no estoque. Deseja estornar a quantidade mesmo assim?
+                  </span>
+                </div>
+                <p className="text-[11px] text-amber-800 dark:text-amber-300 pl-7 leading-relaxed">
+                  A quantidade restante em estoque é menor do que a quantidade que deu entrada através desta nota fiscal. A confirmação da exclusão fará o saldo do produto ficar negativo.
+                </p>
+              </div>
+            )}
+
+            {/* DETALHAMENTO DO ESTORNO DE ESTOQUE (Requisito 1) */}
+            {analiseEstornoExclusao && analiseEstornoExclusao.reversalItems.length > 0 && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider">
+                  <span className="flex items-center gap-1.5">
+                    <Package className="w-3.5 h-3.5 text-sky-600" />
+                    <span>Estorno Automático no Estoque ({analiseEstornoExclusao.reversalItems.length} produto(s))</span>
+                  </span>
+                  <span className="text-[10px] font-normal text-stone-400">Subtração imediata</span>
+                </div>
+
+                <div className="border border-stone-200 dark:border-stone-800 rounded-xl divide-y divide-stone-100 dark:divide-stone-800 max-h-48 overflow-y-auto bg-stone-50/50 dark:bg-stone-900/50 text-xs">
+                  {analiseEstornoExclusao.reversalItems.map((item, idx) => (
+                    <div key={idx} className="p-2.5 flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-stone-900 dark:text-stone-100 truncate">
+                          {item.productName}
+                        </div>
+                        <div className="text-[11px] text-stone-500 dark:text-stone-400 flex items-center gap-2 mt-0.5">
+                          {item.matchedByNameOrCode ? (
+                            <>
+                              <span>Saldo Atual: <strong>{item.currentStock} {item.unit}</strong></span>
+                              <span>•</span>
+                              <span>Subtrair: <strong className="text-rose-600 dark:text-rose-400">-{item.nfeQuantity} {item.unit}</strong></span>
+                            </>
+                          ) : (
+                            <span className="text-amber-600 dark:text-amber-400">Item não vinculado ao cadastro ({item.nfeQuantity} {item.unit})</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        {item.matchedByNameOrCode ? (
+                          <>
+                            <div className="text-[10px] text-stone-400 uppercase">Novo Saldo</div>
+                            <div className={`font-mono font-bold text-xs ${item.isNegative ? 'text-rose-600 dark:text-rose-400' : 'text-stone-800 dark:text-stone-200'}`}>
+                              {item.projectedStock} {item.unit}
+                              {item.isNegative && (
+                                <span className="ml-1 text-[10px] px-1 py-0.5 bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 rounded font-sans font-medium">
+                                  Negativo
+                                </span>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <span className="text-[10px] text-stone-400 italic">Sem alteração</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Aviso sobre Contas a Pagar (Requisito 3) */}
+            <div className="p-2.5 bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/60 rounded-xl text-xs text-sky-900 dark:text-sky-300 flex items-center space-x-2">
+              <Receipt className="w-4 h-4 text-sky-600 shrink-0" />
+              <span>
+                As parcelas financeiras vinculadas no <strong>Contas a Pagar</strong> serão removidas automaticamente.
+              </span>
+            </div>
+
+            {/* Botões de Ação */}
+            <div className="pt-2 border-t border-stone-200 dark:border-stone-800 flex items-center justify-end space-x-2.5">
               <button
                 type="button"
                 id="btn-cancel-delete-nfe"
@@ -3325,10 +3742,23 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                 type="button"
                 id="btn-confirm-delete-nfe"
                 onClick={handleConfirmarExclusao}
-                className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 rounded-xl shadow-xs transition flex items-center space-x-1.5 cursor-pointer"
+                className={`px-4 py-2 text-xs font-bold text-white rounded-xl shadow-xs transition flex items-center space-x-1.5 cursor-pointer ${
+                  analiseEstornoExclusao?.hasNegativeStock
+                    ? 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800'
+                    : 'bg-rose-600 hover:bg-rose-700 active:bg-rose-800'
+                }`}
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Sim, Excluir</span>
+                {analiseEstornoExclusao?.hasNegativeStock ? (
+                  <>
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>Sim, Estornar Mesmo Assim e Excluir</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Confirmar Estorno & Excluir Nota</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
