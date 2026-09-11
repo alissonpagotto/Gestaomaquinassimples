@@ -20,7 +20,7 @@ import {
   ALL_SHORTCUTS, 
   DEFAULT_SHORTCUT_IDS 
 } from './CustomizeShortcutsModal';
-import { FirebaseStatusControl } from './FirebaseStatusControl';
+import { SupabaseStatusControl } from './SupabaseStatusControl';
 
 interface TopBarProps {
   activeTab: string;
@@ -186,11 +186,11 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         </div>
 
-        {/* Right Tools: Firebase, Notifications & Theme */}
+        {/* Right Tools: Supabase, Notifications & Theme */}
         <div className="flex items-center space-x-2 shrink-0 pl-2 border-l border-blue-700/60 dark:border-stone-800">
           
-          {/* Firebase Cloud Sync & Auth status */}
-          <FirebaseStatusControl />
+          {/* Supabase Cloud Sync & DB status */}
+          <SupabaseStatusControl />
 
           {/* Notification Bell */}
           <button

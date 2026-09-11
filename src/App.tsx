@@ -105,7 +105,7 @@ import { LovableIntegrationModal } from './components/integration/LovableIntegra
 import { PublicClientForm } from './components/crm/PublicClientForm';
 import { PublicSupplierForm } from './components/suppliers/PublicSupplierForm';
 import { useAuth } from './context/AuthContext';
-import { uploadAllDataToFirestore, fetchAllDataFromFirestore } from './lib/firebaseSync';
+import { syncAllDataToSupabase, fetchAllDataFromSupabase } from './lib/supabaseService';
 
 export default function App() {
   // State Initialization from LocalStorage
@@ -134,66 +134,79 @@ export default function App() {
   const { confirm } = useConfirm();
   const { currentUser, setIsSyncing, setLastSyncedAt } = useAuth();
 
-  const handleSyncFirebase = async () => {
-    if (!currentUser) return;
+  const handleSyncSupabase = async () => {
     setIsSyncing(true);
     try {
-      await uploadAllDataToFirestore(currentUser.uid, {
-        expenses,
-        clients,
-        orders,
-        machineries,
-        services,
+      await syncAllDataToSupabase({
+        clientes: clients,
+        fornecedores: suppliers,
+        estoque: inventory,
+        rh_funcionarios: employees,
+        gestao_frotas: machineries,
+        despesas: expenses,
         companyProfile
       });
       setLastSyncedAt(new Date());
     } catch (err) {
-      console.error('Failed to sync to Firebase:', err);
+      console.error('Failed to sync to Supabase:', err);
     } finally {
       setIsSyncing(false);
     }
   };
 
-  // When user logs in, if cloud data exists, fetch it and populate
+  // When app boots or auth state is established, if Supabase cloud data exists, fetch it and populate
   useEffect(() => {
-    if (!currentUser) return;
     let isMounted = true;
     (async () => {
       try {
-        const cloudData = await fetchAllDataFromFirestore(currentUser.uid);
+        const cloudData = await fetchAllDataFromSupabase();
         if (cloudData && isMounted) {
-          if (cloudData.expenses?.length > 0) {
-            setExpenses(prev => {
-              const existingIds = new Set(prev.map(e => e.id));
-              const newItems = cloudData.expenses.filter(e => !existingIds.has(e.id));
-              return [...prev, ...newItems];
-            });
-          }
-          if (cloudData.clients?.length > 0) {
+          if (cloudData.clientes && cloudData.clientes.length > 0) {
             setClients(prev => {
               const existingIds = new Set(prev.map(c => c.id));
-              const newItems = cloudData.clients.filter(c => !existingIds.has(c.id));
+              const newItems = cloudData.clientes.filter((c: any) => !existingIds.has(c.id));
               return [...prev, ...newItems];
             });
           }
-          if (cloudData.orders?.length > 0) {
-            setOrders(prev => {
-              const existingIds = new Set(prev.map(o => o.id));
-              const newItems = cloudData.orders.filter(o => !existingIds.has(o.id));
+          if (cloudData.fornecedores && cloudData.fornecedores.length > 0) {
+            setSuppliers(prev => {
+              const existingIds = new Set(prev.map(s => s.id));
+              const newItems = cloudData.fornecedores.filter((s: any) => !existingIds.has(s.id));
               return [...prev, ...newItems];
             });
           }
-          if (cloudData.machineries?.length > 0) {
+          if (cloudData.estoque && cloudData.estoque.length > 0) {
+            setInventory(prev => {
+              const existingIds = new Set(prev.map(i => i.id));
+              const newItems = cloudData.estoque.filter((i: any) => !existingIds.has(i.id));
+              return [...prev, ...newItems];
+            });
+          }
+          if (cloudData.rh_funcionarios && cloudData.rh_funcionarios.length > 0) {
+            setEmployees(prev => {
+              const existingIds = new Set(prev.map(e => e.id));
+              const newItems = cloudData.rh_funcionarios.filter((e: any) => !existingIds.has(e.id));
+              return [...prev, ...newItems];
+            });
+          }
+          if (cloudData.gestao_frotas && cloudData.gestao_frotas.length > 0) {
             setMachineries(prev => {
               const existingIds = new Set(prev.map(m => m.id));
-              const newItems = cloudData.machineries.filter(m => !existingIds.has(m.id));
+              const newItems = cloudData.gestao_frotas.filter((m: any) => !existingIds.has(m.id));
+              return [...prev, ...newItems];
+            });
+          }
+          if (cloudData.despesas && cloudData.despesas.length > 0) {
+            setExpenses(prev => {
+              const existingIds = new Set(prev.map(d => d.id));
+              const newItems = cloudData.despesas.filter((d: any) => !existingIds.has(d.id));
               return [...prev, ...newItems];
             });
           }
           setLastSyncedAt(new Date());
         }
       } catch (e) {
-        console.error('Error fetching initial cloud data:', e);
+        console.warn('Notice fetching cloud data from Supabase:', e);
       }
     })();
     return () => { isMounted = false; };
@@ -811,7 +824,7 @@ export default function App() {
               onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}
               onOpenIntegrationModal={() => setIsIntegrationModalOpen(true)}
               onResetAllData={handleResetAllData}
-              onSyncFirebase={handleSyncFirebase}
+              onSyncSupabase={handleSyncSupabase}
             />
           )}
 

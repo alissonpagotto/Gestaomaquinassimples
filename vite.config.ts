@@ -25,8 +25,8 @@ export default defineConfig(() => {
             if (id.includes('node_modules/recharts')) {
               return 'charts-vendor';
             }
-            if (id.includes('node_modules/firebase')) {
-              return 'firebase-vendor';
+            if (id.includes('node_modules/@supabase')) {
+              return 'supabase-vendor';
             }
           },
         },
