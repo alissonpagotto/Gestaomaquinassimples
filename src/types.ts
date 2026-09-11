@@ -370,6 +370,8 @@ export interface InventoryItem {
   barcode?: string;
   profitMargin?: number;
   salePrice?: number;
+  wholesalePrice?: number; // Preço de Venda em Atacado (V. Atacado)
+  promoPrice?: number; // Preço Promocional (V. Promo)
   maxQuantity?: number;
 }
 

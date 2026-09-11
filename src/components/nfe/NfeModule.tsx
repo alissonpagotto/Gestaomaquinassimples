@@ -61,6 +61,9 @@ interface ParsedNfeItem {
   totalPrice: number;
   barcode?: string;
   linkedInventoryId?: string;
+  salePrice?: number;       // V. Final (R$) - Preço de Venda Final
+  wholesalePrice?: number;  // V. Atacado (R$) - Preço de Venda em Atacado
+  promoPrice?: number;      // V. Promo (R$) - Preço Promocional
 }
 
 interface ParsedNfeInstallment {
@@ -1787,9 +1790,15 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
   const handleLinkProduct = (rowIndex: number, productId?: string) => {
     if (!parsedData || !parsedData.items) return;
     const updatedItems = [...parsedData.items];
+    const current = updatedItems[rowIndex];
+    const targetProduct = productId ? localInventory.find(i => i.id === productId) : undefined;
+
     updatedItems[rowIndex] = {
-      ...updatedItems[rowIndex],
-      linkedInventoryId: productId
+      ...current,
+      linkedInventoryId: productId,
+      salePrice: targetProduct?.salePrice !== undefined ? targetProduct.salePrice : current.salePrice,
+      wholesalePrice: targetProduct?.wholesalePrice !== undefined ? targetProduct.wholesalePrice : current.wholesalePrice,
+      promoPrice: targetProduct?.promoPrice !== undefined ? targetProduct.promoPrice : current.promoPrice,
     };
     setParsedData({
       ...parsedData,
@@ -1912,7 +1921,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
   // Atualização interativa dos itens da NF-e com recálculo automático dos totais
   const handleItemChange = (
     index: number,
-    field: 'description' | 'quantity' | 'unitPrice',
+    field: 'description' | 'quantity' | 'unitPrice' | 'salePrice' | 'wholesalePrice' | 'promoPrice',
     value: string
   ) => {
     if (!parsedData || !parsedData.items) return;
@@ -1932,6 +1941,18 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       const num = sanitized === '' ? 0 : parseFloat(sanitized);
       currentItem.unitPrice = isNaN(num) ? 0 : num;
       currentItem.totalPrice = Math.round(((currentItem.quantity || 0) * currentItem.unitPrice) * 100) / 100;
+    } else if (field === 'salePrice') {
+      const sanitized = value.replace(',', '.');
+      const num = sanitized === '' ? undefined : parseFloat(sanitized);
+      currentItem.salePrice = num === undefined || isNaN(num) ? undefined : num;
+    } else if (field === 'wholesalePrice') {
+      const sanitized = value.replace(',', '.');
+      const num = sanitized === '' ? undefined : parseFloat(sanitized);
+      currentItem.wholesalePrice = num === undefined || isNaN(num) ? undefined : num;
+    } else if (field === 'promoPrice') {
+      const sanitized = value.replace(',', '.');
+      const num = sanitized === '' ? undefined : parseFloat(sanitized);
+      currentItem.promoPrice = num === undefined || isNaN(num) ? undefined : num;
     }
 
     updatedItems[index] = currentItem;
@@ -2104,8 +2125,22 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
             invItem.unitCost = newUnitCost;
           }
 
-          if (invItem.profitMargin) {
+          // Sincronização automática dos preços de venda (V. Final, V. Atacado, V. Promo)
+          if (item.salePrice !== undefined && Number(item.salePrice) >= 0) {
+            invItem.salePrice = Number(item.salePrice);
+            if (invItem.unitCost > 0) {
+              invItem.profitMargin = Math.round(((invItem.salePrice - invItem.unitCost) / invItem.unitCost) * 100 * 10) / 10;
+            }
+          } else if (invItem.profitMargin) {
             invItem.salePrice = Math.round((invItem.unitCost * (1 + invItem.profitMargin / 100)) * 100) / 100;
+          }
+
+          if (item.wholesalePrice !== undefined && Number(item.wholesalePrice) >= 0) {
+            invItem.wholesalePrice = Number(item.wholesalePrice);
+          }
+
+          if (item.promoPrice !== undefined && Number(item.promoPrice) >= 0) {
+            invItem.promoPrice = Number(item.promoPrice);
           }
 
           updatedInventory[invIndex] = invItem;
@@ -2118,6 +2153,10 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
           const autoCost = Number(item.unitPrice) || 0;
           const newProdId = `inv_auto_${Date.now()}_${idx}`;
 
+          const autoSalePrice = item.salePrice !== undefined && Number(item.salePrice) >= 0
+            ? Number(item.salePrice)
+            : Math.round((autoCost * 1.3) * 100) / 100;
+
           const newInvItem: InventoryItem = {
             id: newProdId,
             name: item.description,
@@ -2128,7 +2167,9 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
             category: autoCat,
             unitCost: autoCost,
             profitMargin: 30,
-            salePrice: Math.round((autoCost * 1.3) * 100) / 100,
+            salePrice: autoSalePrice,
+            wholesalePrice: item.wholesalePrice !== undefined && Number(item.wholesalePrice) >= 0 ? Number(item.wholesalePrice) : undefined,
+            promoPrice: item.promoPrice !== undefined && Number(item.promoPrice) >= 0 ? Number(item.promoPrice) : undefined,
             quantity: autoQty,
             minQuantity: 5,
             maxQuantity: 100,
@@ -2142,9 +2183,8 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       }
     });
 
-    if (updatedSummary.length > 0) {
-      saveInventory(updatedInventory);
-    }
+    // Sincroniza sempre o estoque com as quantidades e novas precificações
+    saveInventory(updatedInventory);
 
     // AUTOMAÇÃO FINANCEIRA: Gravação Individual das Parcelas no Contas a Pagar
     const selectedCC = localCostCenters.find(c => c.id === selectedCostCenterId);
@@ -2725,74 +2765,77 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                     </div>
                   </div>
 
-                  {/* Tabela de Produtos da NF-e (100% da Largura da Tela) */}
+                  {/* Tabela de Produtos da NF-e (100% da Largura da Tela - Formato Lista Enxuta) */}
                   {parsedData.items && parsedData.items.length > 0 && (
                     <div className="border border-[#96c1e5] dark:border-stone-700 rounded-xl overflow-hidden shadow-2xs w-full bg-[#b0d2ed]">
-                      <div className="bg-[#96c1e5]/90 dark:bg-stone-800/80 px-4 py-2.5 flex items-center justify-between text-black">
+                      <div className="bg-[#96c1e5]/90 dark:bg-stone-800/80 px-3.5 py-2 flex items-center justify-between text-black">
                         <div className="flex items-center space-x-2 text-xs font-black text-black dark:text-stone-200">
-                          <Package className="w-4 h-4 text-sky-900" />
+                          <Package className="w-3.5 h-3.5 text-sky-900 shrink-0" />
                           <span>Itens Identificados na Nota Fiscal ({parsedData.items.length})</span>
                         </div>
-                        <span className="text-[11px] text-black font-bold">Campos editáveis e vinculação De-Para com o estoque</span>
+                        <span className="text-[10px] text-black font-bold hidden sm:inline">
+                          Lista enxuta com precificação de venda sincronizada ao estoque
+                        </span>
                       </div>
                       <div className="overflow-x-auto max-h-80 overflow-y-auto w-full">
-                        <table className="w-full text-left text-xs">
-                          <thead className="bg-[#b0d2ed] dark:bg-stone-800/40 text-black uppercase text-[10px] font-black border-b border-[#96c1e5] dark:border-stone-700 sticky top-0 z-10">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead className="bg-[#b0d2ed] dark:bg-stone-800 text-black uppercase text-[10px] font-black border-b border-[#96c1e5] dark:border-stone-700 sticky top-0 z-10 whitespace-nowrap">
                             <tr>
-                              <th className="py-2.5 px-3 w-14 text-center">Cód</th>
-                              <th className="py-2.5 px-3 min-w-[200px]">Descrição do Produto</th>
-                              <th className="py-2.5 px-3 min-w-[280px]">Produto no Sistema (De-Para)</th>
-                              <th className="py-2.5 px-3 text-center w-20">NCM</th>
-                              <th className="py-2.5 px-3 text-right w-28">Qtd</th>
-                              <th className="py-2.5 px-3 text-right w-32">Unitário</th>
-                              <th className="py-2.5 px-3 text-right w-28">Total</th>
+                              <th className="py-1.5 px-2 w-12 text-center">Cód</th>
+                              <th className="py-1.5 px-2 min-w-[160px]">Descrição do Produto</th>
+                              <th className="py-1.5 px-2 min-w-[210px]">Produto no Sistema (De-Para)</th>
+                              <th className="py-1.5 px-1.5 text-center w-16">NCM</th>
+                              <th className="py-1.5 px-1.5 text-right w-22 bg-sky-100/60 dark:bg-sky-950/40">V. Final (R$)</th>
+                              <th className="py-1.5 px-1.5 text-right w-22 bg-sky-100/60 dark:bg-sky-950/40">V. Atacado (R$)</th>
+                              <th className="py-1.5 px-1.5 text-right w-22 bg-sky-100/60 dark:bg-sky-950/40">V. Promo (R$)</th>
+                              <th className="py-1.5 px-1.5 text-right w-20">Qtd</th>
+                              <th className="py-1.5 px-1.5 text-right w-22">Unitário</th>
+                              <th className="py-1.5 px-2 text-right w-24">Total</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-[#96c1e5]/40 bg-white/95 dark:bg-stone-900/40 text-black">
+                          <tbody className="divide-y divide-[#96c1e5]/30 bg-white/95 dark:bg-stone-900 text-black">
                             {parsedData.items.map((item, idx) => (
-                              <tr key={idx} className="hover:bg-stone-50/70 dark:hover:bg-stone-800/30 transition-colors">
-                                <td className="py-2.5 px-3 font-mono text-stone-500 text-[11px] text-center align-middle">{item.code || '-'}</td>
-                                <td className="py-2.5 px-3 align-middle">
+                              <tr key={idx} className="hover:bg-sky-50/50 dark:hover:bg-stone-800/30 transition-colors">
+                                <td className="py-1 px-2 font-mono text-black text-[10px] text-center align-middle">
+                                  {item.code || '-'}
+                                </td>
+                                <td className="py-1 px-1.5 align-middle">
                                   <input
                                     type="text"
                                     value={item.description}
                                     onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
-                                    className="w-full px-2.5 py-1.5 text-xs rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 focus:ring-1 focus:ring-sky-500 focus:border-sky-500 font-medium"
+                                    className="w-full h-7 px-2 text-[11px] rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 focus:ring-1 focus:ring-sky-500 focus:border-sky-500 font-medium"
                                     placeholder="Descrição do produto"
                                   />
                                 </td>
-                                <td className="py-2.5 px-3 align-middle">
+                                <td className="py-1 px-1.5 align-middle">
                                   {item.linkedInventoryId ? (
                                     (() => {
                                       const linked = localInventory.find(p => p.id === item.linkedInventoryId);
                                       return (
-                                        <div className="flex items-center justify-between gap-2 p-1.5 px-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-lg">
-                                          <div className="min-w-0 flex-1">
-                                            <div className="flex items-center space-x-1.5">
-                                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                              <span className="text-[11px] font-bold text-emerald-900 dark:text-emerald-100 truncate block" title={linked?.name}>
-                                                {linked?.code ? `[${linked.code}] ` : ''}{linked?.name || 'Produto Vinculado'}
-                                              </span>
-                                            </div>
-                                            <div className="text-[10px] text-emerald-700 dark:text-emerald-400 flex items-center space-x-2 mt-0.5 font-medium">
-                                              <span>Estoque: <strong>{linked?.quantity || 0} {linked?.unit || 'UN'}</strong></span>
-                                              <span>•</span>
-                                              <span>Custo: {formatCurrencyBRL(linked?.unitCost || 0)}</span>
-                                            </div>
+                                        <div className="flex items-center justify-between gap-1.5 h-7 px-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded">
+                                          <div className="min-w-0 flex-1 flex items-center space-x-1.5">
+                                            <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                            <span className="text-[10px] font-bold text-black dark:text-stone-100 truncate" title={linked?.name}>
+                                              {linked?.code ? `[${linked.code}] ` : ''}{linked?.name || 'Vinculado'}
+                                            </span>
+                                            <span className="text-[9px] text-emerald-900 dark:text-emerald-300 font-bold shrink-0 bg-emerald-100 dark:bg-emerald-900/60 px-1 rounded">
+                                              Est: {linked?.quantity || 0} {linked?.unit || 'UN'}
+                                            </span>
                                           </div>
                                           <button
                                             type="button"
                                             onClick={() => handleLinkProduct(idx, undefined)}
                                             title="Desvincular produto"
-                                            className="p-1 text-stone-400 hover:text-red-500 rounded hover:bg-stone-200 dark:hover:bg-stone-800 transition cursor-pointer shrink-0"
+                                            className="p-0.5 text-stone-400 hover:text-rose-600 rounded transition cursor-pointer shrink-0"
                                           >
-                                            <X className="w-3.5 h-3.5" />
+                                            <X className="w-3 h-3" />
                                           </button>
                                         </div>
                                       );
                                     })()
                                   ) : (
-                                    <div className="flex items-center space-x-1.5">
+                                    <div className="flex items-center space-x-1">
                                       <select
                                         value={item.linkedInventoryId || ''}
                                         onChange={(e) => {
@@ -2802,11 +2845,11 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                             handleLinkProduct(idx, e.target.value);
                                           }
                                         }}
-                                        className="flex-1 min-w-[150px] px-2.5 py-1.5 text-xs rounded border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-stone-900 text-stone-900 dark:text-stone-100 focus:ring-1 focus:ring-sky-500 focus:border-sky-500 font-medium"
+                                        className="flex-1 h-7 min-w-[130px] px-1.5 text-[10px] rounded border border-amber-300 dark:border-amber-700 bg-amber-50/60 dark:bg-stone-900 text-black dark:text-stone-100 focus:ring-1 focus:ring-sky-500 font-medium"
                                       >
                                         <option value="">Selecione no estoque...</option>
-                                        <option value="__NEW__" className="font-bold text-sky-600 dark:text-sky-400">
-                                          + Cadastrar Novo Produto
+                                        <option value="__NEW__" className="font-bold text-sky-700 dark:text-sky-400">
+                                          + Cadastrar Novo
                                         </option>
                                         {localInventory.map((inv) => (
                                           <option key={inv.id} value={inv.id}>
@@ -2818,16 +2861,54 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                         type="button"
                                         onClick={() => handleOpenNewProductModal(idx)}
                                         title="Cadastrar Novo Produto no Estoque"
-                                        className="px-2.5 py-1.5 text-xs font-bold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900 border border-sky-300 dark:border-sky-700 rounded-lg transition flex items-center space-x-1 shrink-0 cursor-pointer"
+                                        className="h-7 px-1.5 text-[10px] font-bold text-sky-900 dark:text-sky-200 bg-sky-100 dark:bg-sky-950/60 hover:bg-sky-200 dark:hover:bg-sky-900 border border-sky-300 dark:border-sky-700 rounded transition flex items-center space-x-0.5 shrink-0 cursor-pointer"
                                       >
-                                        <Plus className="w-3.5 h-3.5" />
+                                        <Plus className="w-3 h-3" />
                                         <span>Novo</span>
                                       </button>
                                     </div>
                                   )}
                                 </td>
-                                <td className="py-2.5 px-3 text-center font-mono text-stone-500 text-[11px] align-middle">{item.ncm || '-'}</td>
-                                <td className="py-2.5 px-3 text-right align-middle">
+                                <td className="py-1 px-1.5 text-center font-mono text-black text-[10px] align-middle">
+                                  {item.ncm || '-'}
+                                </td>
+                                <td className="py-1 px-1.5 text-right align-middle">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={item.salePrice ?? ''}
+                                    onChange={(e) => handleItemChange(idx, 'salePrice', e.target.value)}
+                                    placeholder="0.00"
+                                    className="w-20 h-7 px-1.5 text-[11px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-sky-500"
+                                    title="Preço de Venda Final (V. Final)"
+                                  />
+                                </td>
+                                <td className="py-1 px-1.5 text-right align-middle">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={item.wholesalePrice ?? ''}
+                                    onChange={(e) => handleItemChange(idx, 'wholesalePrice', e.target.value)}
+                                    placeholder="0.00"
+                                    className="w-20 h-7 px-1.5 text-[11px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-sky-500"
+                                    title="Preço de Venda em Atacado (V. Atacado)"
+                                  />
+                                </td>
+                                <td className="py-1 px-1.5 text-right align-middle">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={item.promoPrice ?? ''}
+                                    onChange={(e) => handleItemChange(idx, 'promoPrice', e.target.value)}
+                                    placeholder="0.00"
+                                    className="w-20 h-7 px-1.5 text-[11px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-sky-500"
+                                    title="Preço Promocional (V. Promo)"
+                                  />
+                                </td>
+                                <td className="py-1 px-1.5 text-right align-middle">
                                   <div className="flex items-center justify-end space-x-1">
                                     <input
                                       type="number"
@@ -2835,27 +2916,29 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                       min="0"
                                       value={item.quantity}
                                       onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)}
-                                      className="w-20 px-2 py-1.5 text-xs text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 focus:ring-1 focus:ring-sky-500 focus:border-sky-500 font-mono font-medium"
+                                      className="w-16 h-7 px-1.5 text-[11px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-sky-500"
                                       placeholder="0"
                                     />
-                                    <span className="text-[10px] text-stone-500 font-semibold uppercase shrink-0 w-6 text-left">{item.unit || 'UN'}</span>
+                                    <span className="text-[10px] text-black font-bold uppercase shrink-0 w-5 text-left">
+                                      {item.unit || 'UN'}
+                                    </span>
                                   </div>
                                 </td>
-                                <td className="py-2.5 px-3 text-right align-middle">
-                                  <div className="flex items-center justify-end space-x-1">
-                                    <span className="text-[11px] text-stone-500 font-semibold shrink-0">R$</span>
+                                <td className="py-1 px-1.5 text-right align-middle">
+                                  <div className="flex items-center justify-end space-x-0.5">
+                                    <span className="text-[10px] text-black/60 font-semibold shrink-0">R$</span>
                                     <input
                                       type="number"
                                       step="any"
                                       min="0"
                                       value={item.unitPrice}
                                       onChange={(e) => handleItemChange(idx, 'unitPrice', e.target.value)}
-                                      className="w-24 px-2 py-1.5 text-xs text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 focus:ring-1 focus:ring-sky-500 focus:border-sky-500 font-mono font-medium"
+                                      className="w-18 h-7 px-1.5 text-[11px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-sky-500"
                                       placeholder="0.00"
                                     />
                                   </div>
                                 </td>
-                                <td className="py-2.5 px-3 text-right font-bold text-stone-900 dark:text-stone-100 font-mono align-middle text-xs sm:text-sm">
+                                <td className="py-1 px-2 text-right font-black text-black dark:text-stone-100 font-mono align-middle text-[11px]">
                                   {formatCurrencyBRL(item.totalPrice)}
                                 </td>
                               </tr>
