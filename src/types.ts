@@ -313,6 +313,26 @@ export interface FleetTeam {
   createdAt?: string;
 }
 
+export interface SupplierFormSubmission {
+  id: string;
+  name: string;
+  tradeName?: string;
+  category: string;
+  cnpjOrCpf?: string;
+  stateRegistration?: string;
+  municipalRegistration?: string;
+  phone: string;
+  email?: string;
+  zipCode?: string;
+  address?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  notes?: string;
+  submittedAt: string;
+  status: 'pendente' | 'importado';
+}
+
 export interface Supplier {
   id: string;
   name: string;
@@ -320,6 +340,7 @@ export interface Supplier {
   category: string; // 'Combustível', 'Peças & Oficinas', 'Sementes & Insumos', 'Lonas & Embalagens'
   cnpjOrCpf?: string;
   stateRegistration?: string;
+  municipalRegistration?: string;
   phone: string;
   email?: string;
   zipCode?: string;

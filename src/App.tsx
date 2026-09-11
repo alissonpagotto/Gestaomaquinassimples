@@ -103,6 +103,7 @@ import { QuickMemoModal } from './components/quick/QuickMemoModal';
 import { TrialInfoModal } from './components/quick/TrialInfoModal';
 import { LovableIntegrationModal } from './components/integration/LovableIntegrationModal';
 import { PublicClientForm } from './components/crm/PublicClientForm';
+import { PublicSupplierForm } from './components/suppliers/PublicSupplierForm';
 import { useAuth } from './context/AuthContext';
 import { uploadAllDataToFirestore, fetchAllDataFromFirestore } from './lib/firebaseSync';
 
@@ -460,11 +461,34 @@ export default function App() {
            window.location.hash.includes('ficha=cliente');
   });
 
+  // Check if opened as public supplier form (e.g. ?ficha=fornecedor)
+  const [isPublicSupplierRoute, setIsPublicSupplierRoute] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.location.search.includes('ficha=fornecedor') || 
+           window.location.search.includes('form=fornecedor') ||
+           window.location.hash.includes('ficha=fornecedor');
+  });
+
   if (isPublicFormRoute) {
     return (
       <PublicClientForm
         onBackToApp={() => {
           setIsPublicFormRoute(false);
+          try {
+            window.history.replaceState({}, '', window.location.pathname);
+          } catch (e) {
+            console.error(e);
+          }
+        }}
+      />
+    );
+  }
+
+  if (isPublicSupplierRoute) {
+    return (
+      <PublicSupplierForm
+        onBackToApp={() => {
+          setIsPublicSupplierRoute(false);
           try {
             window.history.replaceState({}, '', window.location.pathname);
           } catch (e) {

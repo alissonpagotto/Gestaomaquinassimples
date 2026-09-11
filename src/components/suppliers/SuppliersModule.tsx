@@ -35,7 +35,9 @@ export const SuppliersModule: React.FC<SuppliersModuleProps> = ({
     sup.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (sup.tradeName && sup.tradeName.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (sup.city && sup.city.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (sup.cnpjOrCpf && sup.cnpjOrCpf.includes(searchTerm))
+    (sup.cnpjOrCpf && sup.cnpjOrCpf.includes(searchTerm)) ||
+    (sup.stateRegistration && sup.stateRegistration.includes(searchTerm)) ||
+    (sup.municipalRegistration && sup.municipalRegistration.includes(searchTerm))
   );
 
   const handleOpenNew = () => {
@@ -137,7 +139,11 @@ export const SuppliersModule: React.FC<SuppliersModuleProps> = ({
                 {sup.cnpjOrCpf && (
                   <div className="flex items-center space-x-2">
                     <Building className="w-3.5 h-3.5 text-black dark:text-stone-400 shrink-0" />
-                    <span className="text-black dark:text-stone-300 font-semibold">CNPJ/CPF: {sup.cnpjOrCpf}</span>
+                    <span className="text-black dark:text-stone-300 font-semibold">
+                      CNPJ/CPF: {sup.cnpjOrCpf}
+                      {sup.stateRegistration ? ` • IE: ${sup.stateRegistration}` : ''}
+                      {sup.municipalRegistration ? ` • IM: ${sup.municipalRegistration}` : ''}
+                    </span>
                   </div>
                 )}
                 {sup.phone && (
