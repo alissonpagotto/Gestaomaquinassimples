@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronDown, Search, Loader2, CheckCircle2 } from 'lucide-react';
-import { Client } from '../../types';
+import { 
+  X, 
+  ChevronDown, 
+  Search, 
+  Loader2, 
+  CheckCircle2, 
+  Share2, 
+  MessageSquare, 
+  Mail, 
+  Copy, 
+  Inbox,
+  ExternalLink 
+} from 'lucide-react';
+import { Client, ClientFormSubmission } from '../../types';
 import { 
   formatCpfCnpj, 
   formatCep, 
@@ -9,6 +21,11 @@ import {
   fetchAddressByCep, 
   fetchCompanyByCnpj 
 } from '../../lib/formatters';
+import { 
+  getClientSubmissions, 
+  findSubmissionByDocument, 
+  markSubmissionImported 
+} from '../../lib/clientSubmissions';
 
 export interface ClientModalProps {
   isOpen: boolean;
@@ -51,6 +68,108 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   const [isLoadingCep, setIsLoadingCep] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [currentClient, setCurrentClient] = useState<Client | null>(editingClient || null);
+
+  // Share & external form state
+  const [isShareDropdownOpen, setIsShareDropdownOpen] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [pendingSubmissions, setPendingSubmissions] = useState<ClientFormSubmission[]>([]);
+  const [isImportDropdownOpen, setIsImportDropdownOpen] = useState(false);
+
+  // Refresh pending client submissions when modal is opened
+  useEffect(() => {
+    if (isOpen) {
+      try {
+        const subs = getClientSubmissions();
+        setPendingSubmissions(subs.filter(s => s.status === 'pendente'));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }, [isOpen]);
+
+  const getFormUrl = () => {
+    if (typeof window === 'undefined') return '';
+    const base = window.location.origin + window.location.pathname;
+    return `${base}?ficha=cliente`;
+  };
+
+  const handleShareWhatsApp = () => {
+    const link = getFormUrl();
+    const message = `Olá! Por favor, preencha seus dados de cadastro no Silagem Fácil neste link: ${link}`;
+    const targetDigits = cleanDigits(phone);
+    const url = targetDigits.length >= 10
+      ? `https://api.whatsapp.com/send?phone=55${targetDigits}&text=${encodeURIComponent(message)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setIsShareDropdownOpen(false);
+    setFeedback({ type: 'success', message: 'Abrindo WhatsApp com o link do formulário...' });
+    setTimeout(() => setFeedback(null), 3500);
+  };
+
+  const handleShareEmail = () => {
+    const link = getFormUrl();
+    const subject = encodeURIComponent('Ficha Cadastral de Cliente / Produtor - Silagem Fácil');
+    const body = encodeURIComponent(
+      `Olá!\n\nPor favor, preencha seus dados cadastrais no link seguro abaixo para agilizarmos o fornecimento de silagem e emissão de contratos:\n\n${link}\n\nAtenciosamente,\nEquipe Silagem Fácil`
+    );
+    const mailto = email ? `mailto:${email}?subject=${subject}&body=${body}` : `mailto:?subject=${subject}&body=${body}`;
+    window.location.href = mailto;
+    setIsShareDropdownOpen(false);
+    setFeedback({ type: 'success', message: 'Abrindo aplicativo de e-mail com o link do formulário...' });
+    setTimeout(() => setFeedback(null), 3500);
+  };
+
+  const handleCopyLink = async () => {
+    const link = getFormUrl();
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(link);
+      } else {
+        const input = document.createElement('input');
+        input.value = link;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+      }
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+      setFeedback({ type: 'success', message: 'Link da ficha copiado para a área de transferência!' });
+      setTimeout(() => setFeedback(null), 3500);
+    } catch {
+      setFeedback({ type: 'error', message: 'Não foi possível copiar o link automaticamente.' });
+    }
+    setIsShareDropdownOpen(false);
+  };
+
+  const applySubmission = (submission: ClientFormSubmission) => {
+    if (submission.name) setName(submission.name);
+    if (submission.farmName) setFarmName(submission.farmName);
+    if (submission.cpfCnpj) setCpfCnpj(formatCpfCnpj(submission.cpfCnpj));
+    if (submission.stateRegistration) setStateRegistration(submission.stateRegistration);
+    if (submission.phone) setPhone(formatPhone(submission.phone));
+    if (submission.email) setEmail(submission.email);
+    if (submission.zipCode) setZipCode(formatCep(submission.zipCode));
+    if (submission.address) setAddress(submission.address);
+    if (submission.neighborhood) setNeighborhood(submission.neighborhood);
+    if (submission.city) setCity(submission.city);
+    if (submission.state) setState(submission.state);
+    if (submission.cattleType) setCattleType(submission.cattleType);
+    if (submission.headCount) setHeadCount(submission.headCount.toString());
+    if (submission.monthlyDemandTons) setMonthlyDemandTons(submission.monthlyDemandTons.toString());
+    if (submission.notes) setNotes(submission.notes);
+
+    markSubmissionImported(submission.id);
+    setPendingSubmissions(prev => prev.filter(s => s.id !== submission.id));
+    setIsImportDropdownOpen(false);
+
+    setFeedback({
+      type: 'success',
+      message: `✅ Ficha respondida pelo produtor "${submission.name}" importada com sucesso!`
+    });
+    setTimeout(() => setFeedback(null), 4500);
+  };
 
   useEffect(() => {
     if (editingClient) {
@@ -98,43 +217,64 @@ export const ClientModal: React.FC<ClientModalProps> = ({
     const formatted = formatCpfCnpj(val);
     setCpfCnpj(formatted);
     const digits = cleanDigits(val);
-    if (digits.length === 14) {
+    if (digits.length === 11 || digits.length === 14) {
       await searchCnpj(digits);
     }
   };
 
   const searchCnpj = async (cnpjDigits?: string) => {
     const digits = cnpjDigits || cleanDigits(cpfCnpj);
-    if (digits.length !== 14) {
-      setFeedback({ type: 'error', message: 'Digite 14 dígitos para buscar na Receita.' });
+    if (!digits) {
+      setFeedback({ type: 'error', message: 'Digite o CPF ou CNPJ para buscar.' });
       setTimeout(() => setFeedback(null), 3000);
       return;
     }
 
-    setIsLoadingCnpj(true);
-    setFeedback(null);
-    try {
-      const res = await fetchCompanyByCnpj(digits);
-      if (res.success) {
-        if (res.corporateName && !name) setName(res.corporateName);
-        if (res.tradeName && !farmName) setFarmName(res.tradeName);
-        if (res.phone && !phone) setPhone(formatPhone(res.phone));
-        if (res.email && !email) setEmail(res.email);
-        if (res.zipCode) setZipCode(formatCep(res.zipCode));
-        if (res.street) setAddress(`${res.street}${res.number ? ', Nº ' + res.number : ''}`);
-        if (res.neighborhood) setNeighborhood(res.neighborhood);
-        if (res.city) setCity(res.city);
-        if (res.state) setState(res.state);
-        setFeedback({ type: 'success', message: `✅ Dados preenchidos via Receita: ${res.corporateName}` });
-      } else {
-        setFeedback({ type: 'error', message: res.message || 'CNPJ não encontrado.' });
-      }
-    } catch {
-      setFeedback({ type: 'error', message: 'Falha ao buscar CNPJ.' });
-    } finally {
-      setIsLoadingCnpj(false);
-      setTimeout(() => setFeedback(null), 3500);
+    // 1. Prioridade: Buscar nas fichas externas preenchidas pelo cliente
+    const matchedSubmission = findSubmissionByDocument(digits);
+    if (matchedSubmission) {
+      applySubmission(matchedSubmission);
+      return;
     }
+
+    // 2. Se for 14 dígitos (CNPJ) e não estiver nas fichas, busca na Receita Federal
+    if (digits.length === 14) {
+      setIsLoadingCnpj(true);
+      setFeedback(null);
+      try {
+        const res = await fetchCompanyByCnpj(digits);
+        if (res.success) {
+          if (res.corporateName && !name) setName(res.corporateName);
+          if (res.tradeName && !farmName) setFarmName(res.tradeName);
+          if (res.phone && !phone) setPhone(formatPhone(res.phone));
+          if (res.email && !email) setEmail(res.email);
+          if (res.zipCode) setZipCode(formatCep(res.zipCode));
+          if (res.street) setAddress(`${res.street}${res.number ? ', Nº ' + res.number : ''}`);
+          if (res.neighborhood) setNeighborhood(res.neighborhood);
+          if (res.city) setCity(res.city);
+          if (res.state) setState(res.state);
+          setFeedback({ type: 'success', message: `✅ Dados preenchidos via Receita Federal: ${res.corporateName}` });
+        } else {
+          setFeedback({ type: 'error', message: res.message || 'CNPJ não encontrado na Receita.' });
+        }
+      } catch {
+        setFeedback({ type: 'error', message: 'Falha ao consultar CNPJ na Receita Federal.' });
+      } finally {
+        setIsLoadingCnpj(false);
+        setTimeout(() => setFeedback(null), 3500);
+      }
+      return;
+    }
+
+    // Se for 11 dígitos (CPF) e não encontrou ficha respondida
+    if (digits.length === 11) {
+      setFeedback({ type: 'error', message: 'Nenhuma ficha externa respondida encontrada para este CPF.' });
+      setTimeout(() => setFeedback(null), 3000);
+      return;
+    }
+
+    setFeedback({ type: 'error', message: 'Digite 11 dígitos para CPF ou 14 para CNPJ.' });
+    setTimeout(() => setFeedback(null), 3000);
   };
 
   // Handle CEP dynamic typing and auto search
@@ -306,16 +446,101 @@ export const ClientModal: React.FC<ClientModalProps> = ({
       <div className="bg-[#0a8bc1] rounded-2xl w-[90vw] max-w-6xl shadow-2xl border border-white/20 overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-auto">
         
         {/* Header */}
-        <div className="px-5 py-3 bg-[#0963cb] text-white flex items-center justify-between">
+        <div className="px-5 py-3 bg-[#0963cb] text-white flex items-center justify-between relative">
           <h3 className="text-base sm:text-lg font-bold tracking-tight text-white">
             Cadastro Cliente
           </h3>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          
+          <div className="flex items-center space-x-2">
+            {/* Botão Enviar Ficha com Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsShareDropdownOpen(!isShareDropdownOpen)}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-xs sm:text-sm font-semibold transition cursor-pointer border border-white/20 shadow-2xs"
+                title="Enviar link do formulário de cadastro em branco para o cliente"
+              >
+                <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                <span>Enviar Ficha</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${isShareDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Dropdown Menu */}
+              {isShareDropdownOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-10" 
+                    onClick={() => setIsShareDropdownOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-64 bg-white text-stone-900 rounded-xl shadow-2xl border border-stone-200 z-20 overflow-hidden py-1.5 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-3.5 py-1.5 border-b border-stone-100 bg-stone-50/70">
+                      <p className="text-[10px] font-bold text-stone-600 uppercase tracking-wider">
+                        Compartilhar Ficha em Branco
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleShareWhatsApp}
+                      className="w-full px-3.5 py-2.5 text-left text-xs sm:text-sm font-medium hover:bg-emerald-50 text-stone-800 hover:text-emerald-900 flex items-center space-x-2.5 transition cursor-pointer"
+                    >
+                      <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                        <MessageSquare className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1">
+                        <span className="font-bold block">Enviar por WhatsApp</span>
+                        <span className="text-[10px] text-stone-500 block">Link pronto com mensagem</span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleShareEmail}
+                      className="w-full px-3.5 py-2.5 text-left text-xs sm:text-sm font-medium hover:bg-blue-50 text-stone-800 hover:text-blue-900 flex items-center space-x-2.5 transition cursor-pointer"
+                    >
+                      <div className="w-6 h-6 rounded-full bg-blue-100 text-[#0963cb] flex items-center justify-center flex-shrink-0">
+                        <Mail className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1">
+                        <span className="font-bold block">Enviar por E-mail</span>
+                        <span className="text-[10px] text-stone-500 block">Dispara via seu cliente de e-mail</span>
+                      </div>
+                    </button>
+
+                    <div className="my-1 border-t border-stone-100" />
+
+                    <button
+                      type="button"
+                      onClick={handleCopyLink}
+                      className="w-full px-3.5 py-2 text-left text-xs font-medium hover:bg-stone-100 text-stone-700 flex items-center space-x-2.5 transition cursor-pointer"
+                    >
+                      <Copy className="w-3.5 h-3.5 text-stone-500" />
+                      <span>{copiedLink ? 'Link copiado!' : 'Copiar Link da Ficha'}</span>
+                    </button>
+
+                    <a
+                      href={getFormUrl()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full px-3.5 py-2 text-left text-xs font-medium hover:bg-stone-100 text-stone-700 flex items-center space-x-2.5 transition cursor-pointer"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-stone-500" />
+                      <span>Visualizar Ficha Externa</span>
+                    </a>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Fechar Modal */}
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition cursor-pointer"
+              title="Fechar janela"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Feedback message */}
@@ -349,12 +574,58 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   <label className="block text-[11px] font-bold text-black uppercase tracking-wider">
                     CPF OU CNPJ (AUTO-BUSCA)
                   </label>
-                  {isLoadingCnpj && (
-                    <span className="text-[10px] text-black font-bold flex items-center space-x-1">
-                      <Loader2 className="w-3 h-3 animate-spin text-[#0963cb]" />
-                      <span>Buscando...</span>
-                    </span>
-                  )}
+                  
+                  <div className="flex items-center space-x-2">
+                    {/* Badge de fichas recebidas para importação rápida */}
+                    {pendingSubmissions.length > 0 && (
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setIsImportDropdownOpen(!isImportDropdownOpen)}
+                          className="text-[10px] font-bold bg-[#0963cb] hover:bg-[#0852a8] text-white px-2 py-0.5 rounded-md transition flex items-center space-x-1 cursor-pointer shadow-xs animate-pulse"
+                          title="Fichas preenchidas online aguardando importação"
+                        >
+                          <Inbox className="w-3 h-3 text-amber-300" />
+                          <span>{pendingSubmissions.length} ficha{pendingSubmissions.length > 1 ? 's' : ''}</span>
+                        </button>
+
+                        {isImportDropdownOpen && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setIsImportDropdownOpen(false)} />
+                            <div className="absolute left-0 mt-1 w-64 bg-white text-stone-900 rounded-xl shadow-xl border border-stone-200 z-20 overflow-hidden py-1">
+                              <div className="px-3 py-1.5 border-b border-stone-100 bg-stone-50">
+                                <p className="text-[10px] font-bold text-stone-600 uppercase">Fichas Online Recebidas</p>
+                              </div>
+                              <div className="max-h-48 overflow-y-auto divide-y divide-stone-100">
+                                {pendingSubmissions.map(sub => (
+                                  <button
+                                    key={sub.id}
+                                    type="button"
+                                    onClick={() => applySubmission(sub)}
+                                    className="w-full px-3 py-2 text-left hover:bg-blue-50 transition flex flex-col cursor-pointer"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-bold text-xs text-stone-900">{sub.name}</span>
+                                      <span className="text-[10px] text-stone-500">{sub.city}/{sub.state}</span>
+                                    </div>
+                                    <span className="text-[11px] text-stone-600 font-medium">{sub.farmName}</span>
+                                    <span className="text-[10px] text-blue-700">{sub.cpfCnpj || sub.phone}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {isLoadingCnpj && (
+                      <span className="text-[10px] text-black font-bold flex items-center space-x-1">
+                        <Loader2 className="w-3 h-3 animate-spin text-[#0963cb]" />
+                        <span>Buscando...</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="relative">
                   <input
@@ -369,7 +640,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                     type="button"
                     onClick={() => searchCnpj()}
                     disabled={isLoadingCnpj}
-                    title="Buscar dados deste CNPJ na Receita Federal"
+                    title="Buscar dados deste CNPJ na Receita ou importar ficha do cliente"
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-black hover:text-[#0963cb] rounded-md transition cursor-pointer"
                   >
                     <Search className="w-3.5 h-3.5" />

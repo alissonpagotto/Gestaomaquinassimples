@@ -108,6 +108,27 @@ export interface Client {
   updatedAt?: string;
 }
 
+export interface ClientFormSubmission {
+  id: string;
+  name: string;
+  farmName: string;
+  cpfCnpj?: string;
+  stateRegistration?: string;
+  phone: string;
+  email?: string;
+  zipCode?: string;
+  address?: string;
+  neighborhood?: string;
+  city: string;
+  state: string;
+  cattleType: 'leite' | 'corte' | 'misto' | 'confinamento' | 'outro';
+  headCount?: number;
+  monthlyDemandTons?: number;
+  notes?: string;
+  submittedAt: string;
+  status: 'pendente' | 'importado';
+}
+
 export interface SilageOrder {
   id: string;
   orderNumber?: string;

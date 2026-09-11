@@ -102,6 +102,7 @@ import { CompanySettingsView } from './components/settings/CompanySettingsView';
 import { QuickMemoModal } from './components/quick/QuickMemoModal';
 import { TrialInfoModal } from './components/quick/TrialInfoModal';
 import { LovableIntegrationModal } from './components/integration/LovableIntegrationModal';
+import { PublicClientForm } from './components/crm/PublicClientForm';
 import { useAuth } from './context/AuthContext';
 import { uploadAllDataToFirestore, fetchAllDataFromFirestore } from './lib/firebaseSync';
 
@@ -450,6 +451,29 @@ export default function App() {
       prev.map((o) => (o.id === id ? { ...o, paymentStatus } : o))
     );
   };
+
+  // Check if opened as public client form (e.g. ?ficha=cliente)
+  const [isPublicFormRoute, setIsPublicFormRoute] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.location.search.includes('ficha=cliente') || 
+           window.location.search.includes('form=cliente') ||
+           window.location.hash.includes('ficha=cliente');
+  });
+
+  if (isPublicFormRoute) {
+    return (
+      <PublicClientForm
+        onBackToApp={() => {
+          setIsPublicFormRoute(false);
+          try {
+            window.history.replaceState({}, '', window.location.pathname);
+          } catch (e) {
+            console.error(e);
+          }
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-blue-50/50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-col font-['Plus_Jakarta_Sans',sans-serif] selection:bg-blue-200 selection:text-blue-900">
