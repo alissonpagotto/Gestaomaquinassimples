@@ -9,7 +9,6 @@ import {
   MessageCircle, 
   Edit3, 
   Trash2, 
-  ShoppingCart, 
   Scale, 
   Filter,
   CheckCircle2,
@@ -240,13 +239,6 @@ export const CrmModule: React.FC<CrmModuleProps> = ({
 
                           <div className="flex items-center space-x-1">
                             <button
-                              onClick={() => onNewOrder(client.id)}
-                              className="p-1 text-black dark:text-emerald-400 hover:bg-black/10 rounded cursor-pointer"
-                              title="Criar Pedido"
-                            >
-                              <ShoppingCart className="w-3.5 h-3.5" />
-                            </button>
-                            <button
                               onClick={() => onEditClient(client)}
                               className="p-1 text-black dark:text-stone-400 hover:bg-black/10 rounded cursor-pointer"
                               title="Editar"
@@ -348,13 +340,6 @@ export const CrmModule: React.FC<CrmModuleProps> = ({
                             <MessageCircle className="w-3.5 h-3.5" />
                           </a>
                         )}
-                        <button
-                          onClick={() => onNewOrder(client.id)}
-                          className="p-1 text-emerald-700 hover:bg-emerald-50 rounded transition cursor-pointer"
-                          title="Novo Pedido"
-                        >
-                          <ShoppingCart className="w-3.5 h-3.5" />
-                        </button>
                         <button
                           onClick={() => onEditClient(client)}
                           className="p-1 text-stone-600 hover:bg-stone-100 rounded transition cursor-pointer"
