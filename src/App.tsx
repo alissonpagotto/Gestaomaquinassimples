@@ -585,6 +585,7 @@ export default function App() {
               orders={orders}
               services={services}
               inventory={inventory}
+              fuelLogs={fuelLogs}
               onNavigate={(tab) => setActiveTab(tab)}
               onNewExpense={() => {
                 setEditingExpense(null);
