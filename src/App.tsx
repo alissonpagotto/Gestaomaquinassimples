@@ -196,10 +196,26 @@ export default function App() {
               return [...prev, ...newItems];
             });
           }
-          if (cloudData.despesas && cloudData.despesas.length > 0) {
+          if (cloudData.contas_a_pagar && cloudData.contas_a_pagar.length > 0) {
             setExpenses(prev => {
               const existingIds = new Set(prev.map(d => d.id));
-              const newItems = cloudData.despesas.filter((d: any) => !existingIds.has(d.id));
+              const newItems = cloudData.contas_a_pagar
+                .filter((d: any) => !existingIds.has(d.id))
+                .map((d: any) => ({
+                  id: d.id,
+                  title: d.centro_custo || 'Parcela Fornecedor',
+                  description: d.centro_custo || 'Parcela Fornecedor',
+                  amount: Number(d.valor_parcela) || 0,
+                  dueDate: d.data_vencimento || new Date().toISOString().split('T')[0],
+                  status: d.status_pago ? 'pago' : 'pendente',
+                  categoryId: 'despesa_geral',
+                  categoryColor: '#10b981',
+                  category: 'despesa_geral',
+                  categoryName: d.centro_custo || 'Geral',
+                  paymentMethod: d.forma_pagamento || 'Boleto',
+                  supplier: 'Fornecedor',
+                  createdAt: d.created_at || new Date().toISOString()
+                } as unknown as Expense));
               return [...prev, ...newItems];
             });
           }

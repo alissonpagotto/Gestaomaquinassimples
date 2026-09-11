@@ -29,6 +29,7 @@ import { CompanyProfile, ExpenseCategory, CostCenter } from '../../types';
 import { DEFAULT_FORAGE_HARVESTER_LOGO } from '../../lib/initialData';
 import { PrintPreviewModal } from '../common/PrintPreviewModal';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { SupabaseSqlModal } from './SupabaseSqlModal';
 import { useAuth } from '../../context/AuthContext';
 import { 
   formatCpfCnpj, 
@@ -82,6 +83,7 @@ export const CompanySettingsView: React.FC<CompanySettingsViewProps> = ({
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [resetSuccessToast, setResetSuccessToast] = useState(false);
+  const [isSqlModalOpen, setIsSqlModalOpen] = useState(false);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -852,6 +854,16 @@ export const CompanySettingsView: React.FC<CompanySettingsViewProps> = ({
             <div className="flex items-center space-x-2">
               <button
                 type="button"
+                onClick={() => setIsSqlModalOpen(true)}
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-bold shadow-xs transition active:scale-95 cursor-pointer"
+                title="Visualizar e copiar script SQL de criação das tabelas no Supabase"
+              >
+                <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Script SQL (PostgreSQL)</span>
+              </button>
+
+              <button
+                type="button"
                 disabled={isSyncing}
                 onClick={async () => {
                   if (onSyncSupabase) {
@@ -1057,6 +1069,12 @@ export const CompanySettingsView: React.FC<CompanySettingsViewProps> = ({
           `,
           signatureLabels: ['Titular do Cadastro / Produtor', 'Administração Geral'],
         }}
+      />
+
+      {/* Supabase PostgreSQL Schema Script Modal */}
+      <SupabaseSqlModal
+        isOpen={isSqlModalOpen}
+        onClose={() => setIsSqlModalOpen(false)}
       />
 
     </div>

@@ -50,6 +50,7 @@ import {
 import { formatCpfCnpj, formatPhone, formatCep, cleanDigits } from '../../lib/formatters';
 import { SupplierModal } from '../suppliers/SupplierModal';
 import { NfeInstallmentsModal, NfeDetailedInstallment } from './NfeInstallmentsModal';
+import { upsertNotaFiscal, upsertContaAPagar, deleteNotaFiscal } from '../../lib/supabaseService';
 
 interface ParsedNfeItem {
   code: string;
@@ -2307,6 +2308,34 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
 
     saveCachedNfe(updatedParsedData, fiscalRecordId);
 
+    // Persistência direta no PostgreSQL Supabase (tabelas notas_fiscais e contas_a_pagar)
+    upsertNotaFiscal({
+      id: fiscalRecordId,
+      number: cleanInvoiceNumber,
+      series: parsedData.series || '1',
+      accessKey: parsedData.accessKey,
+      supplierName: parsedData.supplier,
+      totalAmount: Number(parsedData.totalAmount) || 0,
+      operationNature: parsedData.operationNature,
+      issueDate: parsedData.issueDate,
+      entryDate: parsedData.entryDate || new Date().toISOString().split('T')[0],
+      items: parsedData.items
+    });
+
+    detailedInstallments.forEach((inst, idx) => {
+      const instId = totalParcs === 1 ? expenseId : `${expenseId}_parc_${idx + 1}`;
+      upsertContaAPagar({
+        id: instId,
+        nota_fiscal_id: fiscalRecordId,
+        numero_parcela: inst.number || `${idx + 1}/${totalParcs}`,
+        valor_parcela: Number(inst.amount) || 0,
+        data_vencimento: inst.dueDate || parsedData.issueDate,
+        forma_pagamento: mapPayCode(inst.paymentMethodCode),
+        centro_custo: selectedCC?.name || 'Geral',
+        status_pago: false
+      });
+    });
+
     setIsInstallmentsModalOpen(false);
     const isEdit = Boolean(editingExpenseId);
     setErrorMessage('');
@@ -2474,6 +2503,11 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
     // Notifica o componente pai para cada parcela excluída
     if (onDeleteExpense) {
       idsToRemove.forEach(id => onDeleteExpense(id));
+    }
+
+    // Exclusão no PostgreSQL Supabase: ON DELETE CASCADE remove automaticamente as parcelas em contas_a_pagar
+    if (notaId) {
+      deleteNotaFiscal(notaId);
     }
 
     // 6. Se a nota excluída for a que estava aberta para edição, limpa e fecha o formulário
