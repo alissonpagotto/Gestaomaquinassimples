@@ -1,0 +1,187 @@
+{
+  "entities": {
+    "Expense": {
+      "title": "Expense",
+      "description": "Lançamento de despesa operacional ou administrativa",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "description": { "type": "string", "maxLength": 300 },
+        "amount": { "type": "number" },
+        "categoryId": { "type": "string", "maxLength": 128 },
+        "categoryName": { "type": "string", "maxLength": 100 },
+        "categoryColor": { "type": "string", "maxLength": 30 },
+        "dueDate": { "type": "string", "maxLength": 30 },
+        "paymentDate": { "type": "string", "maxLength": 30 },
+        "status": { "type": "string", "enum": ["pago", "pendente", "atrasado", "agendado"] },
+        "paymentMethod": { "type": "string", "maxLength": 50 },
+        "supplier": { "type": "string", "maxLength": 150 },
+        "costCenterId": { "type": "string", "maxLength": 128 },
+        "costCenterName": { "type": "string", "maxLength": 100 },
+        "machineryId": { "type": "string", "maxLength": 128 },
+        "machineryName": { "type": "string", "maxLength": 100 },
+        "employeeId": { "type": "string", "maxLength": 128 },
+        "employeeName": { "type": "string", "maxLength": 100 },
+        "teamId": { "type": "string", "maxLength": 128 },
+        "teamName": { "type": "string", "maxLength": 100 },
+        "invoiceNumber": { "type": "string", "maxLength": 100 },
+        "receiptUrl": { "type": "string", "maxLength": 5000 },
+        "receiptName": { "type": "string", "maxLength": 200 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string", "maxLength": 30 },
+        "unitPrice": { "type": "number" },
+        "isRecurring": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "userId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "description", "amount", "status", "dueDate", "userId"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "Cadastro de produtor ou cliente",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 150 },
+        "farmName": { "type": "string", "maxLength": 150 },
+        "cpfCnpj": { "type": "string", "maxLength": 30 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "email": { "type": "string", "maxLength": 120 },
+        "city": { "type": "string", "maxLength": 100 },
+        "state": { "type": "string", "maxLength": 10 },
+        "cattleType": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "maxLength": 50 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "userId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "name", "farmName", "userId"]
+    },
+    "SilageOrder": {
+      "title": "SilageOrder",
+      "description": "Pedido de silagem e corte agrícola",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "orderNumber": { "type": "string", "maxLength": 50 },
+        "clientId": { "type": "string", "maxLength": 128 },
+        "clientName": { "type": "string", "maxLength": 150 },
+        "farmName": { "type": "string", "maxLength": 150 },
+        "productType": { "type": "string", "maxLength": 80 },
+        "tons": { "type": "number" },
+        "pricePerTon": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "deliveryDate": { "type": "string", "maxLength": 30 },
+        "freightType": { "type": "string", "maxLength": 20 },
+        "freightCost": { "type": "number" },
+        "status": { "type": "string", "maxLength": 50 },
+        "paymentStatus": { "type": "string", "maxLength": 50 },
+        "machineryId": { "type": "string", "maxLength": 128 },
+        "machineryPlateOrName": { "type": "string", "maxLength": 100 },
+        "driverId": { "type": "string", "maxLength": 128 },
+        "driverName": { "type": "string", "maxLength": 100 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "userId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "clientId", "clientName", "totalAmount", "userId"]
+    },
+    "Machinery": {
+      "title": "Machinery",
+      "description": "Frota, tratores e implementos agrícolas",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 120 },
+        "model": { "type": "string", "maxLength": 100 },
+        "brand": { "type": "string", "maxLength": 100 },
+        "year": { "type": "number" },
+        "renavam": { "type": "string", "maxLength": 50 },
+        "color": { "type": "string", "maxLength": 50 },
+        "ownership": { "type": "string", "maxLength": 50 },
+        "licensePlateOrSerial": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "maxLength": 50 },
+        "hourMeter": { "type": "number" },
+        "currentKm": { "type": "number" },
+        "categoryType": { "type": "string", "maxLength": 50 },
+        "userId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "name", "userId"]
+    },
+    "ServiceOrder": {
+      "title": "ServiceOrder",
+      "description": "Ordem de serviço de corte e colheita de silagem",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "code": { "type": "string", "maxLength": 50 },
+        "clientId": { "type": "string", "maxLength": 128 },
+        "clientName": { "type": "string", "maxLength": 150 },
+        "status": { "type": "string", "maxLength": 50 },
+        "totalGrossAmount": { "type": "number" },
+        "netAmount": { "type": "number" },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "userId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "clientId", "userId"]
+    },
+    "CompanyProfile": {
+      "title": "CompanyProfile",
+      "description": "Dados da empresa e preferências",
+      "type": "object",
+      "properties": {
+        "corporateName": { "type": "string", "maxLength": 150 },
+        "tradeName": { "type": "string", "maxLength": 150 },
+        "cnpjCpf": { "type": "string", "maxLength": 50 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "email": { "type": "string", "maxLength": 120 },
+        "city": { "type": "string", "maxLength": 100 },
+        "state": { "type": "string", "maxLength": 10 },
+        "userId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["tradeName", "userId"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Registro de permissão administrativa",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "maxLength": 120 },
+        "role": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Despesas financeiras cadastradas pelo usuário"
+    },
+    "/clients/{clientId}": {
+      "schema": "Client",
+      "description": "Clientes e produtores rurais"
+    },
+    "/orders/{orderId}": {
+      "schema": "SilageOrder",
+      "description": "Pedidos de silagem"
+    },
+    "/machinery/{machineryId}": {
+      "schema": "Machinery",
+      "description": "Veículos e maquinários da frota"
+    },
+    "/services/{serviceId}": {
+      "schema": "ServiceOrder",
+      "description": "Ordens de serviço de silagem"
+    },
+    "/companies/{companyId}": {
+      "schema": "CompanyProfile",
+      "description": "Perfil e configurações da empresa"
+    },
+    "/admins/{adminId}": {
+      "schema": "Admin",
+      "description": "Usuários administradores com privilégios de gestão"
+    }
+  }
+}

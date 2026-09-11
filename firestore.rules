@@ -1,0 +1,164 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default-deny catch-all (Global Safety Net)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Global Hardened Helpers ---
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email == 'alisson3pagotto@gmail.com' && request.auth.token.email_verified == true) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Health / connection test doc
+    match /test/{docId} {
+      allow get: if true;
+    }
+
+    // --- Entity Validation Functions ---
+    function isValidExpense(data) {
+      return data.id is string && isValidId(data.id) &&
+             data.description is string && data.description.size() > 0 && data.description.size() <= 300 &&
+             data.amount is number &&
+             data.status in ['pago', 'pendente', 'atrasado', 'agendado'] &&
+             data.userId is string && data.userId == request.auth.uid;
+    }
+
+    function isValidClient(data) {
+      return data.id is string && isValidId(data.id) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 150 &&
+             data.farmName is string && data.farmName.size() <= 150 &&
+             data.userId is string && data.userId == request.auth.uid;
+    }
+
+    function isValidOrder(data) {
+      return data.id is string && isValidId(data.id) &&
+             data.clientId is string && data.clientId.size() <= 128 &&
+             data.clientName is string && data.clientName.size() <= 150 &&
+             data.totalAmount is number &&
+             data.userId is string && data.userId == request.auth.uid;
+    }
+
+    function isValidMachinery(data) {
+      return data.id is string && isValidId(data.id) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 120 &&
+             data.userId is string && data.userId == request.auth.uid;
+    }
+
+    function isValidService(data) {
+      return data.id is string && isValidId(data.id) &&
+             data.clientId is string && data.clientId.size() <= 128 &&
+             data.userId is string && data.userId == request.auth.uid;
+    }
+
+    function isValidCompany(data) {
+      return data.tradeName is string && data.tradeName.size() > 0 && data.tradeName.size() <= 150 &&
+             data.userId is string && data.userId == request.auth.uid;
+    }
+
+    // --- Collection Match Blocks ---
+
+    // 1. Expenses
+    match /expenses/{expenseId} {
+      allow get: if isSignedIn() && (isOwner(existing().userId) || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidId(expenseId) && isValidExpense(incoming());
+      allow update: if isSignedIn() && isValidId(expenseId) &&
+                    (isOwner(existing().userId) || isAdmin()) &&
+                    isValidExpense(incoming()) &&
+                    incoming().userId == existing().userId;
+      allow delete: if isSignedIn() && isValidId(expenseId) && (isOwner(existing().userId) || isAdmin());
+    }
+
+    // 2. Clients
+    match /clients/{clientId} {
+      allow get: if isSignedIn() && (isOwner(existing().userId) || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidId(clientId) && isValidClient(incoming());
+      allow update: if isSignedIn() && isValidId(clientId) &&
+                    (isOwner(existing().userId) || isAdmin()) &&
+                    isValidClient(incoming()) &&
+                    incoming().userId == existing().userId;
+      allow delete: if isSignedIn() && isValidId(clientId) && (isOwner(existing().userId) || isAdmin());
+    }
+
+    // 3. Orders
+    match /orders/{orderId} {
+      allow get: if isSignedIn() && (isOwner(existing().userId) || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidId(orderId) && isValidOrder(incoming());
+      allow update: if isSignedIn() && isValidId(orderId) &&
+                    (isOwner(existing().userId) || isAdmin()) &&
+                    isValidOrder(incoming()) &&
+                    incoming().userId == existing().userId;
+      allow delete: if isSignedIn() && isValidId(orderId) && (isOwner(existing().userId) || isAdmin());
+    }
+
+    // 4. Machinery
+    match /machinery/{machineryId} {
+      allow get: if isSignedIn() && (isOwner(existing().userId) || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidId(machineryId) && isValidMachinery(incoming());
+      allow update: if isSignedIn() && isValidId(machineryId) &&
+                    (isOwner(existing().userId) || isAdmin()) &&
+                    isValidMachinery(incoming()) &&
+                    incoming().userId == existing().userId;
+      allow delete: if isSignedIn() && isValidId(machineryId) && (isOwner(existing().userId) || isAdmin());
+    }
+
+    // 5. Services
+    match /services/{serviceId} {
+      allow get: if isSignedIn() && (isOwner(existing().userId) || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidId(serviceId) && isValidService(incoming());
+      allow update: if isSignedIn() && isValidId(serviceId) &&
+                    (isOwner(existing().userId) || isAdmin()) &&
+                    isValidService(incoming()) &&
+                    incoming().userId == existing().userId;
+      allow delete: if isSignedIn() && isValidId(serviceId) && (isOwner(existing().userId) || isAdmin());
+    }
+
+    // 6. Companies
+    match /companies/{companyId} {
+      allow get: if isSignedIn() && (isOwner(existing().userId) || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidId(companyId) && isValidCompany(incoming());
+      allow update: if isSignedIn() && isValidId(companyId) &&
+                    (isOwner(existing().userId) || isAdmin()) &&
+                    isValidCompany(incoming()) &&
+                    incoming().userId == existing().userId;
+      allow delete: if isSignedIn() && isValidId(companyId) && (isOwner(existing().userId) || isAdmin());
+    }
+
+    // 7. Admins
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+  }
+}
