@@ -87,6 +87,7 @@ export interface Client {
   name: string;
   farmName: string;
   cpfCnpj?: string;
+  stateRegistration?: string;
   zipCode?: string;
   address?: string;
   neighborhood?: string;

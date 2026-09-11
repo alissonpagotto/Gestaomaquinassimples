@@ -32,6 +32,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   const [name, setName] = useState('');
   const [farmName, setFarmName] = useState('');
   const [cpfCnpj, setCpfCnpj] = useState('');
+  const [stateRegistration, setStateRegistration] = useState('');
   const [zipCode, setZipCode] = useState('');
   const [address, setAddress] = useState('');
   const [neighborhood, setNeighborhood] = useState('');
@@ -55,6 +56,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
       setName(editingClient.name);
       setFarmName(editingClient.farmName);
       setCpfCnpj(formatCpfCnpj(editingClient.cpfCnpj || ''));
+      setStateRegistration(editingClient.stateRegistration || '');
       setZipCode(formatCep(editingClient.zipCode || ''));
       setAddress(editingClient.address || '');
       setNeighborhood(editingClient.neighborhood || '');
@@ -71,6 +73,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
       setName(initialName || '');
       setFarmName('');
       setCpfCnpj('');
+      setStateRegistration('');
       setZipCode('');
       setAddress('');
       setNeighborhood('');
@@ -191,6 +194,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
       name: name.trim(),
       farmName: farmName.trim(),
       cpfCnpj: cpfCnpj.trim() || undefined,
+      stateRegistration: stateRegistration.trim() || undefined,
       zipCode: zipCode.trim() || undefined,
       address: address.trim() || undefined,
       neighborhood: neighborhood.trim() || undefined,
@@ -226,7 +230,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
         {/* Header */}
         <div className="px-5 py-3.5 bg-[#0963cb] text-white flex items-center justify-between">
           <h3 className="text-base sm:text-lg font-bold tracking-tight text-white">
-            {editingClient ? 'Editar Cadastro Cliente' : 'Cadastro Cliente'}
+            Cadastro Cliente
           </h3>
           <button
             onClick={onClose}
@@ -262,7 +266,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ex: Carlos Eduardo Fontes"
-                  className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black/60 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
 
@@ -276,13 +280,13 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   value={farmName}
                   onChange={(e) => setFarmName(e.target.value)}
                   placeholder="Ex: Fazenda Bela Vista"
-                  className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black/60 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
             </div>
 
-            {/* CPF / CNPJ e Telefone */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {/* CPF / CNPJ, Inscrição Estadual (IE) / CADPRO e Telefone */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-[11px] font-bold text-black uppercase tracking-wider">
@@ -302,7 +306,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                     onChange={(e) => handleCpfCnpjChange(e.target.value)}
                     placeholder="000.000.000-00 ou 00.000.000/0000-00"
                     maxLength={18}
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black/60 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] pr-9"
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] pr-9"
                   />
                   <button
                     type="button"
@@ -318,6 +322,19 @@ export const ClientModal: React.FC<ClientModalProps> = ({
 
               <div>
                 <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
+                  INSCRIÇÃO ESTADUAL (IE) / CADPRO
+                </label>
+                <input
+                  type="text"
+                  value={stateRegistration}
+                  onChange={(e) => setStateRegistration(e.target.value)}
+                  placeholder="Ex: 90812345-67 ou PR-123456"
+                  className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
                   WHATSAPP / TELEFONE
                 </label>
                 <input
@@ -326,7 +343,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   onChange={(e) => setPhone(formatPhone(e.target.value))}
                   placeholder="(42) 99823-1144"
                   maxLength={15}
-                  className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black/60 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
             </div>
@@ -354,7 +371,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                     onChange={(e) => handleCepChange(e.target.value)}
                     placeholder="00000-000"
                     maxLength={9}
-                    className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black/60 text-xs font-medium focus:ring-2 focus:ring-[#0963cb] pr-8"
+                    className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs font-medium focus:ring-2 focus:ring-[#0963cb] pr-8"
                   />
                   <button
                     type="button"
@@ -377,7 +394,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="Ex: Linha Alto Alegre, Km 04"
-                  className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black/60 text-xs font-medium focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs font-medium focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
             </div>
@@ -392,7 +409,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   value={neighborhood}
                   onChange={(e) => setNeighborhood(e.target.value)}
                   placeholder="Ex: Zona Rural"
-                  className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black/60 text-xs font-medium focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs font-medium focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
 
@@ -405,7 +422,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="Ex: Castro"
-                  className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black/60 text-xs font-medium focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs font-medium focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
 
@@ -419,7 +436,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   onChange={(e) => setState(e.target.value.toUpperCase())}
                   placeholder="PR"
                   maxLength={2}
-                  className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black/60 text-xs font-medium uppercase focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs font-medium uppercase focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
             </div>
@@ -457,7 +474,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   value={headCount}
                   onChange={(e) => handleHeadCountChange(e.target.value)}
                   placeholder="Ex: 180"
-                  className="w-full px-3 py-1.5 text-xs rounded-xl border border-stone-300 bg-white text-black placeholder:text-black/60 focus:ring-2 focus:ring-[#0963cb] font-medium"
+                  className="w-full px-3 py-1.5 text-xs rounded-xl border border-stone-300 bg-white text-black placeholder:text-black focus:ring-2 focus:ring-[#0963cb] font-medium"
                 />
               </div>
 
@@ -470,7 +487,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   value={monthlyDemandTons}
                   onChange={(e) => setMonthlyDemandTons(e.target.value)}
                   placeholder="Ex: 65"
-                  className="w-full px-3 py-1.5 text-xs rounded-xl border border-stone-300 bg-white text-black placeholder:text-black/60 focus:ring-2 focus:ring-[#0963cb] font-medium"
+                  className="w-full px-3 py-1.5 text-xs rounded-xl border border-stone-300 bg-white text-black placeholder:text-black focus:ring-2 focus:ring-[#0963cb] font-medium"
                 />
               </div>
             </div>
@@ -508,7 +525,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="carlos@fazenda.com.br"
-                  className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black/60 text-sm font-medium focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-sm font-medium focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
             </div>
@@ -522,7 +539,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Ex: Prefere silagem com teor de matéria seca em 33-35%, grãos bem triturados..."
-                className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black/60 text-xs font-medium focus:ring-2 focus:ring-[#0963cb] resize-none"
+                className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs font-medium focus:ring-2 focus:ring-[#0963cb] resize-none"
               />
             </div>
           </div>

@@ -202,6 +202,11 @@ export const CrmModule: React.FC<CrmModuleProps> = ({
                           <div>
                             <span className="block font-black text-black dark:text-white text-xs">{client.name}</span>
                             <span className="text-[11px] text-black/90 dark:text-stone-300 font-bold">{client.farmName}</span>
+                            {client.stateRegistration && (
+                              <span className="block text-[9px] text-black/80 dark:text-stone-300 font-semibold">
+                                IE/CADPRO: {client.stateRegistration}
+                              </span>
+                            )}
                           </div>
                           {getCattleBadge(client.cattleType)}
                         </div>
@@ -310,7 +315,10 @@ export const CrmModule: React.FC<CrmModuleProps> = ({
                   <tr key={client.id} className="hover:bg-stone-50">
                     <td className="py-1.5 px-3">
                       <div className="font-bold text-stone-900 leading-snug">{client.name}</div>
-                      <div className="text-[10px] text-stone-500">{client.farmName}</div>
+                      <div className="text-[10px] text-stone-500">
+                        {client.farmName}
+                        {client.stateRegistration ? ` • IE: ${client.stateRegistration}` : ''}
+                      </div>
                     </td>
                     <td className="py-1.5 px-3 whitespace-nowrap">
                       {client.city}/{client.state}
