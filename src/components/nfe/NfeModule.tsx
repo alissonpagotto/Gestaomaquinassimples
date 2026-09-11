@@ -48,6 +48,7 @@ import {
 } from '../../lib/storage';
 import { formatCpfCnpj, formatPhone, formatCep, cleanDigits } from '../../lib/formatters';
 import { SupplierModal } from '../suppliers/SupplierModal';
+import { NfeInstallmentsModal, NfeDetailedInstallment } from './NfeInstallmentsModal';
 
 interface ParsedNfeItem {
   code: string;
@@ -479,6 +480,21 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
 
   // Modal para listar e gerenciar todos os centros de custo
   const [isManageCostCentersListOpen, setIsManageCostCentersListOpen] = useState<boolean>(false);
+
+  // Estados para Janela 2 (Detalhamento de Parcelas Geradas com Base no XML)
+  const [isInstallmentsModalOpen, setIsInstallmentsModalOpen] = useState<boolean>(false);
+  const [userInstallmentCount, setUserInstallmentCount] = useState<number>(1);
+
+  // Sincroniza quantidade inicial de parcelas ao carregar nota
+  useEffect(() => {
+    if (parsedData) {
+      if (parsedData.installments && parsedData.installments.length > 0) {
+        setUserInstallmentCount(parsedData.installments.length);
+      } else {
+        setUserInstallmentCount(1);
+      }
+    }
+  }, [parsedData?.invoiceNumber, parsedData?.totalAmount]);
 
   // Modal de validação/conferência de fornecedor
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState<boolean>(false);
@@ -1465,10 +1481,11 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
     return 'outro';
   };
 
-  const handleConfirmImport = () => {
+  // 1. Validação prévia de Centro de Custo e abertura da Janela 2 (Detalhamento de Parcelas)
+  const handleProceedToInstallments = () => {
     if (!parsedData) return;
 
-    // 1. BLOQUEIO OBRIGATÓRIO DE CENTRO DE CUSTO
+    // BLOQUEIO OBRIGATÓRIO DE CENTRO DE CUSTO
     if (!selectedCostCenterId) {
       setCostCenterError(true);
       setErrorMessage('Bloqueio de Validação: Selecione obrigatoriamente a qual Centro de Custo esta despesa pertence.');
@@ -1480,7 +1497,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       return;
     }
 
-    // 2. Bloqueio de Nota Duplicada (ignora a própria nota em modo de edição)
+    // Bloqueio de Nota Duplicada (ignora a própria nota em modo de edição)
     const listToCheck = editingExpenseId 
       ? expenses.filter(e => e.id !== editingExpenseId) 
       : expenses;
@@ -1491,7 +1508,16 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       return;
     }
 
-    // 3. ENTRADA AUTOMÁTICA NO ESTOQUE (Itens Vinculados e Novos Itens Extraídos)
+    setErrorMessage('');
+    // Abre a Janela 2 (Detalhamento de Parcelas)
+    setIsInstallmentsModalOpen(true);
+  };
+
+  // 2. Confirmação e Gravação Final das Parcelas validadas na Janela 2
+  const handleConfirmAndSaveInstallments = (detailedInstallments: NfeDetailedInstallment[]) => {
+    if (!parsedData) return;
+
+    // ENTRADA AUTOMÁTICA NO ESTOQUE (Itens Vinculados e Novos Itens Extraídos)
     let updatedInventory = [...localInventory];
     const updatedSummary: string[] = [];
 
@@ -1509,13 +1535,11 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
             updatedSummary.push(`${invItem.name} (+${addQty} ${invItem.unit || 'UN'} | Saldo: ${invItem.quantity})`);
           }
 
-          // Atualiza também o "Preço de Custo" desse produto no cadastro usando o valor "Unitário" vindo da nota
           const newUnitCost = Number(item.unitPrice) || 0;
           if (newUnitCost > 0) {
             invItem.unitCost = newUnitCost;
           }
 
-          // Se o produto tiver margem de lucro, recalcula o preço de venda atualizado
           if (invItem.profitMargin) {
             invItem.salePrice = Math.round((invItem.unitCost * (1 + invItem.profitMargin / 100)) * 100) / 100;
           }
@@ -1523,7 +1547,6 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
           updatedInventory[invIndex] = invItem;
         }
       } else {
-        // Item sem vínculo manual prévio: lança novo cadastro automático no estoque e incrementa quantidade física
         if (!editingExpenseId) {
           const autoCat = deduceItemCategory(item.description);
           const autoUnit = (item.unit || 'UN').toUpperCase();
@@ -1559,7 +1582,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       saveInventory(updatedInventory);
     }
 
-    // 4. AUTOMAÇÃO FINANCEIRA (Geração em Contas a Pagar com Centro de Custo)
+    // AUTOMAÇÃO FINANCEIRA: Gravação das Parcelas no Contas a Pagar
     const selectedCC = localCostCenters.find(c => c.id === selectedCostCenterId);
     const stockNote = updatedSummary.length > 0
       ? ` Entrada de estoque registrada: ${updatedSummary.join(', ')}.`
@@ -1578,86 +1601,74 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                      parsedData.suggestedCategory === 'cat_inoculante' ? '#2563eb' :
                      parsedData.suggestedCategory === 'cat_manutencao' ? '#dc2626' : '#64748b';
 
-    // Se houver múltiplas parcelas registradas no XML da NF-e, gera despesas vinculadas em Contas a Pagar
-    const hasMultipleInstallments = parsedData.installments && parsedData.installments.length > 1;
+    const mapPayCode = (code: string): PaymentMethod => {
+      if (code === '02') return 'pix';
+      if (code === '03') return 'transferencia';
+      if (code === '04') return 'cartao_credito';
+      if (code === '05') return 'cartao_debito';
+      if (code === '06') return 'dinheiro';
+      if (code === '07' || code === '08') return 'safra_prazo';
+      return 'boleto';
+    };
 
-    let primaryExpenseRecord: Expense;
+    const totalParcs = detailedInstallments.length;
+    const installmentRecords: Expense[] = detailedInstallments.map((inst, idx) => {
+      const instId = totalParcs === 1 ? expenseId : `${expenseId}_parc_${idx + 1}`;
+      const suffix = totalParcs > 1 ? ` (${inst.number}/${totalParcs})` : '';
+      
+      const contabNote = ` [Contábil - Crédito: ${inst.creditAccount || 'N/A'} | Débito: ${inst.debitAccount || 'N/A'}]`;
+      const obsNote = inst.observations ? ` Obs: ${inst.observations}.` : '';
 
-    if (hasMultipleInstallments && parsedData.installments) {
-      const installmentRecords: Expense[] = parsedData.installments.map((inst, idx) => {
-        const instId = idx === 0 ? expenseId : `${expenseId}_parc_${idx + 1}`;
-        return {
-          id: instId,
-          description: `Compra ${parsedData.invoiceNumber} (${inst.number || `${idx + 1}/${parsedData.installments!.length}`}) - ${parsedData.supplier}`,
-          amount: inst.amount,
-          categoryId: parsedData.suggestedCategory,
-          categoryName: catName,
-          categoryColor: catColor,
-          dueDate: inst.dueDate || parsedData.issueDate,
-          supplier: parsedData.supplier,
-          invoiceNumber: `${parsedData.invoiceNumber} (${inst.number || `${idx + 1}/${parsedData.installments!.length}`})`,
-          status: 'pendente',
-          paymentMethod: parsedData.paymentMethod || 'boleto',
-          costCenterId: selectedCC?.id,
-          costCenterName: selectedCC?.name,
-          notes: `Lançamento automático via NF-e XML. Parcela ${inst.number || `${idx + 1}/${parsedData.installments!.length}`}. Chave: ${parsedData.accessKey || 'N/A'}.${stockNote}\n${itemsEmbed}`,
-          nfeItems: parsedData.items,
-          createdAt: new Date().toISOString(),
-        };
-      });
-
-      primaryExpenseRecord = installmentRecords[0];
-      onAddExpenseFromNfe(installmentRecords);
-
-      setNotasLancadas(prev => {
-        const remaining = prev.filter(e => !installmentRecords.some(r => r.id === e.id));
-        return [...installmentRecords, ...remaining];
-      });
-    } else {
-      primaryExpenseRecord = {
-        id: expenseId,
-        description: `Compra ${parsedData.invoiceNumber} - ${parsedData.supplier}`,
-        amount: parsedData.totalAmount,
+      return {
+        id: instId,
+        description: `Compra ${parsedData.invoiceNumber}${suffix} - ${parsedData.supplier}`,
+        amount: Number(inst.amount) || 0,
         categoryId: parsedData.suggestedCategory,
         categoryName: catName,
         categoryColor: catColor,
-        dueDate: parsedData.dueDate || parsedData.issueDate,
+        dueDate: inst.dueDate || parsedData.issueDate,
         supplier: parsedData.supplier,
-        invoiceNumber: parsedData.invoiceNumber,
-        status: 'pendente',
-        paymentMethod: parsedData.paymentMethod || 'boleto',
+        invoiceNumber: `${parsedData.invoiceNumber}${suffix}`,
+        status: 'pendente' as const,
+        paymentMethod: mapPayCode(inst.paymentMethodCode),
         costCenterId: selectedCC?.id,
         costCenterName: selectedCC?.name,
-        notes: `Lançamento automático via NF-e XML. Chave: ${parsedData.accessKey || 'N/A'}. ${parsedData.itemsSummary}.${stockNote}\n${itemsEmbed}`,
+        notes: `Lançamento de parcela via NF-e XML. Parcela ${inst.number}/${totalParcs}. Prazo: ${inst.daysInterval} dias.${contabNote}${obsNote} Chave: ${parsedData.accessKey || 'N/A'}.${stockNote}\n${itemsEmbed}`,
+        receiptUrl: inst.documentFileUrl,
+        receiptName: inst.documentFileName,
         nfeItems: parsedData.items,
         createdAt: new Date().toISOString(),
       };
+    });
 
-      onAddExpenseFromNfe(primaryExpenseRecord);
+    onAddExpenseFromNfe(installmentRecords);
 
-      setNotasLancadas(prev => {
-        const idx = prev.findIndex(e => e.id === expenseId);
-        if (idx >= 0) {
-          const copy = [...prev];
-          copy[idx] = primaryExpenseRecord;
-          return copy;
-        }
-        return [primaryExpenseRecord, ...prev];
-      });
-    }
+    setNotasLancadas(prev => {
+      const remaining = prev.filter(e => !installmentRecords.some(r => r.id === e.id));
+      return [...installmentRecords, ...remaining];
+    });
 
-    saveCachedNfe({
+    // Salva cópia em cache com as parcelas atualizadas
+    const updatedParsedData: ParsedNfeData = {
       ...parsedData,
+      installments: detailedInstallments.map(i => ({
+        number: i.number,
+        dueDate: i.dueDate,
+        amount: i.amount
+      })),
       costCenterId: selectedCC?.id,
       costCenterName: selectedCC?.name,
-    }, expenseId);
+    };
 
+    saveCachedNfe(updatedParsedData, expenseId);
+
+    setIsInstallmentsModalOpen(false);
     const isEdit = Boolean(editingExpenseId);
     setErrorMessage('');
     setSuccessMessage(
       isEdit 
-        ? `Nota Fiscal ${parsedData.invoiceNumber} atualizada com sucesso no Centro de Custo "${selectedCC?.name}"!`
-        : `Nota Fiscal ${parsedData.invoiceNumber} importada com sucesso! Lançamento gerado em Contas a Pagar no Centro de Custo "${selectedCC?.name}". ${
+        ? `Nota Fiscal ${parsedData.invoiceNumber} (${totalParcs} parcela(s)) atualizada com sucesso no Centro de Custo "${selectedCC?.name}"!`
+        : `Nota Fiscal ${parsedData.invoiceNumber} importada com sucesso! ${totalParcs} parcela(s) gravada(s) em Contas a Pagar no Centro de Custo "${selectedCC?.name}". ${
             updatedSummary.length > 0
               ? `${updatedSummary.length} movimentação(ões) física(s) adicionada(s) ao estoque.`
               : ''
@@ -1674,6 +1685,10 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
     }
     setSessionCreatedProductIds(new Set());
     setTimeout(() => setSuccessMessage(''), 5000);
+  };
+
+  const handleConfirmImport = () => {
+    handleProceedToInstallments();
   };
 
   // Abre uma nota já gravada para visualização e edição
@@ -2327,16 +2342,43 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                         </div>
                       </div>
 
-                      <div className="flex items-center space-x-2">
-                        <Receipt className="w-4 h-4 text-sky-900 dark:text-stone-400" />
-                        <div>
-                          <span className="text-black/80 font-bold block text-[11px]">Condição / Cobrança:</span>
-                          <span className="font-black text-black dark:text-stone-200">
-                            {parsedData.installments && parsedData.installments.length > 1
-                              ? `${parsedData.installments.length} parcelas identificadas no XML`
-                              : 'Parcela única / À vista'}
-                          </span>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white/70 p-2.5 rounded-xl border border-[#96c1e5]">
+                        <div className="flex items-center space-x-2">
+                          <Receipt className="w-4 h-4 text-sky-900 shrink-0" />
+                          <div>
+                            <span className="text-black/80 font-bold block text-[11px]">Condição / Parcelas:</span>
+                            <span className="font-black text-black">
+                              {parsedData.installments && parsedData.installments.length > 1
+                                ? `${parsedData.installments.length} parcelas identificadas no XML`
+                                : `${userInstallmentCount} parcela(s)`}
+                            </span>
+                          </div>
                         </div>
+
+                        <button
+                          type="button"
+                          id="btn-abrir-janela-2-parcelas-inline"
+                          onClick={() => {
+                            if (!selectedCostCenterId) {
+                              setCostCenterError(true);
+                              setErrorMessage('Selecione primeiro o Centro de Custo para detalhar as parcelas.');
+                              const selectEl = document.getElementById('select-centro-de-custo-nfe');
+                              if (selectEl) {
+                                selectEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                selectEl.focus();
+                              }
+                              return;
+                            }
+                            setCostCenterError(false);
+                            setErrorMessage('');
+                            setIsInstallmentsModalOpen(true);
+                          }}
+                          className="px-3 py-1.5 bg-[#0963cb] hover:bg-[#0752a8] text-white rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer shadow-2xs"
+                          title="Abrir Janela 2 (Grade de Parcelas com Códigos Contábeis e Vencimentos)"
+                        >
+                          <Layers className="w-3.5 h-3.5" />
+                          <span>Detalhamento de Parcelas (Janela 2)</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -2427,11 +2469,12 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                           <button
                             type="button"
                             id="btn-confirmar-importacao-nfe"
-                            onClick={handleConfirmImport}
+                            onClick={handleProceedToInstallments}
                             className="w-full sm:flex-1 py-3.5 px-5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black rounded-xl shadow-md transition flex items-center justify-center space-x-2 cursor-pointer active:scale-98 text-sm min-h-[50px]"
+                            title="Avançar para a Janela 2 (Parcelas Geradas com Base no XML)"
                           >
                             <Check className="w-5 h-5 stroke-[2.5]" />
-                            <span>Salvar Alterações da Nota</span>
+                            <span>Salvar Alterações da Nota (Avançar para Parcelas)</span>
                           </button>
                         </div>
                       </div>
@@ -3227,6 +3270,23 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Janela 2: Detalhamento de Parcelas Geradas com Base no XML */}
+      {parsedData && (
+        <NfeInstallmentsModal
+          isOpen={isInstallmentsModalOpen}
+          onClose={() => setIsInstallmentsModalOpen(false)}
+          invoiceNumber={parsedData.invoiceNumber}
+          supplierName={parsedData.supplier}
+          issueDate={parsedData.issueDate}
+          totalAmount={parsedData.totalAmount}
+          initialInstallmentsCount={userInstallmentCount}
+          existingInstallments={parsedData.installments}
+          defaultPaymentMethod={parsedData.paymentMethod}
+          suggestedCategory={parsedData.suggestedCategory}
+          onConfirmAndSave={handleConfirmAndSaveInstallments}
+        />
       )}
 
       {/* Modal de Validação / Cadastro de Fornecedor acionado automaticamente na leitura de XML */}
