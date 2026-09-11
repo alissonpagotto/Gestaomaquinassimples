@@ -30,7 +30,8 @@ import {
   Clock,
   ShieldCheck,
   Tag,
-  Receipt
+  Receipt,
+  Pencil
 } from 'lucide-react';
 import { Expense, CompanyProfile, InventoryItem, Supplier, CostCenter, ExpenseCategory, PaymentMethod } from '../../types';
 import { 
@@ -461,10 +462,23 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
   const [selectedCostCenterId, setSelectedCostCenterId] = useState<string>('');
   const [costCenterError, setCostCenterError] = useState<boolean>(false);
 
-  // Modal para adicionar novo Centro de Custo rapidamente
+  // Modal e estados para gerenciamento de Centro de Custo (Criação, Edição e Exclusão)
   const [isQuickCostCenterOpen, setIsQuickCostCenterOpen] = useState<boolean>(false);
+  const [costCenterToEdit, setCostCenterToEdit] = useState<CostCenter | null>(null);
   const [newCostCenterName, setNewCostCenterName] = useState<string>('');
   const [newCostCenterType, setNewCostCenterType] = useState<CostCenter['type']>('geral');
+
+  // Estados para exclusão com integridade fiscal
+  const [isDeleteCostCenterModalOpen, setIsDeleteCostCenterModalOpen] = useState<boolean>(false);
+  const [costCenterToDelete, setCostCenterToDelete] = useState<CostCenter | null>(null);
+  const [costCenterIntegrityNotice, setCostCenterIntegrityNotice] = useState<{
+    isInUse: boolean;
+    expensesCount: number;
+    notasCount: number;
+  } | null>(null);
+
+  // Modal para listar e gerenciar todos os centros de custo
+  const [isManageCostCentersListOpen, setIsManageCostCentersListOpen] = useState<boolean>(false);
 
   // Modal de validação/conferência de fornecedor
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState<boolean>(false);
@@ -475,22 +489,87 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
     cnpjOrCpf?: string;
   } | null>(null);
 
-  // Criação rápida de Centro de Custo no fluxo da NF-e
-  const handleCreateQuickCostCenter = () => {
-    if (!newCostCenterName.trim()) return;
-    const newCC: CostCenter = {
-      id: `cc_${Date.now()}`,
-      name: newCostCenterName.trim(),
-      type: newCostCenterType || 'geral',
-    };
-    const updated = [...localCostCenters, newCC];
-    saveCostCenters(updated);
-    setSelectedCostCenterId(newCC.id);
-    setCostCenterError(false);
+  // Abre modal para criar novo Centro de Custo
+  const handleOpenCreateCostCenter = () => {
+    setCostCenterToEdit(null);
     setNewCostCenterName('');
-    setIsQuickCostCenterOpen(false);
-    setSuccessMessage(`Centro de Custo "${newCC.name}" criado e selecionado com sucesso!`);
+    setNewCostCenterType('geral');
+    setIsQuickCostCenterOpen(true);
+  };
+
+  // Abre modal para editar um Centro de Custo específico
+  const handleOpenEditCostCenter = (cc: CostCenter) => {
+    setCostCenterToEdit(cc);
+    setNewCostCenterName(cc.name);
+    setNewCostCenterType(cc.type || 'geral');
+    setIsQuickCostCenterOpen(true);
+  };
+
+  // Salva ou atualiza Centro de Custo (Criar ou Editar)
+  const handleSaveCostCenter = () => {
+    if (!newCostCenterName.trim()) return;
+
+    if (costCenterToEdit) {
+      // Edição de Centro de Custo existente
+      const updated = localCostCenters.map(c => 
+        c.id === costCenterToEdit.id 
+          ? { ...c, name: newCostCenterName.trim(), type: newCostCenterType } 
+          : c
+      );
+      saveCostCenters(updated);
+      setSuccessMessage(`Centro de Custo "${newCostCenterName.trim()}" atualizado com sucesso!`);
+      setTimeout(() => setSuccessMessage(''), 4000);
+      setIsQuickCostCenterOpen(false);
+      setCostCenterToEdit(null);
+    } else {
+      // Criação rápida de novo Centro de Custo
+      const newCC: CostCenter = {
+        id: `cc_${Date.now()}`,
+        name: newCostCenterName.trim(),
+        type: newCostCenterType || 'geral',
+      };
+      const updated = [...localCostCenters, newCC];
+      saveCostCenters(updated);
+      setSelectedCostCenterId(newCC.id);
+      setCostCenterError(false);
+      setSuccessMessage(`Centro de Custo "${newCC.name}" criado e selecionado com sucesso!`);
+      setTimeout(() => setSuccessMessage(''), 4000);
+      setIsQuickCostCenterOpen(false);
+    }
+    setNewCostCenterName('');
+  };
+
+  // Solicita exclusão com verificação de integridade fiscal
+  const handleRequestDeleteCostCenter = (cc: CostCenter) => {
+    const expensesCount = (expenses || []).filter(e => e.costCenterId === cc.id).length;
+    const notasCount = (notasLancadas || []).filter(n => n.costCenterId === cc.id).length;
+    const inUse = expensesCount > 0 || notasCount > 0;
+
+    setCostCenterToDelete(cc);
+    setCostCenterIntegrityNotice({
+      isInUse: inUse,
+      expensesCount,
+      notasCount,
+    });
+    setIsDeleteCostCenterModalOpen(true);
+  };
+
+  // Confirma exclusão se liberado pela integridade fiscal
+  const handleConfirmDeleteCostCenter = () => {
+    if (!costCenterToDelete) return;
+    if (costCenterIntegrityNotice?.isInUse) return; // Bloqueio preventivo
+
+    const updated = localCostCenters.filter(c => c.id !== costCenterToDelete.id);
+    saveCostCenters(updated);
+
+    if (selectedCostCenterId === costCenterToDelete.id) {
+      setSelectedCostCenterId('');
+    }
+
+    setSuccessMessage(`Centro de Custo "${costCenterToDelete.name}" excluído com sucesso!`);
     setTimeout(() => setSuccessMessage(''), 4000);
+    setIsDeleteCostCenterModalOpen(false);
+    setCostCenterToDelete(null);
   };
 
   // Salva / valida dados do fornecedor vindo do SupplierModal
@@ -1729,24 +1808,24 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
 
       {/* 2. PAINEL DADOS EXTRAÍDOS DA NOTA - APARECE DINAMICAMENTE LOGO ACIMA DA TABELA DE HISTÓRICO */}
       {parsedData && (
-        <div id="painel-itens-nfe-aberta" className="w-full bg-white dark:bg-stone-900 border-2 border-sky-400/50 dark:border-sky-600/50 rounded-2xl p-5 sm:p-6 shadow-md space-y-4 animate-in fade-in duration-200">
+        <div id="painel-itens-nfe-aberta" className="w-full bg-[#0a8bc1] dark:bg-stone-900 border-2 border-white/30 dark:border-stone-800 rounded-2xl p-4 sm:p-6 shadow-xl space-y-4 animate-in fade-in duration-200 text-black">
           
           {/* Banner de Modo de Edição ou Importação Ativo */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-800 rounded-xl animate-in fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-[#b0d2ed] dark:bg-stone-800 border border-[#96c1e5] dark:border-stone-700 rounded-xl animate-in fade-in text-black">
             <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-lg bg-sky-600 text-white flex items-center justify-center font-bold shrink-0">
+              <div className="w-9 h-9 rounded-lg bg-sky-800 text-white flex items-center justify-center font-bold shrink-0 shadow-2xs">
                 <FileEdit className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs font-black uppercase tracking-wider text-sky-800 dark:text-sky-300">
+                  <span className="text-xs font-black uppercase tracking-wider text-black dark:text-stone-100">
                     {editingExpenseId ? 'Editando Detalhes da Nota Fiscal' : 'Itens Identificados na Nota Fiscal'}
                   </span>
-                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-sky-200 dark:bg-sky-900 text-sky-900 dark:text-sky-200 font-mono">
+                  <span className="px-2 py-0.5 text-[10px] font-black rounded-md bg-white/90 text-black border border-[#96c1e5] font-mono">
                     {parsedData.invoiceNumber}
                   </span>
                 </div>
-                <p className="text-xs text-stone-600 dark:text-stone-300 mt-0.5">
+                <p className="text-xs text-black/90 dark:text-stone-300 mt-0.5 font-medium">
                   Revise os produtos, quantidades, valores e vínculos com o estoque antes de confirmar.
                 </p>
               </div>
@@ -1761,7 +1840,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                   setSearchNfeNumber('');
                   setEditingExpenseId(null);
                 }}
-                className="inline-flex items-center space-x-1 text-xs text-stone-500 hover:text-rose-600 transition cursor-pointer font-medium px-2.5 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                className="inline-flex items-center space-x-1 text-xs text-black hover:text-rose-800 transition cursor-pointer font-bold px-2.5 py-1.5 rounded-lg hover:bg-white/40"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Limpar</span>
@@ -1770,7 +1849,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                 type="button"
                 id="btn-voltar-para-lista-topo"
                 onClick={handleBackToList}
-                className="inline-flex items-center justify-center space-x-1.5 px-3 py-1.5 bg-white dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-xs font-bold rounded-xl border border-stone-300 dark:border-stone-700 shadow-xs transition cursor-pointer shrink-0"
+                className="inline-flex items-center justify-center space-x-1.5 px-3 py-1.5 bg-white/90 hover:bg-white text-black text-xs font-black rounded-xl border border-[#96c1e5] shadow-2xs transition cursor-pointer shrink-0"
               >
                 <X className="w-3.5 h-3.5" />
                 <span>Fechar</span>
@@ -1778,15 +1857,15 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
             </div>
           </div>
 
-          <div className="space-y-5 animate-in fade-in">
+          <div className="space-y-4 animate-in fade-in">
                 {/* Aviso amigável de CNPJ (não bloqueante) */}
                 {parsedData.recipientCnpj && companyProfile?.cnpjCpf && (
                   parsedData.recipientCnpj.replace(/\D/g, '') !== companyProfile.cnpjCpf.replace(/\D/g, '')
                 ) && (
-                  <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl flex items-start space-x-2.5 text-amber-800 dark:text-amber-300">
-                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                    <div className="text-xs leading-relaxed">
-                      <strong className="block font-bold mb-0.5">Aviso: CNPJ da nota difere do sistema</strong>
+                  <div className="p-3.5 bg-[#b0d2ed] dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-xl flex items-start space-x-2.5 text-black">
+                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-900" />
+                    <div className="text-xs leading-relaxed font-medium">
+                      <strong className="block font-bold mb-0.5 text-black">Aviso: CNPJ da nota difere do sistema</strong>
                       O destinatário na nota ({formatCpfCnpj(parsedData.recipientCnpj)}) difere do CNPJ cadastrado no sistema ({formatCpfCnpj(companyProfile.cnpjCpf)}). Os dados foram carregados normalmente e você pode prosseguir com a importação.
                     </div>
                   </div>
@@ -1794,12 +1873,12 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
 
                 {/* Chave de Acesso em Destaque */}
                 {parsedData.accessKey && (
-                  <div className="p-3.5 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="p-3.5 rounded-xl bg-[#b0d2ed] dark:bg-stone-800/60 border border-[#96c1e5] dark:border-stone-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-black">
                     <div className="flex items-center space-x-2">
-                      <Hash className="w-4 h-4 text-stone-400" />
-                      <span className="text-xs font-bold text-stone-600 dark:text-stone-300">Chave de Acesso:</span>
+                      <Hash className="w-4 h-4 text-sky-900" />
+                      <span className="text-xs font-black text-black">Chave de Acesso:</span>
                     </div>
-                    <span className="font-mono text-xs sm:text-sm font-bold text-sky-600 dark:text-sky-400 break-all select-all">
+                    <span className="font-mono text-xs sm:text-sm font-black text-black break-all select-all">
                       {parsedData.accessKey}
                     </span>
                   </div>
@@ -1809,34 +1888,34 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                 <div className="space-y-4 w-full">
                   
                   {/* Informações Principais da Nota Fiscal em 4 Colunas */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 rounded-xl bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-700 text-xs sm:text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 rounded-xl bg-[#b0d2ed] dark:bg-stone-800/40 border border-[#96c1e5] dark:border-stone-700 text-xs sm:text-sm text-black">
                     <div>
-                      <span className="text-stone-500 block text-xs">Número da NF-e:</span>
-                      <span className="font-bold text-stone-900 dark:text-stone-100 font-mono text-sm">
+                      <span className="text-black/80 font-bold block text-xs">Número da NF-e:</span>
+                      <span className="font-black text-black dark:text-stone-100 font-mono text-sm">
                         {parsedData.invoiceNumber} {parsedData.series ? `(Série ${parsedData.series})` : ''}
                       </span>
                     </div>
                     <div>
-                      <span className="text-stone-500 block text-xs">Data de Emissão:</span>
-                      <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                      <span className="text-black/80 font-bold block text-xs">Data de Emissão:</span>
+                      <span className="font-black text-black dark:text-stone-100 text-sm">
                         {formatDateBR(parsedData.issueDate)}
                       </span>
                     </div>
                     <div>
-                      <span className="text-stone-500 block text-xs">Emitente / Fornecedor:</span>
-                      <span className="font-bold text-stone-900 dark:text-stone-100 block text-sm truncate" title={parsedData.supplier}>
+                      <span className="text-black/80 font-bold block text-xs">Emitente / Fornecedor:</span>
+                      <span className="font-black text-black dark:text-stone-100 block text-sm truncate" title={parsedData.supplier}>
                         {parsedData.supplier}
                       </span>
                       {parsedData.supplierCnpj && (
-                        <span className="text-xs text-stone-500 font-mono block">
+                        <span className="text-xs text-black/80 font-mono block font-bold">
                           CNPJ: {formatCpfCnpj(parsedData.supplierCnpj)}
                         </span>
                       )}
                       <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black ${
                           supplierValidationNotice?.isNew
-                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            ? 'bg-amber-100 text-amber-950 border border-amber-300'
+                            : 'bg-emerald-100 text-emerald-950 border border-emerald-300'
                         }`}>
                           {supplierValidationNotice?.isNew ? 'Novo Fornecedor' : 'Fornecedor Cadastrado'}
                         </span>
@@ -1852,21 +1931,21 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                             if (s) setSupplierForModal(s);
                             setIsSupplierModalOpen(true);
                           }}
-                          className="text-[11px] font-bold text-sky-600 hover:text-sky-700 dark:text-sky-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                          className="text-[11px] font-black text-black hover:text-sky-950 hover:underline inline-flex items-center gap-1 cursor-pointer bg-white/70 px-1.5 py-0.5 rounded border border-[#96c1e5]"
                           title="Validar dados e ficha cadastral do fornecedor"
                         >
-                          <Building2 className="w-3 h-3" />
+                          <Building2 className="w-3 h-3 text-sky-800" />
                           <span>Validar Ficha</span>
                         </button>
                       </div>
                     </div>
                     <div>
-                      <span className="text-stone-500 block text-xs">Destinatário:</span>
-                      <span className="font-bold text-stone-900 dark:text-stone-100 block text-sm">
+                      <span className="text-black/80 font-bold block text-xs">Destinatário:</span>
+                      <span className="font-black text-black dark:text-stone-100 block text-sm">
                         {parsedData.recipient || companyProfile?.name || 'Não informado'}
                       </span>
                       {parsedData.recipientCnpj && (
-                        <span className="text-xs text-stone-500 font-mono">
+                        <span className="text-xs text-black/80 font-mono font-bold block">
                           CNPJ: {formatCpfCnpj(parsedData.recipientCnpj)}
                         </span>
                       )}
@@ -1875,17 +1954,17 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
 
                   {/* Tabela de Produtos da NF-e (100% da Largura da Tela) */}
                   {parsedData.items && parsedData.items.length > 0 && (
-                    <div className="border border-stone-200 dark:border-stone-700 rounded-xl overflow-hidden shadow-xs w-full">
-                      <div className="bg-stone-100 dark:bg-stone-800/80 px-4 py-2.5 flex items-center justify-between">
-                        <div className="flex items-center space-x-2 text-xs font-bold text-stone-800 dark:text-stone-200">
-                          <Package className="w-4 h-4 text-sky-600" />
+                    <div className="border border-[#96c1e5] dark:border-stone-700 rounded-xl overflow-hidden shadow-2xs w-full bg-[#b0d2ed]">
+                      <div className="bg-[#96c1e5]/90 dark:bg-stone-800/80 px-4 py-2.5 flex items-center justify-between text-black">
+                        <div className="flex items-center space-x-2 text-xs font-black text-black dark:text-stone-200">
+                          <Package className="w-4 h-4 text-sky-900" />
                           <span>Itens Identificados na Nota Fiscal ({parsedData.items.length})</span>
                         </div>
-                        <span className="text-[11px] text-sky-700 dark:text-sky-300 font-medium">Campos editáveis e vinculação De-Para com o estoque</span>
+                        <span className="text-[11px] text-black font-bold">Campos editáveis e vinculação De-Para com o estoque</span>
                       </div>
                       <div className="overflow-x-auto max-h-80 overflow-y-auto w-full">
                         <table className="w-full text-left text-xs">
-                          <thead className="bg-stone-50 dark:bg-stone-800/40 text-stone-500 uppercase text-[10px] font-bold border-b border-stone-200 dark:border-stone-700 sticky top-0 z-10">
+                          <thead className="bg-[#b0d2ed] dark:bg-stone-800/40 text-black uppercase text-[10px] font-black border-b border-[#96c1e5] dark:border-stone-700 sticky top-0 z-10">
                             <tr>
                               <th className="py-2.5 px-3 w-14 text-center">Cód</th>
                               <th className="py-2.5 px-3 min-w-[200px]">Descrição do Produto</th>
@@ -1896,7 +1975,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                               <th className="py-2.5 px-3 text-right w-28">Total</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-stone-100 dark:divide-stone-800 bg-white dark:bg-stone-900/40">
+                          <tbody className="divide-y divide-[#96c1e5]/40 bg-white/95 dark:bg-stone-900/40 text-black">
                             {parsedData.items.map((item, idx) => (
                               <tr key={idx} className="hover:bg-stone-50/70 dark:hover:bg-stone-800/30 transition-colors">
                                 <td className="py-2.5 px-3 font-mono text-stone-500 text-[11px] text-center align-middle">{item.code || '-'}</td>
@@ -2017,64 +2096,156 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                   {/* Card de Validação Financeira & Seleção Obrigatória de Centro de Custo */}
                   <div className={`p-4 sm:p-5 rounded-2xl border transition-all ${
                     costCenterError 
-                      ? 'bg-rose-50/70 dark:bg-rose-950/30 border-rose-400 dark:border-rose-700 ring-2 ring-rose-500/20' 
-                      : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-700 shadow-xs'
+                      ? 'bg-rose-50/95 dark:bg-rose-950/30 border-rose-500 ring-2 ring-rose-500/30' 
+                      : 'bg-[#b0d2ed] dark:bg-stone-900 border-[#96c1e5] dark:border-stone-700 shadow-2xs text-black'
                   }`}>
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                       <div className="flex-1 space-y-1.5">
                         <div className="flex items-center space-x-2">
-                          <Building2 className={`w-4 h-4 ${costCenterError ? 'text-rose-600' : 'text-sky-600'}`} />
-                          <h4 className="text-xs font-black uppercase tracking-wider text-stone-800 dark:text-stone-200">
+                          <Building2 className={`w-4 h-4 ${costCenterError ? 'text-rose-600' : 'text-sky-900 dark:text-sky-400'}`} />
+                          <h4 className="text-xs font-black uppercase tracking-wider text-black dark:text-stone-200">
                             Classificação Financeira & Centro de Custo
                           </h4>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-600 text-white shadow-2xs">
                             Seleção Obrigatória
                           </span>
                         </div>
-                        <p className="text-xs text-stone-500 leading-relaxed">
+                        <p className="text-xs text-black dark:text-stone-300 leading-relaxed font-medium">
                           Antes de finalizar o salvamento da nota importada, informe a qual Centro de Custo esta despesa pertence (Safra, Maquinários, Administrativo ou Geral) para integração com o Contas a Pagar.
                         </p>
                       </div>
 
                       <div className="lg:w-96 flex flex-col gap-1.5">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-1 flex-wrap">
                           <label 
                             htmlFor="select-centro-de-custo-nfe"
-                            className="block text-xs font-bold text-stone-700 dark:text-stone-300"
+                            className="block text-xs font-black text-black dark:text-stone-300"
                           >
                             Centro de Custo <span className="text-rose-600 font-black">*</span>
                           </label>
+                          
+                          {/* Ações de Gerenciamento: + Novo Centro, Lápis (Editar) e Lixeira (Excluir) */}
+                          <div className="flex items-center space-x-1">
+                            <button
+                              type="button"
+                              id="btn-novo-centro-custo"
+                              onClick={handleOpenCreateCostCenter}
+                              className="text-[11px] font-black text-black hover:text-sky-950 bg-white/90 hover:bg-white px-2 py-0.5 rounded-lg border border-[#96c1e5] shadow-2xs transition cursor-pointer inline-flex items-center gap-1"
+                              title="Cadastrar novo Centro de Custo"
+                            >
+                              <Plus className="w-3 h-3 text-sky-700" />
+                              <span>+ Novo Centro</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              id="btn-editar-centro-topo"
+                              onClick={() => {
+                                const cc = localCostCenters.find(c => c.id === selectedCostCenterId);
+                                if (cc) {
+                                  handleOpenEditCostCenter(cc);
+                                } else {
+                                  setIsManageCostCentersListOpen(true);
+                                }
+                              }}
+                              className={`p-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                                selectedCostCenterId
+                                  ? 'bg-amber-100 hover:bg-amber-200 border-amber-300 text-amber-950 shadow-2xs'
+                                  : 'bg-white/80 hover:bg-white border-[#96c1e5] text-black'
+                              }`}
+                              title={selectedCostCenterId ? `Editar ${localCostCenters.find(c => c.id === selectedCostCenterId)?.name}` : "Gerenciar e Editar Centros de Custo"}
+                            >
+                              <Pencil className="w-3.5 h-3.5 text-amber-800" />
+                              <span className="text-[10px] font-black">Editar</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              id="btn-excluir-centro-topo"
+                              onClick={() => {
+                                const cc = localCostCenters.find(c => c.id === selectedCostCenterId);
+                                if (cc) {
+                                  handleRequestDeleteCostCenter(cc);
+                                } else {
+                                  setIsManageCostCentersListOpen(true);
+                                }
+                              }}
+                              className={`p-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                                selectedCostCenterId
+                                  ? 'bg-rose-100 hover:bg-rose-200 border-rose-300 text-rose-950 shadow-2xs'
+                                  : 'bg-white/80 hover:bg-white border-[#96c1e5] text-black'
+                              }`}
+                              title={selectedCostCenterId ? `Excluir ${localCostCenters.find(c => c.id === selectedCostCenterId)?.name}` : "Gerenciar e Excluir Centros de Custo"}
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-rose-800" />
+                              <span className="text-[10px] font-black">Excluir</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <select
+                            id="select-centro-de-custo-nfe"
+                            value={selectedCostCenterId}
+                            onChange={(e) => {
+                              setSelectedCostCenterId(e.target.value);
+                              if (e.target.value) setCostCenterError(false);
+                            }}
+                            className={`w-full px-3 py-2 text-xs font-bold rounded-xl border bg-white dark:bg-stone-800 text-black dark:text-stone-100 focus:outline-hidden transition cursor-pointer shadow-2xs ${
+                              costCenterError 
+                                ? 'border-rose-500 focus:ring-2 focus:ring-rose-500/30' 
+                                : 'border-[#96c1e5] dark:border-stone-700 focus:ring-2 focus:ring-sky-500/20'
+                            }`}
+                          >
+                            <option value="">-- Selecione o Centro de Custo (Obrigatório) --</option>
+                            {localCostCenters.map(cc => (
+                              <option key={cc.id} value={cc.id}>
+                                {cc.name} ({cc.type.toUpperCase()})
+                              </option>
+                            ))}
+                          </select>
+
+                          {/* Ícone de Lápis (Editar) Inline */}
                           <button
                             type="button"
-                            onClick={() => setIsQuickCostCenterOpen(true)}
-                            className="text-[11px] font-bold text-sky-600 hover:text-sky-700 dark:text-sky-400 cursor-pointer inline-flex items-center gap-1"
+                            id="btn-editar-centro-inline"
+                            onClick={() => {
+                              const cc = localCostCenters.find(c => c.id === selectedCostCenterId);
+                              if (cc) handleOpenEditCostCenter(cc);
+                            }}
+                            disabled={!selectedCostCenterId}
+                            className={`p-2 rounded-xl border transition shrink-0 cursor-pointer ${
+                              selectedCostCenterId 
+                                ? 'bg-amber-100 hover:bg-amber-200 border-amber-300 text-amber-950 shadow-2xs' 
+                                : 'bg-white/40 border-[#96c1e5] text-stone-400 opacity-40 cursor-not-allowed'
+                            }`}
+                            title={selectedCostCenterId ? `Editar ${localCostCenters.find(c => c.id === selectedCostCenterId)?.name}` : "Selecione um centro para editar"}
                           >
-                            <Plus className="w-3 h-3" />
-                            <span>Novo Centro</span>
+                            <Pencil className="w-3.5 h-3.5 text-amber-800" />
+                          </button>
+
+                          {/* Ícone de Lixeira (Excluir) Inline */}
+                          <button
+                            type="button"
+                            id="btn-excluir-centro-inline"
+                            onClick={() => {
+                              const cc = localCostCenters.find(c => c.id === selectedCostCenterId);
+                              if (cc) handleRequestDeleteCostCenter(cc);
+                            }}
+                            disabled={!selectedCostCenterId}
+                            className={`p-2 rounded-xl border transition shrink-0 cursor-pointer ${
+                              selectedCostCenterId 
+                                ? 'bg-rose-100 hover:bg-rose-200 border-rose-300 text-rose-950 shadow-2xs' 
+                                : 'bg-white/40 border-[#96c1e5] text-stone-400 opacity-40 cursor-not-allowed'
+                            }`}
+                            title={selectedCostCenterId ? `Excluir ${localCostCenters.find(c => c.id === selectedCostCenterId)?.name}` : "Selecione um centro para excluir"}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-rose-800" />
                           </button>
                         </div>
-                        <select
-                          id="select-centro-de-custo-nfe"
-                          value={selectedCostCenterId}
-                          onChange={(e) => {
-                            setSelectedCostCenterId(e.target.value);
-                            if (e.target.value) setCostCenterError(false);
-                          }}
-                          className={`w-full px-3 py-2.5 text-xs font-semibold rounded-xl border bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-hidden transition cursor-pointer ${
-                            costCenterError 
-                              ? 'border-rose-500 focus:ring-2 focus:ring-rose-500/30' 
-                              : 'border-stone-300 dark:border-stone-700 focus:ring-2 focus:ring-sky-500/20'
-                          }`}
-                        >
-                          <option value="">-- Selecione o Centro de Custo (Obrigatório) --</option>
-                          {localCostCenters.map(cc => (
-                            <option key={cc.id} value={cc.id}>
-                              {cc.name} ({cc.type.toUpperCase()})
-                            </option>
-                          ))}
-                        </select>
+
                         {costCenterError && (
-                          <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1 mt-0.5">
+                          <span className="text-[11px] font-black text-rose-700 dark:text-rose-400 flex items-center gap-1 mt-0.5">
                             <AlertCircle className="w-3.5 h-3.5" />
                             Bloqueio de Validação: Escolha o Centro de Custo para salvar a nota.
                           </span>
@@ -2083,32 +2254,32 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                     </div>
 
                     {/* Informações Financeiras Complementares Extraídas do XML */}
-                    <div className="mt-4 pt-3 border-t border-stone-200/80 dark:border-stone-800 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="mt-4 pt-3 border-t border-[#96c1e5] dark:border-stone-800 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                       <div className="flex items-center space-x-2">
-                        <Calendar className="w-4 h-4 text-stone-400" />
+                        <Calendar className="w-4 h-4 text-sky-900 dark:text-stone-400" />
                         <div>
-                          <span className="text-stone-500 block text-[11px]">Vencimento Principal:</span>
-                          <span className="font-bold text-stone-800 dark:text-stone-200">
+                          <span className="text-black/80 font-bold block text-[11px]">Vencimento Principal:</span>
+                          <span className="font-black text-black dark:text-stone-200">
                             {formatDateBR(parsedData.dueDate || parsedData.issueDate)}
                           </span>
                         </div>
                       </div>
 
                       <div className="flex items-center space-x-2">
-                        <CreditCard className="w-4 h-4 text-stone-400" />
+                        <CreditCard className="w-4 h-4 text-sky-900 dark:text-stone-400" />
                         <div>
-                          <span className="text-stone-500 block text-[11px]">Forma de Pagamento:</span>
-                          <span className="font-bold text-stone-800 dark:text-stone-200 capitalize">
+                          <span className="text-black/80 font-bold block text-[11px]">Forma de Pagamento:</span>
+                          <span className="font-black text-black dark:text-stone-200 capitalize">
                             {parsedData.paymentMethod || 'Boleto Bancário'}
                           </span>
                         </div>
                       </div>
 
                       <div className="flex items-center space-x-2">
-                        <Receipt className="w-4 h-4 text-stone-400" />
+                        <Receipt className="w-4 h-4 text-sky-900 dark:text-stone-400" />
                         <div>
-                          <span className="text-stone-500 block text-[11px]">Condição / Cobrança:</span>
-                          <span className="font-bold text-stone-800 dark:text-stone-200">
+                          <span className="text-black/80 font-bold block text-[11px]">Condição / Cobrança:</span>
+                          <span className="font-black text-black dark:text-stone-200">
                             {parsedData.installments && parsedData.installments.length > 1
                               ? `${parsedData.installments.length} parcelas identificadas no XML`
                               : 'Parcela única / À vista'}
@@ -2119,29 +2290,29 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                   </div>
 
                   {/* Card de Resumo Horizontal no Rodapé (100% de Largura) */}
-                  <div className="p-4 sm:p-5 rounded-2xl bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-700 w-full shadow-xs">
+                  <div className="p-4 sm:p-5 rounded-2xl bg-[#b0d2ed] dark:bg-stone-800/40 border border-[#96c1e5] dark:border-stone-700 w-full shadow-2xs text-black">
                     <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                       
                       {/* Grid Horizontal dos 4 Blocos de Informação */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 flex-1">
                         
                         {/* Bloco 1: Total dos Produtos */}
-                        <div className="p-3.5 bg-white dark:bg-stone-900 rounded-xl border border-stone-200/80 dark:border-stone-700/80 flex flex-col justify-between">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 block mb-1">
+                        <div className="p-3.5 bg-white/90 dark:bg-stone-900 rounded-xl border border-[#96c1e5] dark:border-stone-700/80 flex flex-col justify-between shadow-2xs">
+                          <span className="text-[11px] font-black uppercase tracking-wider text-black block mb-1">
                             Total dos Produtos
                           </span>
-                          <span className="text-base font-bold text-stone-900 dark:text-stone-100 font-mono">
+                          <span className="text-base font-black text-black dark:text-stone-100 font-mono">
                             {formatCurrencyBRL(parsedData.productsAmount || parsedData.totalAmount)}
                           </span>
                         </div>
 
                         {/* Bloco 2: Categoria Sugerida */}
-                        <div className="p-3.5 bg-white dark:bg-stone-900 rounded-xl border border-stone-200/80 dark:border-stone-700/80 flex flex-col justify-between">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 block mb-1">
+                        <div className="p-3.5 bg-white/90 dark:bg-stone-900 rounded-xl border border-[#96c1e5] dark:border-stone-700/80 flex flex-col justify-between shadow-2xs">
+                          <span className="text-[11px] font-black uppercase tracking-wider text-black block mb-1">
                             Categoria Sugerida
                           </span>
                           <div>
-                            <span className="inline-block font-bold px-2.5 py-1 rounded-lg bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 text-xs">
+                            <span className="inline-block font-black px-2.5 py-1 rounded-lg bg-sky-100 text-sky-950 border border-sky-200 text-xs">
                               {parsedData.suggestedCategory === 'cat_combustivel' ? 'Combustível & Arla' : 
                                parsedData.suggestedCategory === 'cat_manutencao' ? 'Peças & Manutenção' : 
                                parsedData.suggestedCategory === 'cat_lona_embalagem' ? 'Lonas & Embalagens' : 'Insumos Agrícolas'}
@@ -2150,21 +2321,21 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                         </div>
 
                         {/* Bloco 3: Vinculação ao Estoque */}
-                        <div className="p-3.5 bg-white dark:bg-stone-900 rounded-xl border border-stone-200/80 dark:border-stone-700/80 flex flex-col justify-between">
+                        <div className="p-3.5 bg-white/90 dark:bg-stone-900 rounded-xl border border-[#96c1e5] dark:border-stone-700/80 flex flex-col justify-between shadow-2xs">
                           <div className="flex items-center justify-between gap-1 mb-1">
-                            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 flex items-center space-x-1">
-                              <Package className="w-3.5 h-3.5 text-sky-600" />
+                            <span className="text-[11px] font-black uppercase tracking-wider text-black flex items-center space-x-1">
+                              <Package className="w-3.5 h-3.5 text-sky-800" />
                               <span>Vinculação ao Estoque</span>
                             </span>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
                               (parsedData.items?.filter(i => i.linkedInventoryId).length || 0) === (parsedData.items?.length || 0)
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                ? 'bg-emerald-100 text-emerald-950 border border-emerald-300'
+                                : 'bg-amber-100 text-amber-950 border border-amber-300'
                             }`}>
                               {parsedData.items?.filter(i => i.linkedInventoryId).length || 0} de {parsedData.items?.length || 0}
                             </span>
                           </div>
-                          <span className="text-[11px] text-stone-500 truncate block">
+                          <span className="text-[11px] text-black font-semibold truncate block">
                             {(parsedData.items?.filter(i => i.linkedInventoryId).length || 0) === (parsedData.items?.length || 0)
                               ? 'Todos os itens vinculados ao estoque'
                               : 'Vincule os itens para atualizar o estoque'}
@@ -2172,18 +2343,18 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                         </div>
 
                         {/* Bloco 4: Valor Total NF-e */}
-                        <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800/70 flex flex-col justify-between">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 block mb-1">
+                        <div className="p-3.5 bg-white/95 dark:bg-emerald-950/30 rounded-xl border-2 border-emerald-500 shadow-2xs flex flex-col justify-between">
+                          <span className="text-[11px] font-black uppercase tracking-wider text-emerald-900 block mb-1">
                             Valor Total NF-e
                           </span>
-                          <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono leading-none">
+                          <span className="text-xl font-black text-emerald-700 font-mono leading-none">
                             {formatCurrencyBRL(parsedData.totalAmount)}
                           </span>
                         </div>
 
                       </div>
 
-                      {/* Botão de Ação: Confirmar e Gerar Despesa */}
+                      {/* Botão de Ação: Salvar Alterações da Nota no canto inferior direito */}
                       <div className="xl:w-72 shrink-0 flex flex-col justify-center gap-2">
                         {errorMessage && (
                           <div className="p-2.5 bg-rose-50 dark:bg-rose-950/70 border border-rose-200 dark:border-rose-800 rounded-xl flex items-center space-x-2 text-rose-700 dark:text-rose-300 text-xs font-bold animate-in fade-in">
@@ -2196,7 +2367,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                             type="button"
                             id="btn-voltar-para-lista-rodape"
                             onClick={handleBackToList}
-                            className="w-full sm:w-auto px-4 py-3.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 font-bold rounded-xl border border-stone-200 dark:border-stone-700 transition flex items-center justify-center space-x-2 cursor-pointer text-sm min-h-[50px]"
+                            className="w-full sm:w-auto px-4 py-3.5 bg-white/90 hover:bg-white text-black font-bold rounded-xl border border-[#96c1e5] transition flex items-center justify-center space-x-2 cursor-pointer text-sm min-h-[50px] shadow-2xs"
                           >
                             <X className="w-4 h-4" />
                             <span>Cancelar</span>
@@ -2205,19 +2376,10 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                             type="button"
                             id="btn-confirmar-importacao-nfe"
                             onClick={handleConfirmImport}
-                            className="w-full sm:flex-1 py-3.5 px-5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl shadow-md transition flex items-center justify-center space-x-2 cursor-pointer active:scale-98 text-sm min-h-[50px]"
+                            className="w-full sm:flex-1 py-3.5 px-5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black rounded-xl shadow-md transition flex items-center justify-center space-x-2 cursor-pointer active:scale-98 text-sm min-h-[50px]"
                           >
-                            {editingExpenseId ? (
-                              <>
-                                <Check className="w-5 h-5 stroke-[2.5]" />
-                                <span>Salvar Alterações da Nota</span>
-                              </>
-                            ) : (
-                              <>
-                                <Plus className="w-5 h-5 stroke-[2.5]" />
-                                <span>Confirmar e Gerar Despesa</span>
-                              </>
-                            )}
+                            <Check className="w-5 h-5 stroke-[2.5]" />
+                            <span>Salvar Alterações da Nota</span>
                           </button>
                         </div>
                       </div>
@@ -2710,19 +2872,42 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
         </div>
       )}
 
-      {/* Modal de Criação Rápida de Centro de Custo */}
+      {/* Modal de Criação / Edição de Centro de Custo */}
       {isQuickCostCenterOpen && (
-        <div className="fixed inset-0 z-80 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+        <div 
+          id="modal-criar-editar-centro-custo"
+          className="fixed inset-0 z-80 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => {
+            setIsQuickCostCenterOpen(false);
+            setCostCenterToEdit(null);
+          }}
+        >
+          <div 
+            className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between pb-3 border-b border-stone-200 dark:border-stone-800">
               <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-sky-600" />
-                <span>Novo Centro de Custo</span>
+                {costCenterToEdit ? (
+                  <>
+                    <Pencil className="w-4 h-4 text-amber-600" />
+                    <span>Editar Centro de Custo</span>
+                  </>
+                ) : (
+                  <>
+                    <Building2 className="w-4 h-4 text-sky-600" />
+                    <span>Novo Centro de Custo</span>
+                  </>
+                )}
               </h3>
               <button
                 type="button"
-                onClick={() => setIsQuickCostCenterOpen(false)}
-                className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 cursor-pointer"
+                id="btn-fechar-modal-centro-custo"
+                onClick={() => {
+                  setIsQuickCostCenterOpen(false);
+                  setCostCenterToEdit(null);
+                }}
+                className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 cursor-pointer p-1 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -2730,26 +2915,29 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block font-semibold text-stone-600 dark:text-stone-400 mb-1">
-                  Nome do Centro de Custo <span className="text-rose-500">*</span>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  Nome do Centro de Custo <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <input
                   type="text"
+                  id="input-nome-centro-custo"
                   value={newCostCenterName}
                   onChange={(e) => setNewCostCenterName(e.target.value)}
-                  placeholder="Ex: Safra 2024/2025, Maquinários, Administrativo"
+                  placeholder="Ex: Maq 05 (GERAL), Safra 2024/2025, Administrativo"
                   className="w-full px-3 py-2 text-xs rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-sky-500/20 font-medium"
+                  autoFocus
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-stone-600 dark:text-stone-400 mb-1">
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
                   Tipo de Classificação
                 </label>
                 <select
+                  id="select-tipo-centro-custo"
                   value={newCostCenterType}
                   onChange={(e) => setNewCostCenterType(e.target.value as CostCenter['type'])}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-sky-500/20"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-sky-500/20 cursor-pointer"
                 >
                   <option value="safra">Safra / Lavoura</option>
                   <option value="maquinario">Maquinário & Frotas</option>
@@ -2758,24 +2946,231 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                   <option value="geral">Geral</option>
                 </select>
               </div>
+
+              {costCenterToEdit && (
+                <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-300 text-[11px] leading-relaxed">
+                  <strong>Atenção:</strong> Renomear este Centro de Custo atualizará automaticamente o nome exibido nos relatórios e nos futuros lançamentos contábeis.
+                </div>
+              )}
             </div>
 
-            <div className="pt-2 flex items-center justify-end space-x-2">
+            <div className="pt-3 border-t border-stone-200 dark:border-stone-800 flex items-center justify-end space-x-2">
               <button
                 type="button"
-                onClick={() => setIsQuickCostCenterOpen(false)}
+                id="btn-cancelar-salvar-centro"
+                onClick={() => {
+                  setIsQuickCostCenterOpen(false);
+                  setCostCenterToEdit(null);
+                }}
                 className="px-4 py-2 text-xs font-bold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 type="button"
-                onClick={handleCreateQuickCostCenter}
+                id="btn-confirmar-salvar-centro"
+                onClick={handleSaveCostCenter}
                 disabled={!newCostCenterName.trim()}
                 className="px-4 py-2 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 disabled:opacity-50 rounded-xl shadow-xs transition flex items-center space-x-1.5 cursor-pointer"
               >
                 <Check className="w-3.5 h-3.5" />
-                <span>Criar e Selecionar</span>
+                <span>{costCenterToEdit ? 'Salvar Alterações' : 'Criar e Selecionar'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Exclusão de Centro de Custo com Verificação de Integridade Fiscal */}
+      {isDeleteCostCenterModalOpen && costCenterToDelete && (
+        <div 
+          id="modal-confirm-delete-centro-custo"
+          className="fixed inset-0 z-80 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => {
+            setIsDeleteCostCenterModalOpen(false);
+            setCostCenterToDelete(null);
+            setCostCenterIntegrityNotice(null);
+          }}
+        >
+          <div 
+            className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start space-x-3.5">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                costCenterIntegrityNotice?.isInUse
+                  ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'
+                  : 'bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
+              }`}>
+                {costCenterIntegrityNotice?.isInUse ? (
+                  <AlertCircle className="w-5 h-5" />
+                ) : (
+                  <Trash2 className="w-5 h-5" />
+                )}
+              </div>
+
+              <div className="space-y-1 flex-1">
+                <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
+                  {costCenterIntegrityNotice?.isInUse 
+                    ? 'Exclusão Bloqueada (Integridade Fiscal)' 
+                    : 'Excluir Centro de Custo'}
+                </h3>
+                
+                {costCenterIntegrityNotice?.isInUse ? (
+                  <div className="space-y-2 text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
+                    <p>
+                      O centro de custo <strong>"{costCenterToDelete.name}"</strong> não pode ser excluído porque já possui movimentações fiscais e financeiras associadas:
+                    </p>
+                    <ul className="list-disc pl-4 space-y-0.5 text-stone-700 dark:text-stone-200 font-medium">
+                      {costCenterIntegrityNotice.expensesCount > 0 && (
+                        <li><strong>{costCenterIntegrityNotice.expensesCount}</strong> despesa(s) no Contas a Pagar</li>
+                      )}
+                      {costCenterIntegrityNotice.notasCount > 0 && (
+                        <li><strong>{costCenterIntegrityNotice.notasCount}</strong> nota(s) fiscal(is) no Histórico de NF-e</li>
+                      )}
+                    </ul>
+                    <p className="text-stone-500 text-[11px] pt-1">
+                      Para preservar o fechamento contábil e o histórico financeiro, registros com vínculos ativos não podem ser removidos. Você pode editá-lo ou mantê-lo para consultas passadas.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
+                    <p>
+                      Tem certeza que deseja excluir o Centro de Custo <strong>"{costCenterToDelete.name}"</strong>?
+                    </p>
+                    <p className="text-stone-500 dark:text-stone-400 text-[11px]">
+                      Nenhum lançamento ativo foi encontrado utilizando este Centro de Custo. Esta ação é segura e liberada, mas não poderá ser desfeita.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-stone-200 dark:border-stone-800 flex items-center justify-end space-x-2">
+              <button
+                type="button"
+                id="btn-cancelar-exclusao-centro"
+                onClick={() => {
+                  setIsDeleteCostCenterModalOpen(false);
+                  setCostCenterToDelete(null);
+                  setCostCenterIntegrityNotice(null);
+                }}
+                className="px-4 py-2 text-xs font-bold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition cursor-pointer"
+              >
+                {costCenterIntegrityNotice?.isInUse ? 'Entendido / Fechar' : 'Cancelar'}
+              </button>
+
+              {!costCenterIntegrityNotice?.isInUse && (
+                <button
+                  type="button"
+                  id="btn-confirmar-exclusao-centro"
+                  onClick={handleConfirmDeleteCostCenter}
+                  className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 rounded-xl shadow-xs transition flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Sim, Excluir Centro</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Gerenciar a Lista de Todos os Centros de Custo */}
+      {isManageCostCentersListOpen && (
+        <div 
+          id="modal-gerenciar-centros-custo"
+          className="fixed inset-0 z-80 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setIsManageCostCentersListOpen(false)}
+        >
+          <div 
+            className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200 dark:border-stone-800">
+              <div className="flex items-center space-x-2">
+                <Building2 className="w-4 h-4 text-sky-600" />
+                <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">
+                  Gerenciar Centros de Custo ({localCostCenters.length})
+                </h3>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  id="btn-adicionar-centro-dentro-modal"
+                  onClick={() => {
+                    setIsManageCostCentersListOpen(false);
+                    handleOpenCreateCostCenter();
+                  }}
+                  className="text-xs font-bold text-sky-600 hover:text-sky-700 bg-sky-50 dark:bg-sky-950/60 px-2.5 py-1 rounded-lg border border-sky-200 dark:border-sky-800 cursor-pointer inline-flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Novo</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsManageCostCentersListOpen(false)}
+                  className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 cursor-pointer p-1 rounded-lg"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <p className="text-xs text-stone-500 dark:text-stone-400">
+              Edite nomes ou remova centros de custo obsoletos. A exclusão é protegida contra perda de integridade contábil.
+            </p>
+
+            <div className="max-h-72 overflow-y-auto space-y-1.5 divide-y divide-stone-100 dark:divide-stone-800">
+              {localCostCenters.map((cc) => (
+                <div 
+                  key={cc.id}
+                  className="pt-1.5 flex items-center justify-between gap-2 text-xs hover:bg-stone-50 dark:hover:bg-stone-800/40 p-1.5 rounded-lg transition"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold text-stone-900 dark:text-stone-100 truncate">
+                      {cc.name}
+                    </div>
+                    <div className="text-[10px] text-stone-500 uppercase tracking-wider">
+                      Tipo: {cc.type}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsManageCostCentersListOpen(false);
+                        handleOpenEditCostCenter(cc);
+                      }}
+                      className="p-1.5 text-stone-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg transition cursor-pointer"
+                      title={`Editar ${cc.name}`}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsManageCostCentersListOpen(false);
+                        handleRequestDeleteCostCenter(cc);
+                      }}
+                      className="p-1.5 text-stone-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                      title={`Excluir ${cc.name}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 border-t border-stone-200 dark:border-stone-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsManageCostCentersListOpen(false)}
+                className="px-4 py-2 text-xs font-bold text-stone-700 dark:text-stone-300 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 rounded-xl transition cursor-pointer"
+              >
+                Concluir
               </button>
             </div>
           </div>
