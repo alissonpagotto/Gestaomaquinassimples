@@ -9,6 +9,7 @@ import {
   Building, 
   Trash2, 
   MessageCircle,
+  Edit2,
 } from 'lucide-react';
 import { Supplier } from '../../types';
 import { cleanDigits } from '../../lib/formatters';
@@ -16,7 +17,6 @@ import { SupplierModal } from './SupplierModal';
 import { useConfirm } from '../../context/ConfirmContext';
 
 interface SuppliersModuleProps {
-
   suppliers: Supplier[];
   onSaveSuppliers: (suppliers: Supplier[]) => void;
 }
@@ -28,6 +28,7 @@ export const SuppliersModule: React.FC<SuppliersModuleProps> = ({
   const { confirm } = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
 
   const filteredSuppliers = suppliers.filter(sup =>
     sup.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -36,6 +37,16 @@ export const SuppliersModule: React.FC<SuppliersModuleProps> = ({
     (sup.city && sup.city.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (sup.cnpjOrCpf && sup.cnpjOrCpf.includes(searchTerm))
   );
+
+  const handleOpenNew = () => {
+    setEditingSupplier(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = (sup: Supplier) => {
+    setEditingSupplier(sup);
+    setIsModalOpen(true);
+  };
 
   const handleDelete = async (id: string) => {
     const sup = suppliers.find(s => s.id === id);
@@ -78,7 +89,7 @@ export const SuppliersModule: React.FC<SuppliersModuleProps> = ({
 
         <button
           type="button"
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleOpenNew}
           className="inline-flex items-center space-x-2 px-4 py-2 text-xs sm:text-sm font-bold rounded-lg bg-[#009688] hover:bg-[#00796b] text-white shadow-xs transition active:scale-95 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
@@ -157,14 +168,24 @@ export const SuppliersModule: React.FC<SuppliersModuleProps> = ({
               <span className="text-[10px] text-black/80 dark:text-stone-400 font-bold">
                 ID: {sup.id}
               </span>
-              <button
-                type="button"
-                onClick={() => handleDelete(sup.id)}
-                className="p-1 text-black hover:text-rose-700 dark:text-stone-400 dark:hover:text-rose-500 transition rounded cursor-pointer"
-                title="Excluir fornecedor"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <div className="flex items-center space-x-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleEdit(sup)}
+                  className="p-1 text-black hover:text-[#0963cb] dark:text-stone-400 dark:hover:text-[#0963cb] transition rounded cursor-pointer"
+                  title="Editar dados do fornecedor"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(sup.id)}
+                  className="p-1 text-black hover:text-rose-700 dark:text-stone-400 dark:hover:text-rose-500 transition rounded cursor-pointer"
+                  title="Excluir fornecedor"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* WhatsApp button */}
@@ -186,9 +207,20 @@ export const SuppliersModule: React.FC<SuppliersModuleProps> = ({
       {/* Reusable Supplier Modal */}
       <SupplierModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={(newSup) => {
-          onSaveSuppliers([...suppliers, newSup]);
+        editingSupplier={editingSupplier}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingSupplier(null);
+        }}
+        onSave={(savedSup) => {
+          const index = suppliers.findIndex(s => s.id === savedSup.id);
+          if (index >= 0) {
+            const updated = [...suppliers];
+            updated[index] = savedSup;
+            onSaveSuppliers(updated);
+          } else {
+            onSaveSuppliers([...suppliers, savedSup]);
+          }
         }}
       />
 

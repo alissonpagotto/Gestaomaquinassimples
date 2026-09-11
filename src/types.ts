@@ -327,6 +327,9 @@ export interface Supplier {
   neighborhood?: string;
   city?: string;
   state?: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface InventoryItem {
