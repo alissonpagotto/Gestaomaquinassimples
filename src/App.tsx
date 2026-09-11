@@ -473,8 +473,8 @@ export default function App() {
 
       {/* Main Body Area with left padding for desktop sidebar */}
       <div 
-        style={{ backgroundColor: '#16438e' }}
-        className="lg:pl-64 flex flex-col flex-1 min-h-screen bg-[#16438e] dark:bg-stone-950"
+        style={{ backgroundColor: '#0a8bc1' }}
+        className="lg:pl-64 flex flex-col flex-1 min-h-screen bg-[#0a8bc1] dark:bg-stone-950"
       >
         
         {/* Top Bar with Trial Notice and Horizontal Pill Carousel */}

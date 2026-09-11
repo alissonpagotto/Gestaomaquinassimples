@@ -224,8 +224,8 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className={`fixed inset-0 ${zIndexClass} flex items-center justify-center p-3 sm:p-4 bg-stone-950/70 backdrop-blur-xs overflow-y-auto`}>
-      <div className="bg-white dark:bg-stone-900 rounded-2xl w-[90vw] max-w-6xl shadow-2xl border border-stone-200 dark:border-stone-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-auto">
+    <div className={`fixed inset-0 ${zIndexClass} flex items-center justify-center p-3 sm:p-4 bg-[#0a8bc1]/85 backdrop-blur-xs overflow-y-auto`}>
+      <div className="bg-[#0a8bc1] rounded-2xl w-[90vw] max-w-6xl shadow-2xl border border-white/20 overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-auto">
         
         {/* Header */}
         <div className="px-5 py-3 bg-[#0963cb] text-white flex items-center justify-between">
@@ -251,41 +251,11 @@ export const ClientModal: React.FC<ClientModalProps> = ({
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-3 sm:p-4 space-y-3 bg-stone-100/60 dark:bg-stone-900 max-h-[92vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-3 sm:p-4 space-y-3 bg-[#0a8bc1] max-h-[92vh] overflow-y-auto">
           
           {/* Card 1: Identificação & Contato Principal */}
           <div className="bg-[#b0d2ed] p-3 sm:p-3.5 rounded-xl border border-[#96c1e5] shadow-2xs space-y-2.5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
-                  NOME DO PRODUTOR / RESPONSÁVEL <span className="text-rose-600">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Ex: Carlos Eduardo Fontes"
-                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
-                  NOME DA FAZENDA / PROPRIEDADE <span className="text-rose-600">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={farmName}
-                  onChange={(e) => setFarmName(e.target.value)}
-                  placeholder="Ex: Fazenda Bela Vista"
-                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
-                />
-              </div>
-            </div>
-
-            {/* CPF / CNPJ, Inscrição Estadual (IE) / CADPRO e Telefone */}
+            {/* Linha 1: CPF/CNPJ (Busca Automática), Nome do Produtor, Nome da Fazenda */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <div className="flex items-center justify-between mb-1">
@@ -304,9 +274,9 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                     type="text"
                     value={cpfCnpj}
                     onChange={(e) => handleCpfCnpjChange(e.target.value)}
-                    placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                    placeholder="000.000.000-00"
                     maxLength={18}
-                    className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] pr-8"
+                    className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] pr-8"
                   />
                   <button
                     type="button"
@@ -322,14 +292,42 @@ export const ClientModal: React.FC<ClientModalProps> = ({
 
               <div>
                 <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
+                  NOME DO PRODUTOR / RESPONSÁVEL <span className="text-rose-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
+                  NOME DA FAZENDA / PROPRIEDADE <span className="text-rose-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={farmName}
+                  onChange={(e) => setFarmName(e.target.value)}
+                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
+                />
+              </div>
+            </div>
+
+            {/* Linha 2: Inscrição Estadual (IE) / CADPRO e Telefone / WhatsApp */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
                   INSCRIÇÃO ESTADUAL (IE) / CADPRO
                 </label>
                 <input
                   type="text"
                   value={stateRegistration}
                   onChange={(e) => setStateRegistration(e.target.value)}
-                  placeholder="Ex: 90812345-67 ou PR-123456"
-                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
 
@@ -341,9 +339,8 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(formatPhone(e.target.value))}
-                  placeholder="(42) 99823-1144"
                   maxLength={15}
-                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
             </div>
@@ -371,7 +368,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                     onChange={(e) => handleCepChange(e.target.value)}
                     placeholder="00000-000"
                     maxLength={9}
-                    className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#0963cb] pr-8"
+                    className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#0963cb] pr-8"
                   />
                   <button
                     type="button"
@@ -393,8 +390,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   type="text"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Ex: Linha Alto Alegre, Km 04"
-                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
             </div>
@@ -408,8 +404,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   type="text"
                   value={neighborhood}
                   onChange={(e) => setNeighborhood(e.target.value)}
-                  placeholder="Ex: Zona Rural"
-                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
 
@@ -421,8 +416,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   type="text"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  placeholder="Ex: Castro"
-                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
 
@@ -434,9 +428,8 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   type="text"
                   value={state}
                   onChange={(e) => setState(e.target.value.toUpperCase())}
-                  placeholder="PR"
                   maxLength={2}
-                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium uppercase focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black text-xs sm:text-sm font-medium uppercase focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
             </div>
@@ -473,8 +466,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   type="number"
                   value={headCount}
                   onChange={(e) => handleHeadCountChange(e.target.value)}
-                  placeholder="Ex: 180"
-                  className="w-full px-3 py-1.5 sm:py-2 text-xs sm:text-sm rounded-xl border border-stone-300 bg-white text-black placeholder:text-black focus:ring-2 focus:ring-[#0963cb] font-medium"
+                  className="w-full px-3 py-1.5 sm:py-2 text-xs sm:text-sm rounded-xl border border-stone-300 bg-white text-black focus:ring-2 focus:ring-[#0963cb] font-medium"
                 />
               </div>
 
@@ -486,8 +478,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   type="number"
                   value={monthlyDemandTons}
                   onChange={(e) => setMonthlyDemandTons(e.target.value)}
-                  placeholder="Ex: 65"
-                  className="w-full px-3 py-1.5 sm:py-2 text-xs sm:text-sm rounded-xl border border-stone-300 bg-white text-black placeholder:text-black focus:ring-2 focus:ring-[#0963cb] font-medium"
+                  className="w-full px-3 py-1.5 sm:py-2 text-xs sm:text-sm rounded-xl border border-stone-300 bg-white text-black focus:ring-2 focus:ring-[#0963cb] font-medium"
                 />
               </div>
             </div>
@@ -524,8 +515,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="carlos@fazenda.com.br"
-                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#0963cb]"
+                  className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#0963cb]"
                 />
               </div>
             </div>
@@ -538,18 +528,17 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 rows={2}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Ex: Prefere silagem com teor de matéria seca em 33-35%, grãos bem triturados..."
-                className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black placeholder:text-black text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#0963cb] resize-none h-14 sm:h-16 leading-relaxed"
+                className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 bg-white text-black text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#0963cb] resize-none h-14 sm:h-16 leading-relaxed"
               />
             </div>
           </div>
 
           {/* Footer */}
-          <div className="pt-2.5 border-t border-stone-200 dark:border-stone-800 flex justify-end space-x-3">
+          <div className="pt-2.5 border-t border-white/20 flex justify-end space-x-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs sm:text-sm font-semibold hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+              className="px-5 py-2 rounded-xl bg-white hover:bg-stone-100 text-stone-800 text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
             >
               Cancelar
             </button>
