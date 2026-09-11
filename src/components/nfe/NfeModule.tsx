@@ -1175,9 +1175,26 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
   // Dados consolidados e análise de estorno para a nota fiscal selecionada para exclusão
   const notaEmExclusao = useMemo(() => {
     if (!notaParaExcluir) return null;
-    return notasFiscaisExibicao.find(n => n.id === notaParaExcluir || n.invoiceNumber === notaParaExcluir) ||
-           notasLancadas.find(n => n.id === notaParaExcluir || n.invoiceNumber === notaParaExcluir) ||
-           expenses.find(n => n.id === notaParaExcluir || n.invoiceNumber === notaParaExcluir) || null;
+    const direct = notasFiscaisExibicao.find(n => n.id === notaParaExcluir || n.invoiceNumber === notaParaExcluir) ||
+                   notasLancadas.find(n => n.id === notaParaExcluir || n.invoiceNumber === notaParaExcluir) ||
+                   expenses.find(n => n.id === notaParaExcluir || n.invoiceNumber === notaParaExcluir);
+    if (direct) return direct;
+    const stored = getStoredFiscalRecords().find(n => n.id === notaParaExcluir || n.invoiceNumber === notaParaExcluir);
+    if (stored) return stored;
+    return {
+      id: notaParaExcluir,
+      description: `Nota Fiscal ${notaParaExcluir}`,
+      invoiceNumber: notaParaExcluir,
+      supplier: 'Fornecedor',
+      amount: 0,
+      categoryId: 'outros',
+      categoryName: 'Outros',
+      categoryColor: '#6B7280',
+      dueDate: new Date().toISOString().split('T')[0],
+      status: 'pendente',
+      paymentMethod: 'boleto',
+      createdAt: new Date().toISOString(),
+    } as Expense;
   }, [notaParaExcluir, notasFiscaisExibicao, notasLancadas, expenses]);
 
   const analiseEstornoExclusao = useMemo(() => {
