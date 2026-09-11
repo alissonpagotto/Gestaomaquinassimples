@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronDown, Search, Loader2 } from 'lucide-react';
+import { X, ChevronDown, Search, Loader2, CheckCircle2 } from 'lucide-react';
 import { Client } from '../../types';
 import { 
   formatCpfCnpj, 
@@ -50,9 +50,11 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   const [isLoadingCnpj, setIsLoadingCnpj] = useState(false);
   const [isLoadingCep, setIsLoadingCep] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [currentClient, setCurrentClient] = useState<Client | null>(editingClient || null);
 
   useEffect(() => {
     if (editingClient) {
+      setCurrentClient(editingClient);
       setName(editingClient.name);
       setFarmName(editingClient.farmName);
       setCpfCnpj(formatCpfCnpj(editingClient.cpfCnpj || ''));
@@ -70,6 +72,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
       setStatus(editingClient.status);
       setNotes(editingClient.notes || '');
     } else {
+      setCurrentClient(null);
       setName(initialName || '');
       setFarmName('');
       setCpfCnpj('');
@@ -87,6 +90,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
       setStatus('cliente_ativo');
       setNotes('');
     }
+    setFeedback(null);
   }, [editingClient, isOpen, initialName]);
 
   // Handle CNPJ / CPF dynamic typing and auto search
@@ -182,15 +186,61 @@ export const ClientModal: React.FC<ClientModalProps> = ({
     }
   };
 
+  const activeClient = currentClient || editingClient;
+
+  const handleCancel = () => {
+    if (activeClient) {
+      setName(activeClient.name);
+      setFarmName(activeClient.farmName);
+      setCpfCnpj(formatCpfCnpj(activeClient.cpfCnpj || ''));
+      setStateRegistration(activeClient.stateRegistration || '');
+      setZipCode(formatCep(activeClient.zipCode || ''));
+      setAddress(activeClient.address || '');
+      setNeighborhood(activeClient.neighborhood || '');
+      setCity(activeClient.city);
+      setState(activeClient.state);
+      setPhone(formatPhone(activeClient.phone));
+      setEmail(activeClient.email || '');
+      setCattleType(activeClient.cattleType);
+      setHeadCount(activeClient.headCount ? activeClient.headCount.toString() : '');
+      setMonthlyDemandTons(activeClient.monthlyDemandTons ? activeClient.monthlyDemandTons.toString() : '');
+      setStatus(activeClient.status);
+      setNotes(activeClient.notes || '');
+    } else {
+      setName(initialName || '');
+      setFarmName('');
+      setCpfCnpj('');
+      setStateRegistration('');
+      setZipCode('');
+      setAddress('');
+      setNeighborhood('');
+      setCity('');
+      setState('PR');
+      setPhone('');
+      setEmail('');
+      setCattleType('leite');
+      setHeadCount('');
+      setMonthlyDemandTons('');
+      setStatus('cliente_ativo');
+      setNotes('');
+    }
+    setFeedback({ type: 'error', message: 'Alterações não salvas foram descartadas.' });
+    setTimeout(() => setFeedback(null), 3000);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !farmName.trim()) {
-      alert('Preencha o nome do produtor e da fazenda.');
+      setFeedback({ type: 'error', message: 'Preencha o nome do produtor e da fazenda.' });
+      setTimeout(() => setFeedback(null), 4000);
       return;
     }
 
+    const nowIso = new Date().toISOString();
+    const isUpdating = Boolean(activeClient);
+
     const client: Client = {
-      id: editingClient ? editingClient.id : `cli_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      id: activeClient ? activeClient.id : `cli_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       name: name.trim(),
       farmName: farmName.trim(),
       cpfCnpj: cpfCnpj.trim() || undefined,
@@ -207,11 +257,14 @@ export const ClientModal: React.FC<ClientModalProps> = ({
       monthlyDemandTons: monthlyDemandTons ? parseFloat(monthlyDemandTons) : undefined,
       status,
       notes: notes.trim() || undefined,
-      totalPurchasedTons: editingClient?.totalPurchasedTons || 0,
-      totalSpent: editingClient?.totalSpent || 0,
-      createdAt: editingClient?.createdAt || new Date().toISOString(),
-      updatedAt: editingClient ? new Date().toISOString() : undefined,
+      totalPurchasedTons: activeClient?.totalPurchasedTons || 0,
+      totalSpent: activeClient?.totalSpent || 0,
+      createdAt: activeClient?.createdAt || nowIso,
+      updatedAt: isUpdating ? nowIso : undefined,
     };
+
+    // Update internal state so the form reflects the saved client
+    setCurrentClient(client);
 
     if (onSuccess) {
       onSuccess(client);
@@ -219,7 +272,15 @@ export const ClientModal: React.FC<ClientModalProps> = ({
     if (onSave) {
       onSave(client);
     }
-    onClose();
+
+    // Modal remains OPEN without closing automatically!
+    setFeedback({
+      type: 'success',
+      message: isUpdating ? 'Cliente atualizado com sucesso!' : 'Cliente salvo com sucesso!',
+    });
+    setTimeout(() => {
+      setFeedback(null);
+    }, 4000);
   };
 
   const formatDateTimeBR = (dateStr?: string) => {
@@ -259,11 +320,20 @@ export const ClientModal: React.FC<ClientModalProps> = ({
 
         {/* Feedback message */}
         {feedback && (
-          <div className={`px-4 py-2 text-xs font-bold text-white flex items-center justify-between ${
+          <div className={`px-5 py-2 text-xs sm:text-sm font-bold text-white flex items-center justify-between shadow-xs transition ${
             feedback.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'
           }`}>
-            <span>{feedback.message}</span>
-            <button onClick={() => setFeedback(null)} className="text-white/80 hover:text-white cursor-pointer">✕</button>
+            <div className="flex items-center space-x-2">
+              {feedback.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-100 flex-shrink-0" />}
+              <span>{feedback.message}</span>
+            </div>
+            <button 
+              type="button"
+              onClick={() => setFeedback(null)} 
+              className="text-white/80 hover:text-white px-2 py-0.5 rounded-sm hover:bg-white/20 transition cursor-pointer"
+            >
+              ✕
+            </button>
           </div>
         )}
 
@@ -557,32 +627,41 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               <span className="inline-flex items-center space-x-1">
                 <span className="font-bold text-black">Cadastrado em:</span>
                 <span className="text-black/80">
-                  {editingClient ? (formatDateTimeBR(editingClient.createdAt) || '—') : formatDateTimeBR(new Date().toISOString())}
+                  {activeClient ? (formatDateTimeBR(activeClient.createdAt) || '—') : formatDateTimeBR(new Date().toISOString())}
                 </span>
               </span>
               <span className="text-black/40 hidden sm:inline">•</span>
               <span className="inline-flex items-center space-x-1">
                 <span className="font-bold text-black">Alterado em:</span>
                 <span className="text-black/80">
-                  {editingClient?.updatedAt ? (formatDateTimeBR(editingClient.updatedAt) || 'Sem alterações') : 'Sem alterações'}
+                  {activeClient?.updatedAt ? (formatDateTimeBR(activeClient.updatedAt) || 'Sem alterações') : 'Sem alterações'}
                 </span>
               </span>
             </div>
 
-            {/* Ações (Canto inferior direito) */}
-            <div className="flex items-center justify-end space-x-3">
+            {/* Ações (Canto inferior direito: [Cancelar] [Sair] [Atualizar Cliente]) */}
+            <div className="flex items-center justify-end space-x-2 sm:space-x-2.5">
               <button
                 type="button"
-                onClick={onClose}
-                className="px-5 py-2 rounded-xl bg-white hover:bg-stone-100 text-stone-800 text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
+                onClick={handleCancel}
+                title="Descartar alterações não salvas"
+                className="px-4 py-2 rounded-xl bg-white hover:bg-stone-100 text-stone-800 text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer border border-stone-200"
               >
                 Cancelar
               </button>
               <button
-                type="submit"
-                className="px-6 py-2 rounded-xl bg-[#0963cb] hover:bg-[#0852a8] text-white text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
+                type="button"
+                onClick={onClose}
+                title="Fechar janela de cadastro"
+                className="px-4 py-2 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-900 text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer border border-stone-300"
               >
-                {editingClient ? 'Atualizar Cliente' : 'Salvar Cliente'}
+                Sair
+              </button>
+              <button
+                type="submit"
+                className="px-5 sm:px-6 py-2 rounded-xl bg-[#0963cb] hover:bg-[#0852a8] text-white text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
+              >
+                {activeClient ? 'Atualizar Cliente' : 'Salvar Cliente'}
               </button>
             </div>
           </div>
