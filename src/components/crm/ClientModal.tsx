@@ -210,6 +210,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
       totalPurchasedTons: editingClient?.totalPurchasedTons || 0,
       totalSpent: editingClient?.totalSpent || 0,
       createdAt: editingClient?.createdAt || new Date().toISOString(),
+      updatedAt: editingClient ? new Date().toISOString() : undefined,
     };
 
     if (onSuccess) {
@@ -219,6 +220,22 @@ export const ClientModal: React.FC<ClientModalProps> = ({
       onSave(client);
     }
     onClose();
+  };
+
+  const formatDateTimeBR = (dateStr?: string) => {
+    if (!dateStr) return null;
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return null;
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      return `${day}/${month}/${year} ${hours}:${minutes}`;
+    } catch {
+      return null;
+    }
   };
 
   if (!isOpen) return null;
@@ -534,20 +551,40 @@ export const ClientModal: React.FC<ClientModalProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="pt-2.5 border-t border-white/20 flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2 rounded-xl bg-white hover:bg-stone-100 text-stone-800 text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2 rounded-xl bg-[#0963cb] hover:bg-[#0852a8] text-white text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
-            >
-              {editingClient ? 'Atualizar Cliente' : 'Salvar Cliente'}
-            </button>
+          <div className="pt-2.5 border-t border-white/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            {/* Auditoria Automática (Canto inferior esquerdo) */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] sm:text-xs text-black">
+              <span className="inline-flex items-center space-x-1">
+                <span className="font-bold text-black">Cadastrado em:</span>
+                <span className="text-black/80">
+                  {editingClient ? (formatDateTimeBR(editingClient.createdAt) || '—') : formatDateTimeBR(new Date().toISOString())}
+                </span>
+              </span>
+              <span className="text-black/40 hidden sm:inline">•</span>
+              <span className="inline-flex items-center space-x-1">
+                <span className="font-bold text-black">Alterado em:</span>
+                <span className="text-black/80">
+                  {editingClient?.updatedAt ? (formatDateTimeBR(editingClient.updatedAt) || 'Sem alterações') : 'Sem alterações'}
+                </span>
+              </span>
+            </div>
+
+            {/* Ações (Canto inferior direito) */}
+            <div className="flex items-center justify-end space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-5 py-2 rounded-xl bg-white hover:bg-stone-100 text-stone-800 text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="px-6 py-2 rounded-xl bg-[#0963cb] hover:bg-[#0852a8] text-white text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
+              >
+                {editingClient ? 'Atualizar Cliente' : 'Salvar Cliente'}
+              </button>
+            </div>
           </div>
 
         </form>

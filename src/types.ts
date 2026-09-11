@@ -105,6 +105,7 @@ export interface Client {
   totalPurchasedTons?: number;
   totalSpent?: number;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface SilageOrder {
