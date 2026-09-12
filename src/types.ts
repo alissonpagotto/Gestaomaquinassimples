@@ -233,9 +233,11 @@ export interface Machinery {
   ipvaTotalAmount?: number; // Valor Total IPVA (R$) = Valor Base * (Alíquota / 100)
   ipvaInstallmentsCount?: number; // Qtd. Parcelas IPVA (1 a 5)
   ipvaFinancialStatus?: 'pendente' | 'lancado'; // Status de lançamento no Contas a Pagar
+  ipvaLastLaunchDate?: string; // Data do último lançamento automático no Contas a Pagar
   ipvaExpenseIds?: string[]; // IDs das despesas geradas no Contas a Pagar
   licensingValue?: number; // Valor do Licenciamento Anual (R$)
   licensingFinancialStatus?: 'pendente' | 'lancado'; // Status de lançamento no Contas a Pagar
+  licensingLastLaunchDate?: string; // Data do último lançamento automático no Contas a Pagar
   licensingExpenseId?: string; // ID da despesa gerada no Contas a Pagar
 }
 

@@ -175,6 +175,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
   const [licensingValue, setLicensingValue] = useState('');
   const [ipvaFinancialStatus, setIpvaFinancialStatus] = useState<'pendente' | 'lancado'>('pendente');
   const [licensingFinancialStatus, setLicensingFinancialStatus] = useState<'pendente' | 'lancado'>('pendente');
+  const [ipvaLastLaunchDate, setIpvaLastLaunchDate] = useState<string>('');
+  const [licensingLastLaunchDate, setLicensingLastLaunchDate] = useState<string>('');
   const [isLaunchingIpva, setIsLaunchingIpva] = useState(false);
   const [isLaunchingLicensing, setIsLaunchingLicensing] = useState(false);
 
@@ -233,6 +235,33 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       .filter((m) => m.machineryId === editingVehicle.id)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [editingVehicle, maintenanceLogs]);
+
+  // Derived launch dates for IPVA and Licensing (checks local state, vehicle object, or expenses)
+  const effectiveIpvaLaunchDate = useMemo(() => {
+    if (ipvaLastLaunchDate) return ipvaLastLaunchDate;
+    if (editingVehicle?.ipvaLastLaunchDate) return editingVehicle.ipvaLastLaunchDate;
+    if (editingVehicle && expenses && expenses.length > 0) {
+      const match = expenses.find(
+        (e) => e.machineryId === editingVehicle.id && 
+        (e.category === 'IPVA / Impostos de Frotas' || e.description?.toUpperCase().includes('IPVA'))
+      );
+      if (match?.dueDate) return match.dueDate;
+    }
+    return '';
+  }, [ipvaLastLaunchDate, editingVehicle, expenses]);
+
+  const effectiveLicensingLaunchDate = useMemo(() => {
+    if (licensingLastLaunchDate) return licensingLastLaunchDate;
+    if (editingVehicle?.licensingLastLaunchDate) return editingVehicle.licensingLastLaunchDate;
+    if (editingVehicle && expenses && expenses.length > 0) {
+      const match = expenses.find(
+        (e) => e.machineryId === editingVehicle.id && 
+        (e.category === 'Licenciamento / Taxas Detran' || e.description?.toUpperCase().includes('LICENCIAMENTO'))
+      );
+      if (match?.dueDate) return match.dueDate;
+    }
+    return '';
+  }, [licensingLastLaunchDate, editingVehicle, expenses]);
 
   // Print Modal States
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
@@ -313,8 +342,10 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       ipvaTotalAmount: computedIpvaTotal > 0 ? computedIpvaTotal : undefined,
       ipvaInstallmentsCount: ipvaInstallmentsCount ? parseInt(ipvaInstallmentsCount, 10) : undefined,
       ipvaFinancialStatus,
+      ipvaLastLaunchDate: effectiveIpvaLaunchDate || undefined,
       licensingValue: licensingValue ? desformatarMoeda(licensingValue) : undefined,
       licensingFinancialStatus,
+      licensingLastLaunchDate: effectiveLicensingLaunchDate || undefined,
       capacityM3: capacityM3 ? parseFloat(capacityM3) : undefined,
       fuelCapacityLiters: fuelCapacityLiters ? parseFloat(fuelCapacityLiters) : undefined,
       licensePlateOrSerial: (plate.trim() || serialNumber.trim() || fleetNumber.trim()).toUpperCase(),
@@ -484,6 +515,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setLicensingValue(editingVehicle.licensingValue !== undefined ? formatarMoeda(Math.round(editingVehicle.licensingValue * 100)) : '');
       setIpvaFinancialStatus(editingVehicle.ipvaFinancialStatus || 'pendente');
       setLicensingFinancialStatus(editingVehicle.licensingFinancialStatus || 'pendente');
+      setIpvaLastLaunchDate(editingVehicle.ipvaLastLaunchDate || '');
+      setLicensingLastLaunchDate(editingVehicle.licensingLastLaunchDate || '');
       
       // Drivers
       if (editingVehicle.assignedDriverIds && editingVehicle.assignedDriverIds.length > 0) {
@@ -557,6 +590,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setLicensingValue('');
       setIpvaFinancialStatus('pendente');
       setLicensingFinancialStatus('pendente');
+      setIpvaLastLaunchDate('');
+      setLicensingLastLaunchDate('');
       setIsLaunchingIpva(false);
       setIsLaunchingLicensing(false);
 
@@ -665,6 +700,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     }
 
     setIpvaFinancialStatus('lancado');
+    setIpvaLastLaunchDate(today.toISOString().split('T')[0]);
     setIsLaunchingIpva(true);
     setTimeout(() => setIsLaunchingIpva(false), 3000);
   };
@@ -708,6 +744,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     });
 
     setLicensingFinancialStatus('lancado');
+    setLicensingLastLaunchDate(today.toISOString().split('T')[0]);
     setIsLaunchingLicensing(true);
     setTimeout(() => setIsLaunchingLicensing(false), 3000);
   };
@@ -821,8 +858,10 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       ipvaTotalAmount: computedIpvaTotal > 0 ? computedIpvaTotal : undefined,
       ipvaInstallmentsCount: ipvaInstallmentsCount ? parseInt(ipvaInstallmentsCount, 10) : undefined,
       ipvaFinancialStatus,
+      ipvaLastLaunchDate: effectiveIpvaLaunchDate || undefined,
       licensingValue: licensingValue ? desformatarMoeda(licensingValue) : undefined,
       licensingFinancialStatus,
+      licensingLastLaunchDate: effectiveLicensingLaunchDate || undefined,
 
       // Capacity & Meters
       capacityM3: capacityM3 ? parseFloat(capacityM3) : undefined,
@@ -1789,6 +1828,9 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                       <span>💰 Lançar IPVA no Financeiro</span>
                     </button>
                   )}
+                  <span className="text-xs text-stone-600 text-center mt-1.5 leading-tight">
+                    Último lançamento automático: {effectiveIpvaLaunchDate ? formatDateBR(effectiveIpvaLaunchDate) : '-'}
+                  </span>
                 </div>
 
                 {/* 8. Ação de Lançar Licenciamento no Financeiro */}
@@ -1812,6 +1854,9 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                       <span>💰 Lançar Licenciamento</span>
                     </button>
                   )}
+                  <span className="text-xs text-stone-600 text-center mt-1.5 leading-tight">
+                    Último lançamento automático: {effectiveLicensingLaunchDate ? formatDateBR(effectiveLicensingLaunchDate) : '-'}
+                  </span>
                 </div>
               </div>
             </div>
