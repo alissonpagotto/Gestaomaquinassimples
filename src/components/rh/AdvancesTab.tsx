@@ -326,32 +326,33 @@ export const AdvancesTab: React.FC<AdvancesTabProps> = ({
       {/* Modal Lançar Vale */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl w-full max-w-md shadow-xl overflow-hidden my-auto">
+          <div className="bg-[#b0d2ed] border border-[#0963cb]/30 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
             
-            <div className="flex items-center justify-between px-5 py-3.5 bg-[#1f2ec5] border-b border-stone-200 dark:border-stone-800">
-              <h3 className="text-sm font-bold text-[#010101] leading-[35px]">
+            {/* Header com azul padrão #0963cb e texto/ícone em branco #ffffff */}
+            <div className="flex items-center justify-between px-5 py-3.5 bg-[#0963cb] text-white">
+              <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
                 {editingAdvance ? 'Editar Adiantamento / Vale' : 'Lançar Adiantamento / Vale'}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 text-white/80 hover:text-white rounded-lg hover:bg-white/10 transition"
+                className="p-1 text-white hover:bg-white/20 rounded-lg transition cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5 text-white" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveModal} className="p-5 space-y-4 text-xs bg-[#0a8bc1]">
+            <form onSubmit={handleSaveModal} className="p-5 space-y-4 text-xs bg-[#b0d2ed]">
               
               {/* Colaborador */}
               <div>
-                <label className="block font-bold text-[#0d0d0c] mb-1">
-                  Colaborador / Funcionário *
+                <label className="block font-bold text-black mb-1">
+                  Colaborador / Funcionário <span className="text-rose-600">*</span>
                 </label>
                 <select
                   value={selectedEmployeeId}
                   onChange={(e) => setSelectedEmployeeId(e.target.value)}
-                  className="w-full p-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 outline-none focus:ring-1 focus:ring-[#009688]"
+                  className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black outline-none focus:ring-1 focus:ring-[#0963cb] font-medium"
                   required
                 >
                   <option value="">Selecione um colaborador...</option>
@@ -366,27 +367,27 @@ export const AdvancesTab: React.FC<AdvancesTabProps> = ({
               {/* Data & Valor */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
-                    Data do Pagamento *
+                  <label className="block font-bold text-black mb-1">
+                    Data do Pagamento <span className="text-rose-600">*</span>
                   </label>
                   <input
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full p-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800"
+                    className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black outline-none focus:ring-1 focus:ring-[#0963cb]"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
-                    Valor do Vale (R$) *
+                  <label className="block font-bold text-black mb-1">
+                    Valor do Vale (R$) <span className="text-rose-600">*</span>
                   </label>
                   <input
                     type="number"
                     step="0.01"
                     value={amount || ''}
                     onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
-                    className="w-full p-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800 font-bold"
+                    className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-bold outline-none focus:ring-1 focus:ring-[#0963cb]"
                     required
                   />
                 </div>
@@ -395,13 +396,13 @@ export const AdvancesTab: React.FC<AdvancesTabProps> = ({
               {/* Forma Pagto & Mês de Desconto */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
+                  <label className="block font-bold text-black mb-1">
                     Forma de Pagamento
                   </label>
                   <select
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                    className="w-full p-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800"
+                    className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black outline-none focus:ring-1 focus:ring-[#0963cb]"
                   >
                     <option value="pix">PIX</option>
                     <option value="dinheiro">Dinheiro</option>
@@ -410,15 +411,14 @@ export const AdvancesTab: React.FC<AdvancesTabProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
-                    Competência de Desconto
+                  <label className="block font-bold text-black mb-1">
+                    Competência de Desconto <span className="text-rose-600">*</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="MM/AAAA (ex: 09/2026)"
                     value={referenceMonth}
                     onChange={(e) => setReferenceMonth(e.target.value)}
-                    className="w-full p-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800 font-bold"
+                    className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-bold outline-none focus:ring-1 focus:ring-[#0963cb]"
                     required
                   />
                 </div>
@@ -426,59 +426,58 @@ export const AdvancesTab: React.FC<AdvancesTabProps> = ({
 
               {/* Motivo */}
               <div>
-                <label className="block font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
+                <label className="block font-bold text-black mb-1">
                   Motivo / Justificativa
                 </label>
                 <input
                   type="text"
-                  placeholder="Ex: Vale quinzenal / Despesa médica emergencial..."
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  className="w-full p-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 outline-none"
+                  className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black outline-none focus:ring-1 focus:ring-[#0963cb]"
                 />
               </div>
 
               {/* Status */}
               <div>
-                <label className="block font-semibold text-[#030303] mb-0.5">
+                <label className="block font-bold text-black mb-1">
                   Situação do Desconto
                 </label>
                 <div className="flex items-center space-x-3 mt-1">
-                  <label className="flex items-center space-x-1 cursor-pointer">
+                  <label className="flex items-center space-x-1.5 cursor-pointer">
                     <input
                       type="radio"
                       name="advanceStatus"
                       checked={status === 'pendente'}
                       onChange={() => setStatus('pendente')}
-                      className="text-[#009688]"
+                      className="text-[#0963cb] focus:ring-[#0963cb] accent-[#0963cb] cursor-pointer"
                     />
-                    <span className="font-bold text-amber-600">Pendente de Desconto</span>
+                    <span className="font-bold text-amber-700">Pendente de Desconto</span>
                   </label>
-                  <label className="flex items-center space-x-1 cursor-pointer">
+                  <label className="flex items-center space-x-1.5 cursor-pointer">
                     <input
                       type="radio"
                       name="advanceStatus"
                       checked={status === 'descontado'}
                       onChange={() => setStatus('descontado')}
-                      className="text-[#009688]"
+                      className="text-[#0963cb] focus:ring-[#0963cb] accent-[#0963cb] cursor-pointer"
                     />
-                    <span className="font-bold text-emerald-600">Já Descontado na Folha</span>
+                    <span className="font-bold text-emerald-700">Já Descontado na Folha</span>
                   </label>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end space-x-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-black/15">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-3 py-1.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-[#e31919] hover:bg-[#cc1616] text-[#070707] font-bold transition shadow-xs"
+                  className="px-4 py-2 rounded-lg bg-white border border-stone-300 text-stone-700 font-bold hover:bg-stone-50 cursor-pointer transition"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-lg bg-[#14d677] hover:bg-[#11be69] text-[#ffffff] font-bold transition shadow-xs"
+                  className="px-5 py-2 rounded-lg bg-[#0963cb] hover:bg-[#0852a8] text-white font-bold transition shadow-xs cursor-pointer"
                 >
                   Salvar Vale
                 </button>

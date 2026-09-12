@@ -404,32 +404,33 @@ export const VacationsTab: React.FC<VacationsTabProps> = ({
       {/* Modal Agendar Férias */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl w-full max-w-xl shadow-xl overflow-hidden my-auto">
+          <div className="bg-[#b0d2ed] border border-[#0963cb]/30 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
             
-            <div className="flex items-center justify-between px-5 py-3.5 bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-800">
-              <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">
+            {/* Header com azul padrão #0963cb e texto/ícone em branco #ffffff */}
+            <div className="flex items-center justify-between px-5 py-3.5 bg-[#0963cb] text-white">
+              <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
                 {editingVacation ? 'Editar Férias' : 'Agendar Férias do Colaborador'}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded-lg hover:bg-stone-200 dark:hover:bg-stone-700 transition"
+                className="p-1 text-white hover:bg-white/20 rounded-lg transition cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5 text-white" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveModal} className="p-5 space-y-4 text-xs">
+            <form onSubmit={handleSaveModal} className="p-5 space-y-4 text-xs bg-[#b0d2ed]">
               
               {/* Colaborador */}
               <div>
-                <label className="block font-bold text-stone-700 dark:text-stone-300 mb-1">
-                  Colaborador / Funcionário *
+                <label className="block font-bold text-black mb-1">
+                  Colaborador / Funcionário <span className="text-rose-600">*</span>
                 </label>
                 <select
                   value={selectedEmployeeId}
                   onChange={(e) => handleSelectEmployee(e.target.value)}
-                  className="w-full p-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 outline-none focus:ring-1 focus:ring-[#009688]"
+                  className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black outline-none focus:ring-1 focus:ring-[#0963cb] font-medium"
                   required
                 >
                   <option value="">Selecione um funcionário...</option>
@@ -444,41 +445,41 @@ export const VacationsTab: React.FC<VacationsTabProps> = ({
               {/* Período de Gozo */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
-                    Data de Início do Gozo *
+                  <label className="block font-bold text-black mb-1">
+                    Data de Início do Gozo <span className="text-rose-600">*</span>
                   </label>
                   <input
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full p-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800"
+                    className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black outline-none focus:ring-1 focus:ring-[#0963cb]"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
-                    Data de Término do Gozo *
+                  <label className="block font-bold text-black mb-1">
+                    Data de Término do Gozo <span className="text-rose-600">*</span>
                   </label>
                   <input
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full p-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800"
+                    className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black outline-none focus:ring-1 focus:ring-[#0963cb]"
                     required
                   />
                 </div>
               </div>
 
               {/* Dias e Abono Pecuniário */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200 dark:border-stone-700">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-white rounded-xl border border-stone-300 shadow-xs">
                 <div>
-                  <label className="block font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
+                  <label className="block font-bold text-black mb-1">
                     Total de Dias
                   </label>
                   <select
                     value={daysCount}
                     onChange={(e) => handleDaysChange(Number(e.target.value), sellDaysCount, thirteenthAdvance, baseSalary)}
-                    className="w-full p-1.5 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-800 font-bold"
+                    className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-bold outline-none focus:ring-1 focus:ring-[#0963cb]"
                   >
                     <option value={30}>30 Dias</option>
                     <option value={20}>20 Dias</option>
@@ -488,13 +489,13 @@ export const VacationsTab: React.FC<VacationsTabProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
+                  <label className="block font-bold text-black mb-1">
                     Venda de Dias (Abono)
                   </label>
                   <select
                     value={sellDaysCount}
                     onChange={(e) => handleDaysChange(daysCount, Number(e.target.value), thirteenthAdvance, baseSalary)}
-                    className="w-full p-1.5 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-800 font-bold"
+                    className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-bold outline-none focus:ring-1 focus:ring-[#0963cb]"
                   >
                     <option value={0}>0 dias (Sem abono)</option>
                     <option value={10}>10 dias (Vender 10d)</option>
@@ -502,13 +503,13 @@ export const VacationsTab: React.FC<VacationsTabProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
+                  <label className="block font-bold text-black mb-1">
                     Adiantamento 13º?
                   </label>
                   <select
                     value={thirteenthAdvance ? 'sim' : 'nao'}
                     onChange={(e) => handleDaysChange(daysCount, sellDaysCount, e.target.value === 'sim', baseSalary)}
-                    className="w-full p-1.5 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-800 font-bold"
+                    className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-bold outline-none focus:ring-1 focus:ring-[#0963cb]"
                   >
                     <option value="nao">Não adiantar</option>
                     <option value="sim">Sim (+50% 13º)</option>
@@ -516,33 +517,33 @@ export const VacationsTab: React.FC<VacationsTabProps> = ({
                 </div>
               </div>
 
-              {/* Resumo Financeiro das Férias */}
-              <div className="p-3 bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-900/50 rounded-xl space-y-2">
+              {/* Resumo Financeiro das Férias (Fundo Branco com Destaque e Labels Pretas) */}
+              <div className="p-3.5 bg-white border border-stone-300 rounded-xl space-y-2 shadow-xs">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-stone-600 dark:text-stone-400">1/3 Constitucional:</span>
-                  <span className="font-bold text-stone-800 dark:text-stone-200">
+                  <span className="font-bold text-black">1/3 Constitucional:</span>
+                  <span className="font-black text-black">
                     {formatCurrencyBRL(currentCalc.oneThird)}
                   </span>
                 </div>
                 {sellDaysCount > 0 && (
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-stone-600 dark:text-stone-400">Abono Pecuniário (10d + 1/3):</span>
-                    <span className="font-bold text-stone-800 dark:text-stone-200">
+                    <span className="font-bold text-black">Abono Pecuniário (10d + 1/3):</span>
+                    <span className="font-black text-black">
                       {formatCurrencyBRL(currentCalc.pecuniary)}
                     </span>
                   </div>
                 )}
                 {thirteenthAdvance && (
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-stone-600 dark:text-stone-400">Adiantamento 13º Salário (50%):</span>
-                    <span className="font-bold text-stone-800 dark:text-stone-200">
+                    <span className="font-bold text-black">Adiantamento 13º Salário (50%):</span>
+                    <span className="font-black text-black">
                       {formatCurrencyBRL(currentCalc.thirteenth)}
                     </span>
                   </div>
                 )}
-                <div className="pt-2 border-t border-teal-200 dark:border-teal-900/60 flex items-center justify-between">
-                  <span className="font-black text-[#009688] uppercase">Total Líquido Férias:</span>
-                  <span className="text-base font-black text-[#009688]">
+                <div className="pt-2 border-t border-stone-200 flex items-center justify-between">
+                  <span className="font-black text-black uppercase tracking-wide">Total Líquido Férias:</span>
+                  <span className="text-base font-black text-[#0963cb]">
                     {formatCurrencyBRL(currentCalc.total)}
                   </span>
                 </div>
@@ -550,13 +551,13 @@ export const VacationsTab: React.FC<VacationsTabProps> = ({
 
               {/* Status */}
               <div>
-                <label className="block font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
+                <label className="block font-bold text-black mb-1">
                   Situação das Férias
                 </label>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value as any)}
-                  className="w-full p-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800 font-bold"
+                  className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-bold outline-none focus:ring-1 focus:ring-[#0963cb]"
                 >
                   <option value="agendado">Agendado</option>
                   <option value="em_gozo">Em Gozo</option>
@@ -565,32 +566,31 @@ export const VacationsTab: React.FC<VacationsTabProps> = ({
                 </select>
               </div>
 
-              {/* Observações */}
+              {/* Observações (Sem placeholder) */}
               <div>
-                <label className="block font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
+                <label className="block font-bold text-black mb-1">
                   Observações (Opcional)
                 </label>
-                <input
-                  type="text"
-                  placeholder="Ex: Férias programadas para a entressafra..."
+                <textarea
+                  rows={2}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full p-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 outline-none"
+                  className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black outline-none focus:ring-1 focus:ring-[#0963cb] resize-none"
                 />
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end space-x-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-black/15">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-3 py-1.5 rounded-lg border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-bold hover:bg-stone-100 dark:hover:bg-stone-800"
+                  className="px-4 py-2 rounded-lg bg-white border border-stone-300 text-stone-700 font-bold hover:bg-stone-50 cursor-pointer transition"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-lg bg-[#009688] hover:bg-[#00796b] text-white font-bold transition shadow-xs"
+                  className="px-5 py-2 rounded-lg bg-[#0963cb] hover:bg-[#0852a8] text-white font-bold transition shadow-xs cursor-pointer"
                 >
                   Salvar Férias
                 </button>
