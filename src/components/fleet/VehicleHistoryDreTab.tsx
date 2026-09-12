@@ -400,83 +400,94 @@ export const VehicleHistoryDreTab: React.FC<VehicleHistoryDreTabProps> = ({
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
       
-      {/* Sub-tabs Header */}
-      <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-stone-200 dark:border-stone-800">
-        <div className="flex items-center space-x-1.5 overflow-x-auto py-1">
+      {/* Sub-tabs Header - 100% da largura de ponta a ponta, sem barra de rolagem */}
+      <div className="w-full pb-2.5 border-b border-stone-200 dark:border-stone-800">
+        <div className="w-full grid grid-cols-5 gap-1 sm:gap-1.5">
           <button
             type="button"
             onClick={() => setActiveSubTab('resumo_consumo')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer whitespace-nowrap ${
+            className={`w-full py-1.5 px-1 sm:px-2 rounded-lg text-xs sm:text-[13px] font-bold transition flex items-center justify-center space-x-1 sm:space-x-1.5 cursor-pointer whitespace-nowrap shadow-2xs ${
               activeSubTab === 'resumo_consumo'
-                ? 'bg-cyan-700 text-white shadow-sm'
-                : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
+                ? 'bg-blue-100 dark:bg-blue-950/70 border-2 border-[#0963cb]'
+                : 'bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700'
             }`}
+            style={{ color: '#000000' }}
           >
-            <Gauge className="w-3.5 h-3.5" />
-            <span>Médias de Consumo (Horas & KM)</span>
+            <Gauge className={`w-3.5 h-3.5 shrink-0 ${activeSubTab === 'resumo_consumo' ? 'text-[#0963cb]' : 'text-stone-700 dark:text-stone-300'}`} />
+            <span className="truncate" style={{ color: '#000000' }}>Médias de Consumo</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveSubTab('dre')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer whitespace-nowrap ${
+            className={`w-full py-1.5 px-1 sm:px-2 rounded-lg text-xs sm:text-[13px] font-bold transition flex items-center justify-center space-x-1 sm:space-x-1.5 cursor-pointer whitespace-nowrap shadow-2xs ${
               activeSubTab === 'dre'
-                ? 'bg-cyan-700 text-white shadow-sm'
-                : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
+                ? 'bg-blue-100 dark:bg-blue-950/70 border-2 border-[#0963cb]'
+                : 'bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700'
             }`}
+            style={{ color: '#000000' }}
           >
-            <Receipt className="w-3.5 h-3.5" />
-            <span>DRE do Veículo</span>
+            <Receipt className={`w-3.5 h-3.5 shrink-0 ${activeSubTab === 'dre' ? 'text-[#0963cb]' : 'text-stone-700 dark:text-stone-300'}`} />
+            <span className="truncate" style={{ color: '#000000' }}>DRE do Veículo</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveSubTab('motoristas')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer whitespace-nowrap ${
+            className={`w-full py-1.5 px-1 sm:px-2 rounded-lg text-xs sm:text-[13px] font-bold transition flex items-center justify-center space-x-1 sm:space-x-1.5 cursor-pointer whitespace-nowrap shadow-2xs ${
               activeSubTab === 'motoristas'
-                ? 'bg-cyan-700 text-white shadow-sm'
-                : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
+                ? 'bg-blue-100 dark:bg-blue-950/70 border-2 border-[#0963cb]'
+                : 'bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700'
             }`}
+            style={{ color: '#000000' }}
           >
-            <Users className="w-3.5 h-3.5" />
-            <span>Despesas do Motorista ({vehicleDriverExpenses.length})</span>
+            <Users className={`w-3.5 h-3.5 shrink-0 ${activeSubTab === 'motoristas' ? 'text-[#0963cb]' : 'text-stone-700 dark:text-stone-300'}`} />
+            <span className="truncate" style={{ color: '#000000' }}>Despesas do Motorista</span>
+            {vehicleDriverExpenses.length > 0 && (
+              <span className="text-[10px] font-bold opacity-80 shrink-0" style={{ color: '#000000' }}>
+                ({vehicleDriverExpenses.length})
+              </span>
+            )}
           </button>
 
           <button
             type="button"
             onClick={() => setActiveSubTab('abastecimentos')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer whitespace-nowrap ${
+            className={`w-full py-1.5 px-1 sm:px-2 rounded-lg text-xs sm:text-[13px] font-bold transition flex items-center justify-center space-x-1 sm:space-x-1.5 cursor-pointer whitespace-nowrap shadow-2xs ${
               activeSubTab === 'abastecimentos'
-                ? 'bg-cyan-700 text-white shadow-sm'
-                : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
+                ? 'bg-blue-100 dark:bg-blue-950/70 border-2 border-[#0963cb]'
+                : 'bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700'
             }`}
+            style={{ color: '#000000' }}
           >
-            <Fuel className="w-3.5 h-3.5" />
-            <span>Abastecimentos ({vehicleFuelLogs.length})</span>
+            <Fuel className={`w-3.5 h-3.5 shrink-0 ${activeSubTab === 'abastecimentos' ? 'text-[#0963cb]' : 'text-stone-700 dark:text-stone-300'}`} />
+            <span className="truncate" style={{ color: '#000000' }}>Abastecimentos</span>
+            {vehicleFuelLogs.length > 0 && (
+              <span className="text-[10px] font-bold opacity-80 shrink-0" style={{ color: '#000000' }}>
+                ({vehicleFuelLogs.length})
+              </span>
+            )}
           </button>
 
           <button
             type="button"
             onClick={() => setActiveSubTab('manutencoes')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer whitespace-nowrap ${
+            className={`w-full py-1.5 px-1 sm:px-2 rounded-lg text-xs sm:text-[13px] font-bold transition flex items-center justify-center space-x-1 sm:space-x-1.5 cursor-pointer whitespace-nowrap shadow-2xs ${
               activeSubTab === 'manutencoes'
-                ? 'bg-cyan-700 text-white shadow-sm'
-                : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
+                ? 'bg-blue-100 dark:bg-blue-950/70 border-2 border-[#0963cb]'
+                : 'bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700'
             }`}
+            style={{ color: '#000000' }}
           >
-            <Wrench className="w-3.5 h-3.5" />
-            <span>Manutenções ({vehicleMaintenanceLogs.length})</span>
+            <Wrench className={`w-3.5 h-3.5 shrink-0 ${activeSubTab === 'manutencoes' ? 'text-[#0963cb]' : 'text-stone-700 dark:text-stone-300'}`} />
+            <span className="truncate" style={{ color: '#000000' }}>Manutenções</span>
+            {vehicleMaintenanceLogs.length > 0 && (
+              <span className="text-[10px] font-bold opacity-80 shrink-0" style={{ color: '#000000' }}>
+                ({vehicleMaintenanceLogs.length})
+              </span>
+            )}
           </button>
         </div>
-
-        <button
-          type="button"
-          onClick={() => setIsAddingDriverExpense(true)}
-          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm transition flex items-center space-x-1.5 cursor-pointer shrink-0"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Lançar Despesa do Motorista</span>
-        </button>
       </div>
 
       {/* ============================================================ */}
