@@ -32,6 +32,43 @@ export const ThirdPartySettlementsTab: React.FC<ThirdPartySettlementsTabProps> =
 }) => {
   const { confirm } = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pendente' | 'pago'>('all');
+  const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
+
+  // Month options based on current date: 1 previous, current, 5 next
+  const monthFilterOptions = React.useMemo(() => {
+    const monthNames = [
+      'Janeiro',
+      'Fevereiro',
+      'Março',
+      'Abril',
+      'Maio',
+      'Junho',
+      'Julho',
+      'Agosto',
+      'Setembro',
+      'Outubro',
+      'Novembro',
+      'Dezembro',
+    ];
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-11
+
+    const options: { key: string; label: string; year: number; month: number }[] = [];
+
+    // -1 (Mês Anterior), 0 (Mês Atual), +1..+5 (5 Próximos Meses)
+    for (let offset = -1; offset <= 5; offset++) {
+      const d = new Date(currentYear, currentMonth + offset, 1);
+      const y = d.getFullYear();
+      const m = d.getMonth(); // 0-11
+      const key = `${y}-${String(m + 1).padStart(2, '0')}`;
+      const label = monthNames[m];
+      options.push({ key, label, year: y, month: m });
+    }
+
+    return options;
+  }, []);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ThirdPartySettlement | null>(null);
@@ -52,9 +89,12 @@ export const ThirdPartySettlementsTab: React.FC<ThirdPartySettlementsTabProps> =
   const [status, setStatus] = useState<ThirdPartySettlement['status']>('pendente');
 
   // Calculations
+  const pendingSettlements = settlements.filter(s => s.status === 'pendente' || s.status === 'parcial');
+  const paidSettlements = settlements.filter(s => s.status === 'pago');
+
   const totalSettlementsAmount = settlements.reduce((acc, s) => acc + s.netAmount, 0);
-  const pendingAmount = settlements.filter(s => s.status === 'pendente').reduce((acc, s) => acc + s.netAmount, 0);
-  const paidAmount = settlements.filter(s => s.status === 'pago').reduce((acc, s) => acc + s.netAmount, 0);
+  const pendingAmount = pendingSettlements.reduce((acc, s) => acc + s.netAmount, 0);
+  const paidAmount = paidSettlements.reduce((acc, s) => acc + s.netAmount, 0);
 
   const handleOpenModal = (item?: ThirdPartySettlement) => {
     if (item) {
@@ -191,13 +231,29 @@ export const ThirdPartySettlementsTab: React.FC<ThirdPartySettlementsTabProps> =
 
 
   const filtered = settlements.filter((s) => {
+    const matchesStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'pendente' && (s.status === 'pendente' || s.status === 'parcial')) ||
+      (statusFilter === 'pago' && s.status === 'pago');
+
+    // Monthly filter based on date (YYYY-MM)
+    let matchesMonth = true;
+    if (selectedMonthKey) {
+      if (s.date) {
+        matchesMonth = s.date.startsWith(selectedMonthKey);
+      } else {
+        matchesMonth = false;
+      }
+    }
+
     const q = searchTerm.toLowerCase();
-    return (
+    const matchesSearch =
       s.thirdPartyName.toLowerCase().includes(q) ||
       s.role.toLowerCase().includes(q) ||
       s.description.toLowerCase().includes(q) ||
-      (s.machineryPlateOrName && s.machineryPlateOrName.toLowerCase().includes(q))
-    );
+      (s.machineryPlateOrName && s.machineryPlateOrName.toLowerCase().includes(q));
+
+    return matchesStatus && matchesMonth && matchesSearch;
   });
 
   return (
@@ -256,27 +312,88 @@ export const ThirdPartySettlementsTab: React.FC<ThirdPartySettlementsTabProps> =
         </div>
       </div>
 
-      {/* Bar Action (Compact) */}
-      <div className="bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-2 text-black">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-3.5 h-3.5 text-black absolute left-2.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Buscar por freteiro, operador, placa..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-8 pr-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white text-black placeholder-slate-400 outline-none focus:ring-1 focus:ring-sky-600"
-          />
+      {/* Filters & Action Bar (Compact) */}
+      <div className="bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-xs flex flex-col xl:flex-row items-center justify-between gap-2 text-black">
+        <div className="flex items-center space-x-1.5 w-full xl:w-auto overflow-x-auto scrollbar-none pb-1 xl:pb-0">
+          <button
+            type="button"
+            onClick={() => setStatusFilter('all')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+              statusFilter === 'all'
+                ? 'bg-sky-600 text-white shadow-xs'
+                : 'bg-slate-100 text-black hover:bg-slate-200'
+            }`}
+          >
+            Todos ({settlements.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter('pendente')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+              statusFilter === 'pendente'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-slate-100 text-black hover:bg-slate-200'
+            }`}
+          >
+            Pendentes ({pendingSettlements.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter('pago')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+              statusFilter === 'pago'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'bg-slate-100 text-black hover:bg-slate-200'
+            }`}
+          >
+            Liquidados ({paidSettlements.length})
+          </button>
+
+          {/* Divisor sutil entre status e meses */}
+          <div className="h-4 w-px bg-slate-300 mx-0.5 shrink-0 hidden sm:block" />
+
+          {/* Botões de Filtro por Mês */}
+          {monthFilterOptions.map((m) => {
+            const isSelected = selectedMonthKey === m.key;
+            return (
+              <button
+                key={m.key}
+                type="button"
+                onClick={() => setSelectedMonthKey(isSelected ? null : m.key)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+                  isSelected
+                    ? 'bg-sky-600 text-white shadow-xs'
+                    : 'bg-slate-100 text-black hover:bg-slate-200'
+                }`}
+                title={`Filtrar por ${m.label}/${m.year}`}
+              >
+                {m.label}
+              </button>
+            );
+          })}
         </div>
 
-        <button
-          type="button"
-          onClick={() => handleOpenModal()}
-          className="w-full sm:w-auto inline-flex items-center justify-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition shadow-xs cursor-pointer active:scale-95"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Novo Acerto de Terceiro</span>
-        </button>
+        <div className="flex items-center space-x-2 w-full xl:w-auto justify-end">
+          <div className="relative w-full sm:w-64">
+            <Search className="w-3.5 h-3.5 text-black absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Buscar por freteiro, operador, placa..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-8 pr-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white text-black placeholder-slate-400 outline-none focus:ring-1 focus:ring-sky-600"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => handleOpenModal()}
+            className="w-full sm:w-auto inline-flex items-center justify-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition shadow-xs cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Novo Acerto de Terceiro</span>
+          </button>
+        </div>
       </div>
 
       {/* Settlements List (Dense & Compact) */}
@@ -398,8 +515,10 @@ export const ThirdPartySettlementsTab: React.FC<ThirdPartySettlementsTabProps> =
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-stone-400 text-sm">
-                    Nenhum acerto de terceiro registrado.
+                  <td colSpan={9} className="py-8 text-center text-stone-500 font-medium text-xs">
+                    {settlements.length === 0
+                      ? 'Nenhum acerto de terceiro registrado.'
+                      : 'Nenhum acerto encontrado para os filtros selecionados.'}
                   </td>
                 </tr>
               )}
