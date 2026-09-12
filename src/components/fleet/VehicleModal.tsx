@@ -47,6 +47,8 @@ import { VehicleCategoriesModal } from './VehicleCategoriesModal';
 import { VehicleOwnershipModal } from './VehicleOwnershipModal';
 import { VehicleHistoryDreTab } from './VehicleHistoryDreTab';
 import { PrintPreviewModal } from '../common/PrintPreviewModal';
+import { CurrencyInput } from '../common/CurrencyInput';
+import { formatarMoeda, desformatarMoeda } from '../../lib/formatters';
 import { PrintDocumentOptions } from '../../lib/printService';
 import { 
   generateVehicleRegistrationPrintHtml, 
@@ -178,7 +180,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
 
   // Computed IPVA Total
   const computedIpvaTotal = useMemo(() => {
-    const base = parseFloat(ipvaBaseValue) || 0;
+    const base = desformatarMoeda(ipvaBaseValue);
     const rate = parseFloat(ipvaRatePercent) || 0;
     if (base > 0 && rate > 0) {
       return (base * (rate / 100));
@@ -267,7 +269,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       : editingVehicle?.averageConsumptionLitersPerHour;
 
     const numInstallments = parseInt(installmentsCount, 10) || 0;
-    const numInstallmentVal = parseFloat(installmentValue) || 0;
+    const numInstallmentVal = desformatarMoeda(installmentValue);
 
     return {
       id: editingVehicle ? editingVehicle.id : `veh_${Date.now()}`,
@@ -293,7 +295,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       ownerDocument: ownerDocument.trim() || undefined,
       secondaryOwnerName: secondaryOwnerName.trim() || undefined,
       secondaryOwnerDocument: secondaryOwnerDocument.trim() || undefined,
-      purchaseValue: purchaseValue ? parseFloat(purchaseValue) : undefined,
+      purchaseValue: purchaseValue ? desformatarMoeda(purchaseValue) : undefined,
       purchaseInvoiceNumber: purchaseInvoiceNumber.trim() || undefined,
       purchaseInvoiceKey: purchaseInvoiceKey.trim() || undefined,
       purchaseDate: purchaseDate || undefined,
@@ -305,13 +307,13 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       firstInstallmentDueDate: isFinanced ? firstInstallmentDueDate : undefined,
       financialInstitution: isFinanced ? financialInstitution.trim() : undefined,
       // 4. Controle Patrimonial, Impostos & Taxas
-      fipeValue: fipeValue ? parseFloat(fipeValue) : undefined,
-      ipvaBaseValue: ipvaBaseValue ? parseFloat(ipvaBaseValue) : undefined,
+      fipeValue: fipeValue ? desformatarMoeda(fipeValue) : undefined,
+      ipvaBaseValue: ipvaBaseValue ? desformatarMoeda(ipvaBaseValue) : undefined,
       ipvaRatePercent: ipvaRatePercent ? parseFloat(ipvaRatePercent) : undefined,
       ipvaTotalAmount: computedIpvaTotal > 0 ? computedIpvaTotal : undefined,
       ipvaInstallmentsCount: ipvaInstallmentsCount ? parseInt(ipvaInstallmentsCount, 10) : undefined,
       ipvaFinancialStatus,
-      licensingValue: licensingValue ? parseFloat(licensingValue) : undefined,
+      licensingValue: licensingValue ? desformatarMoeda(licensingValue) : undefined,
       licensingFinancialStatus,
       capacityM3: capacityM3 ? parseFloat(capacityM3) : undefined,
       fuelCapacityLiters: fuelCapacityLiters ? parseFloat(fuelCapacityLiters) : undefined,
@@ -461,7 +463,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setShowSecondaryOwner(Boolean(editingVehicle.secondaryOwnerName || editingVehicle.secondaryOwnerDocument));
 
       // Purchase & Financing
-      setPurchaseValue(editingVehicle.purchaseValue ? String(editingVehicle.purchaseValue) : '');
+      setPurchaseValue(editingVehicle.purchaseValue ? formatarMoeda(Math.round(editingVehicle.purchaseValue * 100)) : '');
       setPurchaseInvoiceNumber(editingVehicle.purchaseInvoiceNumber || '');
       setPurchaseInvoiceKey(editingVehicle.purchaseInvoiceKey || '');
       setPurchaseDate(editingVehicle.purchaseDate || '');
@@ -469,17 +471,17 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setPurchaseAttachmentName(editingVehicle.purchaseInvoiceAttachment?.name || '');
       setIsFinanced(Boolean(editingVehicle.isFinancedOrInstallments));
       setInstallmentsCount(editingVehicle.installmentsCount ? String(editingVehicle.installmentsCount) : '');
-      setInstallmentValue(editingVehicle.installmentValue ? String(editingVehicle.installmentValue) : '');
+      setInstallmentValue(editingVehicle.installmentValue ? formatarMoeda(Math.round(editingVehicle.installmentValue * 100)) : '');
       setFirstInstallmentDueDate(editingVehicle.firstInstallmentDueDate || '');
       setFinancialInstitution(editingVehicle.financialInstitution || '');
       setGeneratePayables(!editingVehicle.installmentsGenerated);
       
       // 4. Controle Patrimonial, Impostos & Taxas
-      setFipeValue(editingVehicle.fipeValue !== undefined ? String(editingVehicle.fipeValue) : '');
-      setIpvaBaseValue(editingVehicle.ipvaBaseValue !== undefined ? String(editingVehicle.ipvaBaseValue) : '');
+      setFipeValue(editingVehicle.fipeValue !== undefined ? formatarMoeda(Math.round(editingVehicle.fipeValue * 100)) : '');
+      setIpvaBaseValue(editingVehicle.ipvaBaseValue !== undefined ? formatarMoeda(Math.round(editingVehicle.ipvaBaseValue * 100)) : '');
       setIpvaRatePercent(editingVehicle.ipvaRatePercent !== undefined ? String(editingVehicle.ipvaRatePercent) : '2');
       setIpvaInstallmentsCount(editingVehicle.ipvaInstallmentsCount ? String(editingVehicle.ipvaInstallmentsCount) : '1');
-      setLicensingValue(editingVehicle.licensingValue !== undefined ? String(editingVehicle.licensingValue) : '');
+      setLicensingValue(editingVehicle.licensingValue !== undefined ? formatarMoeda(Math.round(editingVehicle.licensingValue * 100)) : '');
       setIpvaFinancialStatus(editingVehicle.ipvaFinancialStatus || 'pendente');
       setLicensingFinancialStatus(editingVehicle.licensingFinancialStatus || 'pendente');
       
@@ -604,9 +606,9 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
   const handleInstallmentsCountChange = (val: string) => {
     setInstallmentsCount(val);
     const count = parseInt(val, 10);
-    const totalP = parseFloat(purchaseValue);
+    const totalP = desformatarMoeda(purchaseValue);
     if (count > 0 && totalP > 0 && !installmentValue) {
-      setInstallmentValue((totalP / count).toFixed(2));
+      setInstallmentValue(formatarMoeda(Math.round((totalP / count) * 100)));
     }
   };
 
@@ -658,7 +660,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
         supplier: 'SEFAZ / Detran - Secretaria da Fazenda',
         machineryId: vehicleId,
         machineryName: vName,
-        notes: `Imposto IPVA exercício ${currentYear} para o veículo ${vName} (Placa/Identificador: ${vIdentifier}). Valor Venal Base: R$ ${parseFloat(ipvaBaseValue).toFixed(2)}, Alíquota: ${ipvaRatePercent}%. Parcela ${i} de ${installments}.`,
+        notes: `Imposto IPVA exercício ${currentYear} para o veículo ${vName} (Placa/Identificador: ${vIdentifier}). Valor Venal Base: R$ ${desformatarMoeda(ipvaBaseValue).toFixed(2)}, Alíquota: ${ipvaRatePercent}%. Parcela ${i} de ${installments}.`,
       });
     }
 
@@ -673,7 +675,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       alert('Módulo financeiro indisponível para lançamento direto.');
       return;
     }
-    const val = parseFloat(licensingValue) || 0;
+    const val = desformatarMoeda(licensingValue);
     if (val <= 0) {
       alert('Informe o valor da Taxa de Licenciamento Anual antes de lançar.');
       return;
@@ -754,7 +756,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       : editingVehicle?.averageConsumptionLitersPerHour;
 
     const numInstallments = parseInt(installmentsCount, 10) || 0;
-    const numInstallmentVal = parseFloat(installmentValue) || 0;
+    const numInstallmentVal = desformatarMoeda(installmentValue);
 
     const willGenerateInstallments = Boolean(
       isFinanced && 
@@ -799,7 +801,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       secondaryOwnerDocument: secondaryOwnerDocument.trim() || undefined,
 
       // Purchase & Financing
-      purchaseValue: purchaseValue ? parseFloat(purchaseValue) : undefined,
+      purchaseValue: purchaseValue ? desformatarMoeda(purchaseValue) : undefined,
       purchaseInvoiceNumber: purchaseInvoiceNumber.trim() || undefined,
       purchaseInvoiceKey: purchaseInvoiceKey.trim() || undefined,
       purchaseDate: purchaseDate || undefined,
@@ -813,13 +815,13 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       installmentsGenerated: editingVehicle?.installmentsGenerated || willGenerateInstallments,
 
       // 4. Controle Patrimonial, Impostos & Taxas
-      fipeValue: fipeValue ? parseFloat(fipeValue) : undefined,
-      ipvaBaseValue: ipvaBaseValue ? parseFloat(ipvaBaseValue) : undefined,
+      fipeValue: fipeValue ? desformatarMoeda(fipeValue) : undefined,
+      ipvaBaseValue: ipvaBaseValue ? desformatarMoeda(ipvaBaseValue) : undefined,
       ipvaRatePercent: ipvaRatePercent ? parseFloat(ipvaRatePercent) : undefined,
       ipvaTotalAmount: computedIpvaTotal > 0 ? computedIpvaTotal : undefined,
       ipvaInstallmentsCount: ipvaInstallmentsCount ? parseInt(ipvaInstallmentsCount, 10) : undefined,
       ipvaFinancialStatus,
-      licensingValue: licensingValue ? parseFloat(licensingValue) : undefined,
+      licensingValue: licensingValue ? desformatarMoeda(licensingValue) : undefined,
       licensingFinancialStatus,
 
       // Capacity & Meters
@@ -1472,21 +1474,21 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 {/* Valor de Compra */}
                 <div>
-                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
-                    Valor de Compra (R$)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-500">
-                      R$
-                    </span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={purchaseValue}
-                      onChange={(e) => setPurchaseValue(e.target.value)}
-                      className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-black focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
-                    />
-                  </div>
+                  <CurrencyInput
+                    id="purchaseValueInput"
+                    label="Valor de Compra (R$)"
+                    value={purchaseValue}
+                    onChange={(numericValue, formattedValue) => {
+                      setPurchaseValue(formattedValue);
+                      // Se estiver financiado e tiver parcelas, calcula sugestão
+                      const count = parseInt(installmentsCount, 10);
+                      if (isFinanced && count > 0 && numericValue > 0) {
+                        const parcelVal = numericValue / count;
+                        setInstallmentValue(formatarMoeda(Math.round(parcelVal * 100)));
+                      }
+                    }}
+                    placeholder="0,00"
+                  />
                 </div>
 
                 {/* Nota Fiscal de Compra */}
@@ -1596,15 +1598,14 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
 
                     {/* Valor da parcela */}
                     <div>
-                      <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
-                        Valor da Parcela (R$)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
+                      <CurrencyInput
+                        id="installmentValueInput"
+                        label="Valor da Parcela (R$)"
                         value={installmentValue}
-                        onChange={(e) => setInstallmentValue(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-lg border border-stone-300 bg-white text-[#000000] text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
+                        onChange={(numericValue, formattedValue) => {
+                          setInstallmentValue(formattedValue);
+                        }}
+                        placeholder="0,00"
                       />
                     </div>
 
@@ -1677,42 +1678,28 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 {/* 1. Valor Comercial Tabela FIPE (R$) */}
                 <div className="sm:col-span-1 lg:col-span-2">
-                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
-                    Valor Comercial Tabela FIPE (R$)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-500">
-                      R$
-                    </span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="0,00"
-                      value={fipeValue}
-                      onChange={(e) => setFipeValue(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
-                    />
-                  </div>
+                  <CurrencyInput
+                    id="fipeValueInput"
+                    label="Valor Comercial Tabela FIPE (R$)"
+                    value={fipeValue}
+                    onChange={(numericValue, formattedValue) => {
+                      setFipeValue(formattedValue);
+                    }}
+                    placeholder="0,00"
+                  />
                 </div>
 
                 {/* 2. Valor Base para IPVA (R$) */}
                 <div className="sm:col-span-1 lg:col-span-2">
-                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
-                    Valor Base para IPVA (R$)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-500">
-                      R$
-                    </span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="0,00"
-                      value={ipvaBaseValue}
-                      onChange={(e) => setIpvaBaseValue(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
-                    />
-                  </div>
+                  <CurrencyInput
+                    id="ipvaBaseValueInput"
+                    label="Valor Base para IPVA (R$)"
+                    value={ipvaBaseValue}
+                    onChange={(numericValue, formattedValue) => {
+                      setIpvaBaseValue(formattedValue);
+                    }}
+                    placeholder="0,00"
+                  />
                 </div>
 
                 {/* 3. Alíquota IPVA (%) */}
@@ -1770,22 +1757,15 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
 
                 {/* 6. Valor do Licenciamento Anual (R$) */}
                 <div>
-                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
-                    Valor do Licenciamento (R$)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-500">
-                      R$
-                    </span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="0,00"
-                      value={licensingValue}
-                      onChange={(e) => setLicensingValue(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
-                    />
-                  </div>
+                  <CurrencyInput
+                    id="licensingValueInput"
+                    label="Valor do Licenciamento (R$)"
+                    value={licensingValue}
+                    onChange={(numericValue, formattedValue) => {
+                      setLicensingValue(formattedValue);
+                    }}
+                    placeholder="0,00"
+                  />
                 </div>
 
                 {/* 7. Ação de Lançar IPVA no Financeiro */}

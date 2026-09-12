@@ -238,6 +238,34 @@ export function maskCurrencyLive(value: string | number): string {
   }).format(floatVal);
 }
 
+/**
+ * Função de máscara monetária: formata o valor em tempo real para BRL deslocando casas decimais
+ * - "1" -> "0,01"
+ * - "10" -> "0,10"
+ * - "100" -> "1,00"
+ * - "150000" -> "1.500,00"
+ */
+export function formatarMoeda(valor: string | number | undefined | null): string {
+  if (valor === undefined || valor === null) return '';
+  const apenasDigitos = String(valor).replace(/\D/g, '');
+  if (!apenasDigitos) return '';
+  const centavos = Number(apenasDigitos) / 100;
+  return centavos.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+/**
+ * Converte a string formatada em moeda BRL de volta para número puro (float)
+ */
+export function desformatarMoeda(valorFormatado: string | undefined | null): number {
+  if (!valorFormatado) return 0;
+  const apenasDigitos = String(valorFormatado).replace(/\D/g, '');
+  if (!apenasDigitos) return 0;
+  return Number(apenasDigitos) / 100;
+}
+
 // ==========================================
 // 6. Online CEP Lookup (ViaCEP + BrasilAPI)
 // ==========================================
