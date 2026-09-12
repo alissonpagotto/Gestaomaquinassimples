@@ -25,7 +25,8 @@ import {
   Paperclip,
   CheckCircle2,
   Calendar,
-  Weight
+  Weight,
+  Printer
 } from 'lucide-react';
 import { Machinery, Employee, FuelLog, MaintenanceLog, Expense, ServiceOrder, SilageOrder } from '../../types';
 import { 
@@ -34,12 +35,19 @@ import {
   getStoredVehicleSystemCategories, 
   saveStoredVehicleSystemCategories,
   getStoredVehicleOwnershipRegimes,
-  saveStoredVehicleOwnershipRegimes
+  saveStoredVehicleOwnershipRegimes,
+  getStoredCompanyProfile
 } from '../../lib/storage';
 import { calculateVehicleConsumptionMetrics } from '../../lib/fleetMetrics';
 import { VehicleCategoriesModal } from './VehicleCategoriesModal';
 import { VehicleOwnershipModal } from './VehicleOwnershipModal';
 import { VehicleHistoryDreTab } from './VehicleHistoryDreTab';
+import { PrintPreviewModal } from '../common/PrintPreviewModal';
+import { PrintDocumentOptions } from '../../lib/printService';
+import { 
+  generateVehicleRegistrationPrintHtml, 
+  generateVehicleHistoryPrintHtml 
+} from './vehiclePrintTemplates';
 
 interface VehicleModalProps {
   isOpen: boolean;
@@ -198,6 +206,163 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       .filter((m) => m.machineryId === editingVehicle.id)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [editingVehicle, maintenanceLogs]);
+
+  // Print Modal States
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [printOptions, setPrintOptions] = useState<PrintDocumentOptions | null>(null);
+
+  // Helper to compile the active/current vehicle object (merging form fields or editingVehicle)
+  const buildCurrentVehicleSnapshot = (): Machinery => {
+    const formattedModel = model.trim() || plate.trim() || fleetNumber.trim() || serialNumber.trim() || 'Veículo / Equipamento';
+    const formattedBrand = brand.trim() || 'Agrícola';
+    const formattedName = `${formattedBrand} ${formattedModel}`.trim();
+
+    const selectedEmpObjects = activeEmployees.filter(emp => selectedDriverIds.includes(emp.id));
+    const assignedNames = selectedEmpObjects.map(emp => emp.name);
+    const compiledDriverString = assignedNames.join(', ');
+
+    let finalCoupledName = coupledTrailerName;
+    if (compositionType === 'cavalo') {
+      if (customTrailerText.trim()) {
+        finalCoupledName = customTrailerText.trim();
+      } else if (coupledTrailerId && coupledTrailerId !== 'outro') {
+        const found = candidateTrailers.find(t => t.id === coupledTrailerId);
+        if (found) {
+          finalCoupledName = `${found.licensePlateOrSerial || ''} - ${found.model || found.name}`.trim();
+        }
+      }
+    }
+
+    const finalKmPerLiter = consumptionMetrics.avgKmPerLiter !== null 
+      ? consumptionMetrics.avgKmPerLiter 
+      : editingVehicle?.averageConsumptionKmPerLiter;
+
+    const finalLitersPerHour = consumptionMetrics.avgLitersPerHour !== null 
+      ? consumptionMetrics.avgLitersPerHour 
+      : editingVehicle?.averageConsumptionLitersPerHour;
+
+    const numInstallments = parseInt(installmentsCount, 10) || 0;
+    const numInstallmentVal = parseFloat(installmentValue) || 0;
+
+    return {
+      id: editingVehicle ? editingVehicle.id : `veh_${Date.now()}`,
+      name: formattedName,
+      model: formattedModel,
+      brand: formattedBrand,
+      year: year ? parseInt(year, 10) : undefined,
+      renavam: renavam.trim() || undefined,
+      color: color.trim() || undefined,
+      fleetNumber: fleetNumber.trim() || undefined,
+      categoryType: categoryType || 'forrageira',
+      status: status || 'disponivel',
+      ownership: ownership || 'proprio',
+      compositionType,
+      coupledTrailerId: coupledTrailerId || undefined,
+      coupledTrailerName: finalCoupledName || undefined,
+      vehicleTypeDetailed: vehicleTypeDetailed.trim() || undefined,
+      taraWeightKg: taraWeightKg ? parseFloat(taraWeightKg) : undefined,
+      capacityLoadKg: capacityLoadKg ? parseFloat(capacityLoadKg) : undefined,
+      grossWeightKg: computedPbt > 0 ? computedPbt : undefined,
+      serialNumber: serialNumber.trim() || undefined,
+      ownerName: ownerName.trim() || undefined,
+      ownerDocument: ownerDocument.trim() || undefined,
+      secondaryOwnerName: secondaryOwnerName.trim() || undefined,
+      secondaryOwnerDocument: secondaryOwnerDocument.trim() || undefined,
+      purchaseValue: purchaseValue ? parseFloat(purchaseValue) : undefined,
+      purchaseInvoiceNumber: purchaseInvoiceNumber.trim() || undefined,
+      purchaseInvoiceKey: purchaseInvoiceKey.trim() || undefined,
+      purchaseDate: purchaseDate || undefined,
+      purchaseSupplier: purchaseSupplier.trim() || undefined,
+      purchaseInvoiceAttachment: purchaseAttachmentName ? { name: purchaseAttachmentName, uploadedAt: new Date().toISOString() } : undefined,
+      isFinancedOrInstallments: isFinanced,
+      installmentsCount: isFinanced && numInstallments > 0 ? numInstallments : undefined,
+      installmentValue: isFinanced && numInstallmentVal > 0 ? numInstallmentVal : undefined,
+      firstInstallmentDueDate: isFinanced ? firstInstallmentDueDate : undefined,
+      financialInstitution: isFinanced ? financialInstitution.trim() : undefined,
+      capacityM3: capacityM3 ? parseFloat(capacityM3) : undefined,
+      fuelCapacityLiters: fuelCapacityLiters ? parseFloat(fuelCapacityLiters) : undefined,
+      licensePlateOrSerial: (plate.trim() || serialNumber.trim() || fleetNumber.trim()).toUpperCase(),
+      hourMeter: hourMeter ? parseFloat(hourMeter) : (editingVehicle?.hourMeter || 0),
+      currentKm: currentKm ? parseFloat(currentKm) : (editingVehicle?.currentKm || undefined),
+      averageConsumptionKmPerLiter: finalKmPerLiter,
+      averageConsumptionLitersPerHour: finalLitersPerHour,
+      operatorOrDriver: compiledDriverString,
+      assignedDriverIds: selectedDriverIds,
+      assignedDrivers: assignedNames,
+      revisionStatus: revisionStatus.trim() || 'Em dia',
+      notes: notes.trim() || undefined,
+      reaisNotes: notes.trim() || undefined,
+      accumulatedCost: editingVehicle ? editingVehicle.accumulatedCost : 0,
+      totalFuelExpenses: editingVehicle?.totalFuelExpenses || 0,
+      totalMaintenanceExpenses: editingVehicle?.totalMaintenanceExpenses || 0,
+      lastMaintenanceDate: editingVehicle?.lastMaintenanceDate || new Date().toISOString().split('T')[0],
+      currentFuelPercentage: editingVehicle?.currentFuelPercentage || 100,
+    };
+  };
+
+  // Handler for "Imprimir Cadastro"
+  const handlePrintCadastro = () => {
+    const currentVehicle = buildCurrentVehicleSnapshot();
+    const company = getStoredCompanyProfile();
+
+    const selectedEmpObjects = activeEmployees.filter(emp => selectedDriverIds.includes(emp.id));
+    const assignedNames = selectedEmpObjects.map(emp => emp.name);
+
+    const vehicleTitle = currentVehicle.fleetNumber 
+      ? `FROTA Nº ${currentVehicle.fleetNumber} - ${currentVehicle.name || currentVehicle.model}`
+      : `${currentVehicle.name || currentVehicle.model}`;
+
+    const subtitle = `Placa/Série: ${currentVehicle.licensePlateOrSerial || '--'} | Categoria: ${currentVehicle.categoryType || 'Equipamento'} | Regime: ${currentVehicle.ownership || 'Próprio'}`;
+
+    const contentHtml = generateVehicleRegistrationPrintHtml(currentVehicle, company, assignedNames);
+
+    setPrintOptions({
+      company,
+      title: `FICHA CADASTRAL DO VEÍCULO / MÁQUINA`,
+      subtitle: `${vehicleTitle} — ${subtitle}`,
+      documentType: 'CADASTRO DE VEÍCULO',
+      contentHtml,
+      showSignatures: true,
+      signatureLabels: ['Responsável pela Frota / Operação', 'Diretoria / Gerência Geral'],
+      whatsappText: `🚜 *${company.tradeName?.toUpperCase() || 'SILAGEM ZÉ BUSCA-PÉ'}*\n📋 *FICHA CADASTRAL DO VEÍCULO*\n🚛 *Veículo:* ${vehicleTitle}\n🔢 *Placa/Série:* ${currentVehicle.licensePlateOrSerial || '--'}\n⚙️ *Status:* ${currentVehicle.status?.toUpperCase() || 'DISPONÍVEL'}\n\n_Documento gerado via Silagem Fácil Pro_`,
+    });
+    setIsPrintModalOpen(true);
+  };
+
+  // Handler for "Imprimir Histórico"
+  const handlePrintHistorico = () => {
+    const currentVehicle = buildCurrentVehicleSnapshot();
+    const company = getStoredCompanyProfile();
+
+    const vehicleTitle = currentVehicle.fleetNumber 
+      ? `FROTA Nº ${currentVehicle.fleetNumber} - ${currentVehicle.name || currentVehicle.model}`
+      : `${currentVehicle.name || currentVehicle.model}`;
+
+    const subtitle = `Placa/Série: ${currentVehicle.licensePlateOrSerial || '--'} | Relatório Consolidado de Consumo, Manutenções & DRE`;
+
+    const contentHtml = generateVehicleHistoryPrintHtml(
+      currentVehicle,
+      company,
+      fuelLogs,
+      maintenanceLogs,
+      expenses,
+      services,
+      orders,
+      employees
+    );
+
+    setPrintOptions({
+      company,
+      title: `RELATÓRIO HISTÓRICO, CONSUMO & DRE OPERACIONAL`,
+      subtitle: `${vehicleTitle} — ${subtitle}`,
+      documentType: 'HISTÓRICO & DRE DO VEÍCULO',
+      contentHtml,
+      showSignatures: true,
+      signatureLabels: ['Encarregado de Manutenção / Abastecimento', 'Controladoria / Gestão Financeira'],
+      whatsappText: `🚜 *${company.tradeName?.toUpperCase() || 'SILAGEM ZÉ BUSCA-PÉ'}*\n📊 *RELATÓRIO DE HISTÓRICO & DRE DO VEÍCULO*\n🚛 *Veículo:* ${vehicleTitle}\n🔢 *Placa/Série:* ${currentVehicle.licensePlateOrSerial || '--'}\n\n_Relatório consolidado via Silagem Fácil Pro_`,
+    });
+    setIsPrintModalOpen(true);
+  };
 
   useEffect(() => {
     if (editingVehicle) {
@@ -599,12 +764,13 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
           </button>
         </div>
 
-        {/* Tabs Bar */}
+        {/* Tabs Bar with Print Action Buttons */}
         <div 
-          className="p-2.5 sm:p-3 bg-[#b0d2ed] border-b border-blue-300 flex items-center justify-center shrink-0"
+          className="p-2.5 sm:p-3 bg-[#b0d2ed] border-b border-blue-300 flex flex-wrap items-center justify-between gap-2.5 shrink-0"
           style={{ backgroundColor: '#b0d2ed' }}
         >
-          <div className="grid grid-cols-2 gap-2 w-full max-w-md bg-white/70 p-1 rounded-xl shadow-xs">
+          {/* Central Tabs: Dados & Histórico */}
+          <div className="grid grid-cols-2 gap-2 w-full sm:w-auto max-w-md bg-white/70 p-1 rounded-xl shadow-xs">
             <button
               type="button"
               onClick={() => setActiveTab('dados')}
@@ -630,6 +796,35 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
             >
               <Clock className="w-4 h-4" />
               <span>Histórico, Consumo & DRE</span>
+            </button>
+          </div>
+
+          {/* Action Buttons: Imprimir Cadastro & Imprimir Histórico */}
+          <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+            <button
+              type="button"
+              onClick={handlePrintCadastro}
+              title="Imprimir Ficha Cadastral do Veículo"
+              className="px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center space-x-1.5 shadow-xs border border-stone-300 cursor-pointer text-black hover:bg-[#b0d2ed] active:scale-95"
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
+            >
+              <Printer className="w-4 h-4 text-black" style={{ color: '#000000' }} />
+              <span className="text-black font-extrabold whitespace-nowrap" style={{ color: '#000000' }}>
+                Imprimir Cadastro
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handlePrintHistorico}
+              title="Imprimir Relatório de Histórico, Consumo e DRE"
+              className="px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center space-x-1.5 shadow-xs border border-stone-300 cursor-pointer text-black hover:bg-[#b0d2ed] active:scale-95"
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
+            >
+              <Printer className="w-4 h-4 text-black" style={{ color: '#000000' }} />
+              <span className="text-black font-extrabold whitespace-nowrap" style={{ color: '#000000' }}>
+                Imprimir Histórico
+              </span>
             </button>
           </div>
         </div>
@@ -1539,6 +1734,15 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
         onSaveRegimes={handleSaveRegimes}
         onSelectRegime={(reg) => setOwnership(reg)}
       />
+
+      {/* Modal de Pré-visualização e Impressão Oficial do Veículo */}
+      {printOptions && (
+        <PrintPreviewModal
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          options={printOptions}
+        />
+      )}
     </div>
   );
 };
