@@ -54,6 +54,7 @@ import {
   generateVehicleRegistrationPrintHtml, 
   generateVehicleHistoryPrintHtml 
 } from './vehiclePrintTemplates';
+import { IpvaInstallmentsModal, IpvaInstallmentRow } from './IpvaInstallmentsModal';
 
 interface VehicleModalProps {
   isOpen: boolean;
@@ -179,6 +180,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
   const [licensingLastLaunchDate, setLicensingLastLaunchDate] = useState<string>('');
   const [isLaunchingIpva, setIsLaunchingIpva] = useState(false);
   const [isLaunchingLicensing, setIsLaunchingLicensing] = useState(false);
+  const [isIpvaInstallmentsModalOpen, setIsIpvaInstallmentsModalOpen] = useState(false);
 
   // Computed IPVA Total
   const computedIpvaTotal = useMemo(() => {
@@ -655,52 +657,58 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     }
   };
 
-  // Launch IPVA directly into Contas a Pagar
+  // Abrir Modal de Parcelas Geradas para IPVA
   const handleLaunchIpva = () => {
-    if (!onAddExpense) {
-      alert('Módulo financeiro indisponível para lançamento direto.');
+    if (computedIpvaTotal <= 0) {
+      alert('Informe o Valor Base Venal e a Alíquota do IPVA para calcular o valor antes de lançar.');
       return;
     }
-    const totalIpva = computedIpvaTotal;
-    if (totalIpva <= 0) {
-      alert('Informe o Valor Base Venal e a Alíquota do IPVA para calcular o valor antes de lançar.');
+    setIsIpvaInstallmentsModalOpen(true);
+  };
+
+  // Gravar Lançamentos das Parcelas do IPVA diretamente no Contas a Pagar
+  const handleConfirmIpvaInstallments = (installments: IpvaInstallmentRow[]) => {
+    if (!onAddExpense) {
+      alert('Módulo financeiro indisponível para lançamento direto.');
       return;
     }
 
     const vName = `${brand.trim() || 'Veículo'} ${model.trim() || plate.trim() || 'Frota'}`.trim();
     const vIdentifier = (plate.trim() || serialNumber.trim() || fleetNumber.trim() || 'S/N').toUpperCase();
-    const installments = Math.max(1, parseInt(ipvaInstallmentsCount, 10) || 1);
-    const installmentVal = parseFloat((totalIpva / installments).toFixed(2));
     const today = new Date();
     const currentYear = year ? parseInt(year, 10) : today.getFullYear();
     const vehicleId = editingVehicle?.id || `veh_${Date.now()}`;
+    const totalLines = installments.length;
 
-    for (let i = 1; i <= installments; i++) {
-      // Due dates: IPVA usually starting next month or spaced by 30 days
-      const targetDate = new Date(today.getFullYear(), today.getMonth() + (i - 1), 20);
-      const yyyy = targetDate.getFullYear();
-      const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
-      const dd = String(targetDate.getDate()).padStart(2, '0');
-      const dueDate = `${yyyy}-${mm}-${dd}`;
+    installments.forEach((inst) => {
+      const totalAmountWithInterest = Math.round((inst.amount + (inst.interest || 0)) * 100) / 100;
+      const desc = totalLines > 1
+        ? `IPVA ${currentYear} - Parcela ${inst.number}/${String(totalLines).padStart(2, '0')} - ${vName} (${vIdentifier})`
+        : `IPVA ${currentYear} (Cota Única) - ${vName} (${vIdentifier})`;
+
+      let notesText = inst.observations.trim();
+      if (inst.interest > 0) {
+        notesText += ` (Valor Base: R$ ${inst.amount.toFixed(2)} + Encargos/Juros: R$ ${inst.interest.toFixed(2)})`;
+      }
+      notesText += ` • Veículo: ${vName} (${vIdentifier}) • Exercício: ${currentYear}`;
 
       onAddExpense({
-        description: installments > 1 
-          ? `IPVA ${currentYear} - Parcela ${i}/${installments} - ${vName} (${vIdentifier})`
-          : `IPVA ${currentYear} (Cota Única) - ${vName} (${vIdentifier})`,
-        amount: installmentVal,
+        description: desc,
+        amount: totalAmountWithInterest,
         category: 'IPVA / Impostos de Frotas',
-        dueDate,
+        dueDate: inst.dueDate,
         status: 'pendente',
         paymentMethod: 'boleto',
         supplier: 'SEFAZ / Detran - Secretaria da Fazenda',
         machineryId: vehicleId,
         machineryName: vName,
-        notes: `Imposto IPVA exercício ${currentYear} para o veículo ${vName} (Placa/Identificador: ${vIdentifier}). Valor Venal Base: R$ ${desformatarMoeda(ipvaBaseValue).toFixed(2)}, Alíquota: ${ipvaRatePercent}%. Parcela ${i} de ${installments}.`,
+        notes: notesText,
       });
-    }
+    });
 
     setIpvaFinancialStatus('lancado');
     setIpvaLastLaunchDate(today.toISOString().split('T')[0]);
+    setIpvaInstallmentsCount(String(totalLines));
     setIsLaunchingIpva(true);
     setTimeout(() => setIsLaunchingIpva(false), 3000);
   };
@@ -1813,9 +1821,19 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                     Integração Contas a Pagar
                   </span>
                   {ipvaFinancialStatus === 'lancado' ? (
-                    <div className="h-[38px] px-3 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center justify-center space-x-1.5 text-emerald-800 text-xs font-black">
-                      <CheckCircle className="w-4 h-4 text-emerald-600" />
-                      <span>IPVA Lançado no Financeiro</span>
+                    <div className="h-[38px] px-2.5 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center justify-between gap-1 text-emerald-800 text-xs font-black">
+                      <div className="flex items-center space-x-1 truncate">
+                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="truncate">IPVA Lançado</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleLaunchIpva}
+                        className="px-2 py-1 bg-white hover:bg-emerald-100 border border-emerald-300 rounded-lg text-[10px] font-bold text-emerald-900 transition cursor-pointer shrink-0 shadow-2xs"
+                        title="Ver parcelas geradas ou lançar novamente"
+                      >
+                        Ver / Gerar
+                      </button>
                     </div>
                   ) : (
                     <button
@@ -2101,6 +2119,18 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
           options={printOptions}
         />
       )}
+
+      {/* Modal de Parcelas Geradas para IPVA */}
+      <IpvaInstallmentsModal
+        isOpen={isIpvaInstallmentsModalOpen}
+        onClose={() => setIsIpvaInstallmentsModalOpen(false)}
+        vehicleName={`${brand.trim() || 'Veículo'} ${model.trim() || plate.trim() || 'Frota'}`.trim()}
+        vehicleIdentifier={(plate.trim() || serialNumber.trim() || fleetNumber.trim() || 'S/N').toUpperCase()}
+        totalAmount={computedIpvaTotal}
+        initialInstallmentsCount={Math.max(1, parseInt(ipvaInstallmentsCount, 10) || 1)}
+        year={year || new Date().getFullYear()}
+        onConfirmAndSave={handleConfirmIpvaInstallments}
+      />
     </div>
   );
 };
