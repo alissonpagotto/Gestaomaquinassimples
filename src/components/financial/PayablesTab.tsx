@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   CheckCircle2, 
   Clock, 
@@ -31,6 +31,33 @@ export const PayablesTab: React.FC<PayablesTabProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pendente' | 'pago'>('all');
+  const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
+
+  // Month filter list based on current system date:
+  // 1 previous month, 1 current month, 5 upcoming months (total 7 months)
+  const monthFilterOptions = useMemo(() => {
+    const monthNames = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-indexed
+
+    const options: { key: string; label: string; year: number; month: number }[] = [];
+
+    // offset from -1 (previous month), 0 (current month), to +5 (5 next months)
+    for (let offset = -1; offset <= 5; offset++) {
+      const d = new Date(currentYear, currentMonth + offset, 1);
+      const y = d.getFullYear();
+      const m = d.getMonth(); // 0-11
+      const key = `${y}-${String(m + 1).padStart(2, '0')}`;
+      const label = monthNames[m];
+      options.push({ key, label, year: y, month: m });
+    }
+
+    return options;
+  }, []);
 
   const pendingExpenses = expenses.filter((e) => e.status === 'pendente');
   const paidExpenses = expenses.filter((e) => e.status === 'pago');
@@ -41,12 +68,25 @@ export const PayablesTab: React.FC<PayablesTabProps> = ({
 
   const filteredExpenses = expenses.filter((e) => {
     const matchesStatus = statusFilter === 'all' || e.status === statusFilter;
+
+    // Monthly filter based on dueDate (or date as fallback)
+    let matchesMonth = true;
+    if (selectedMonthKey) {
+      const targetDate = e.dueDate || e.date;
+      if (targetDate) {
+        matchesMonth = targetDate.startsWith(selectedMonthKey);
+      } else {
+        matchesMonth = false;
+      }
+    }
+
     const q = searchTerm.toLowerCase();
     const matchesSearch =
       e.description.toLowerCase().includes(q) ||
       (e.supplier && e.supplier.toLowerCase().includes(q)) ||
       (e.categoryName && e.categoryName.toLowerCase().includes(q));
-    return matchesStatus && matchesSearch;
+
+    return matchesStatus && matchesMonth && matchesSearch;
   });
 
   return (
@@ -141,6 +181,29 @@ export const PayablesTab: React.FC<PayablesTabProps> = ({
           >
             Pagas ({paidExpenses.length})
           </button>
+
+          {/* Divisor sutil entre status e meses */}
+          <div className="h-4 w-px bg-slate-300 mx-0.5 shrink-0 hidden sm:block" />
+
+          {/* Botões de Filtro por Mês */}
+          {monthFilterOptions.map((m) => {
+            const isSelected = selectedMonthKey === m.key;
+            return (
+              <button
+                key={m.key}
+                type="button"
+                onClick={() => setSelectedMonthKey(isSelected ? null : m.key)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+                  isSelected
+                    ? 'bg-sky-600 text-white shadow-xs'
+                    : 'bg-slate-100 text-black hover:bg-slate-200'
+                }`}
+                title={`Filtrar por ${m.label}/${m.year}`}
+              >
+                {m.label}
+              </button>
+            );
+          })}
         </div>
 
         <div className="relative w-full sm:w-72">
