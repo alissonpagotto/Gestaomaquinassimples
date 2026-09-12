@@ -10,7 +10,7 @@ import { Machinery, FuelLog, MaintenanceLog, Employee, ServiceOrder, SilageOrder
 import { PrintPreviewModal } from '../common/PrintPreviewModal';
 import { generateFleetListHtml, generateFleetWhatsAppText, syncFleetMeters } from './fleetPrintUtils';
 import { PrintDocumentOptions } from '../../lib/printService';
-import { getStoredVehicleSystemCategories, getStoredVehicleOwnershipRegimes } from '../../lib/storage';
+import { getStoredVehicleSystemCategories, getStoredVehicleOwnershipRegimes, getStoredCompanyProfile } from '../../lib/storage';
 
 interface FleetVehiclesViewProps {
   machineries: Machinery[];
@@ -194,29 +194,31 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
 
   // Open Print Modal Handler
   const handleOpenPrint = () => {
-    const html = generateFleetListHtml(filteredVehicles, companyProfile, {
+    const activeCompany = companyProfile || getStoredCompanyProfile();
+
+    const filterParts: string[] = [];
+    if (selectedCategory && selectedCategory !== 'todos') {
+      filterParts.push(`Categoria: ${selectedCategory}`);
+    }
+    if (selectedStatus && selectedStatus !== 'todos') {
+      filterParts.push(`Status: ${selectedStatus}`);
+    }
+    if (searchTerm) {
+      filterParts.push(`Busca: "${searchTerm}"`);
+    }
+    const filterSub = filterParts.length > 0 ? ` • ${filterParts.join(' | ')}` : '';
+
+    const html = generateFleetListHtml(filteredVehicles, activeCompany, {
       category: selectedCategory,
       status: selectedStatus,
       search: searchTerm,
     });
-    const waText = generateFleetWhatsAppText(filteredVehicles, companyProfile);
+    const waText = generateFleetWhatsAppText(filteredVehicles, activeCompany);
 
     setPrintOptions({
-      title: 'Relatório Executivo da Frota & Veículos',
-      subtitle: `Listagem com Detalhamento Cadastral, Pesos e Medidores (${filteredVehicles.length} unidades)`,
-      company: companyProfile || {
-        corporateName: 'Silagem Fácil Pro',
-        tradeName: 'Silagem Fácil',
-        cnpjCpf: '',
-        phone: '',
-        email: '',
-        zipCode: '',
-        address: '',
-        number: '',
-        neighborhood: '',
-        city: '',
-        state: '',
-      },
+      title: 'RELATÓRIO EXECUTIVO DA FROTA & VEÍCULOS',
+      subtitle: `Listagem com Detalhamento Cadastral, Pesos e Medidores (${filteredVehicles.length} unidades)${filterSub}`,
+      company: activeCompany,
       contentHtml: html,
       orientation: 'landscape',
       showSignatures: true,

@@ -145,101 +145,55 @@ export function generateFleetListHtml(
         @media print {
           @page {
             size: A4 landscape;
-            margin: 10mm 8mm 10mm 8mm;
+            margin: 8mm 8mm 10mm 8mm;
           }
           body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             color: #1c1917;
             background: #ffffff;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           .no-print { display: none !important; }
+          .fleet-table {
+            page-break-inside: auto;
+          }
+          .fleet-table thead {
+            display: table-header-group;
+            page-break-after: avoid;
+            break-after: avoid;
+          }
+          .fleet-table tr {
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+          .kpi-container {
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+          .kpi-card {
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
         }
 
         .fleet-print-document {
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
           color: #1c1917;
           background: #ffffff;
-          padding: 8px;
+          padding: 0;
           line-height: 1.35;
           font-size: 11px;
         }
 
-        /* HEADER - 2 Columns Corporate Standard */
-        .doc-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          border-bottom: 2.5px solid #0963cb;
-          padding-bottom: 10px;
-          margin-bottom: 14px;
-          gap: 16px;
-        }
-        .header-left {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-        .company-logo-box {
-          width: 75px;
-          height: 75px;
-          min-width: 75px;
-          border-radius: 6px;
-          border: 1px solid #cbd5e1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: #ffffff;
-          padding: 3px;
-        }
-        .company-logo {
-          max-height: 100%;
-          max-width: 100%;
-          object-fit: contain;
-        }
-        .company-logo-fallback {
-          font-size: 20px;
-          font-weight: 900;
-          color: #0963cb;
-        }
-        .header-right {
-          text-align: right;
-          flex: 1;
-        }
-        .company-title {
-          font-size: 16px;
-          font-weight: 900;
-          color: #0963cb;
-          margin: 0;
-          text-transform: uppercase;
-          letter-spacing: -0.2px;
-        }
-        .company-meta {
-          font-size: 10px;
-          color: #475569;
-          margin-top: 2px;
-          line-height: 1.3;
-        }
-        .doc-name {
-          font-size: 12px;
-          font-weight: 800;
-          color: #1e293b;
-          margin: 4px 0 0 0;
-          text-transform: uppercase;
-        }
-        .doc-date {
-          font-size: 9.5px;
-          color: #64748b;
-          margin-top: 2px;
-        }
-
-        /* KPI SUMMARY CARDS */
+        /* KPI SUMMARY CARDS (Linha horizontal com 6 cards) */
         .kpi-container {
           display: grid;
           grid-template-columns: repeat(6, 1fr);
           gap: 8px;
           margin-bottom: 14px;
+          page-break-inside: avoid;
+          break-inside: avoid;
         }
         .kpi-card {
           background: #f8fafc;
@@ -247,40 +201,52 @@ export function generateFleetListHtml(
           border-radius: 6px;
           padding: 6px 8px;
           text-align: center;
+          page-break-inside: avoid;
+          break-inside: avoid;
         }
         .kpi-val {
-          font-size: 14px;
+          font-size: 13px;
           font-weight: 800;
           color: #0f172a;
+          line-height: 1.2;
         }
         .kpi-lbl {
-          font-size: 9px;
+          font-size: 8.5px;
           font-weight: 700;
           color: #64748b;
           text-transform: uppercase;
           letter-spacing: 0.3px;
+          margin-top: 2px;
         }
 
         /* TABLE */
         .fleet-table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 10px;
-          margin-bottom: 16px;
+          font-size: 9.5px;
+          margin-bottom: 14px;
+          table-layout: auto;
+        }
+        .fleet-table thead {
+          display: table-header-group;
         }
         .fleet-table th {
-          background: #0284c7;
+          background: #0963cb;
           color: #ffffff;
           font-weight: 700;
           text-transform: uppercase;
-          font-size: 9px;
+          font-size: 8.5px;
           letter-spacing: 0.4px;
           padding: 6px 6px;
-          border: 1px solid #0369a1;
+          border: 1px solid #074fa3;
           text-align: left;
         }
+        .fleet-table tr {
+          page-break-inside: avoid;
+          break-inside: avoid;
+        }
         .fleet-table td {
-          padding: 5px 6px;
+          padding: 4px 6px;
           border: 1px solid #e2e8f0;
           vertical-align: middle;
         }
@@ -291,7 +257,7 @@ export function generateFleetListHtml(
           display: inline-block;
           font-family: monospace;
           font-weight: 800;
-          font-size: 11px;
+          font-size: 10.5px;
           background: #f1f5f9;
           border: 1px solid #cbd5e1;
           padding: 1px 4px;
@@ -299,27 +265,27 @@ export function generateFleetListHtml(
           color: #0f172a;
         }
         .serial-text {
-          font-size: 9px;
+          font-size: 8.5px;
           color: #475569;
           margin-top: 2px;
         }
         .renavam-text {
-          font-size: 8.5px;
+          font-size: 8px;
           color: #94a3b8;
           font-family: monospace;
         }
         .vehicle-model {
           font-weight: 700;
           color: #0f172a;
-          font-size: 10.5px;
+          font-size: 10px;
         }
         .vehicle-sub {
-          font-size: 9px;
+          font-size: 8.5px;
           color: #64748b;
         }
         .type-badge {
           display: inline-block;
-          font-size: 8.5px;
+          font-size: 8px;
           font-weight: 700;
           color: #0284c7;
           background: #e0f2fe;
@@ -329,7 +295,7 @@ export function generateFleetListHtml(
         }
         .trailer-badge {
           display: block;
-          font-size: 8.5px;
+          font-size: 8px;
           font-weight: 700;
           color: #b45309;
           background: #fef3c7;
@@ -339,7 +305,7 @@ export function generateFleetListHtml(
           width: fit-content;
         }
         .comp-box {
-          font-size: 9.5px;
+          font-size: 9px;
           font-weight: 600;
         }
         .ownership-chip {
@@ -361,11 +327,11 @@ export function generateFleetListHtml(
           border: 1px solid #fef08a;
         }
         .owner-name {
-          font-size: 9.5px;
+          font-size: 9px;
           color: #0f172a;
         }
         .owner-doc {
-          font-size: 8.5px;
+          font-size: 8px;
           color: #64748b;
           font-family: monospace;
         }
@@ -375,7 +341,7 @@ export function generateFleetListHtml(
           font-style: italic;
         }
         .weight-item {
-          font-size: 9px;
+          font-size: 8.5px;
           color: #475569;
         }
         .weight-item.pbt {
@@ -390,7 +356,7 @@ export function generateFleetListHtml(
         .text-muted { color: #94a3b8; font-style: italic; }
 
         .driver-text {
-          font-size: 9.5px;
+          font-size: 9px;
           color: #334155;
           max-width: 130px;
           line-height: 1.2;
@@ -398,7 +364,7 @@ export function generateFleetListHtml(
 
         .status-chip {
           display: inline-block;
-          font-size: 8.5px;
+          font-size: 8px;
           font-weight: 800;
           text-transform: uppercase;
           padding: 2px 6px;
@@ -424,59 +390,7 @@ export function generateFleetListHtml(
           color: #334155;
           border: 1px solid #cbd5e1;
         }
-
-        /* SIGNATURES & FOOTER */
-        .doc-footer {
-          margin-top: 20px;
-          padding-top: 10px;
-          border-top: 1px solid #cbd5e1;
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-end;
-        }
-        .signature-box {
-          text-align: center;
-          width: 240px;
-        }
-        .sig-line {
-          border-top: 1px solid #334155;
-          margin-bottom: 4px;
-        }
-        .sig-title {
-          font-size: 9.5px;
-          font-weight: 700;
-          color: #0f172a;
-        }
-        .sig-sub {
-          font-size: 8.5px;
-          color: #64748b;
-        }
-        .footer-note {
-          font-size: 8.5px;
-          color: #94a3b8;
-        }
       </style>
-
-      <!-- HEADER - 2 Columns Standard -->
-      <div class="doc-header">
-        <!-- Lado Esquerdo: Logomarca da Empresa -->
-        <div class="header-left">
-          <div class="company-logo-box">
-            ${company?.logoUrl ? `<img src="${company.logoUrl}" alt="Logo" class="company-logo" />` : '<span class="company-logo-fallback">SF</span>'}
-          </div>
-        </div>
-
-        <!-- Lado Direito: Nome Fantasia em destaque, CNPJ e Cidade/UF -->
-        <div class="header-right">
-          <h1 class="company-title">${companyName}</h1>
-          <div class="company-meta">
-            ${[companyCnpj, companyAddress, companyPhone, companyEmail].filter(Boolean).join(' • ')}
-          </div>
-          <h2 class="doc-name">RELATÓRIO GERAL DA FROTA & VEÍCULOS</h2>
-          <div class="doc-date">Emissão: ${dateFormatted} às ${timeFormatted} • Total: <strong>${totalVehicles} veículos</strong></div>
-          ${filterInfo?.category && filterInfo.category !== 'todos' ? `<div class="doc-date">Filtro Categoria: <strong>${filterInfo.category}</strong></div>` : ''}
-        </div>
-      </div>
 
       <!-- KPI SUMMARY CARDS -->
       <div class="kpi-container">
@@ -513,7 +427,7 @@ export function generateFleetListHtml(
             <th style="width: 14%;">Identificação / Placa</th>
             <th style="width: 16%;">Marca / Modelo / Tipo</th>
             <th style="width: 13%;">Composição</th>
-            <th style="width: 17%;">Propriedade & No Nome de Quem</th>
+            <th style="width: 17%;">Propriedade & Titular</th>
             <th style="width: 13%;">Pesos (Tara/Lotação)</th>
             <th style="width: 11%;">Horímetro / Odômetro</th>
             <th style="width: 10%;">Motoristas</th>
@@ -524,19 +438,6 @@ export function generateFleetListHtml(
           ${rowsHtml || '<tr><td colspan="8" style="text-align: center; padding: 20px;">Nenhum veículo registrado na frota.</td></tr>'}
         </tbody>
       </table>
-
-      <!-- FOOTER & SIGNATURES -->
-      <div class="doc-footer">
-        <div class="footer-note">
-          Relatório gerado automaticamente por: Silagem Fácil ERP - Gestão Integrada de Silagem & Frotas Agrícolas<br/>
-          Emissão: ${dateFormatted} às ${timeFormatted} • Página 1 de 1
-        </div>
-        <div class="signature-box">
-          <div class="sig-line"></div>
-          <div class="sig-title">Gestão de Frotas & Operações</div>
-          <div class="sig-sub">${companyName}</div>
-        </div>
-      </div>
     </div>
   `;
 }

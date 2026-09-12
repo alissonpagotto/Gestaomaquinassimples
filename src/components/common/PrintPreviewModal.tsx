@@ -184,13 +184,13 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto bg-stone-950/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-200">
       <div 
-        className="bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className={`bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl w-full ${options.orientation === 'landscape' ? 'max-w-6xl' : 'max-w-4xl'} shadow-2xl overflow-hidden flex flex-col max-h-[92vh]`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Top Actions Bar */}
         <div className="bg-white dark:bg-stone-900 px-4 sm:px-5 py-3.5 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between gap-3 shrink-0 flex-wrap sm:flex-nowrap">
           <div className="flex items-center space-x-2.5 min-w-0">
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+            <div className="p-2 rounded-xl bg-blue-500/10 text-[#0963cb] dark:text-blue-400 shrink-0">
               <Printer className="w-5 h-5" />
             </div>
             <div className="min-w-0">
@@ -264,12 +264,12 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
         <div className="p-4 sm:p-6 overflow-y-auto bg-stone-200/70 dark:bg-stone-950/70 flex justify-center">
           <div 
             ref={printDocRef}
-            className="bg-white text-stone-900 w-full max-w-[800px] p-6 sm:p-8 rounded-lg shadow-lg border border-stone-300 font-sans text-xs space-y-5"
+            className={`bg-white text-stone-900 w-full ${options.orientation === 'landscape' ? 'max-w-[1060px]' : 'max-w-[800px]'} p-6 sm:p-8 rounded-lg shadow-lg border border-stone-300 font-sans text-xs space-y-4`}
           >
             
             {/* Header with Company Logo */}
-            <div className="flex items-center justify-between border-b-2 border-emerald-700 pb-3 gap-4">
-              <div className="w-18 h-18 shrink-0 rounded-lg bg-emerald-50 border border-emerald-200 p-1 flex items-center justify-center overflow-hidden">
+            <div className="flex items-center justify-between border-b-2 border-[#0963cb] pb-3 gap-4">
+              <div className="w-18 h-18 shrink-0 rounded-lg bg-blue-50 border border-blue-200 p-1 flex items-center justify-center overflow-hidden">
                 {company.logoUrl ? (
                   <img 
                     src={company.logoUrl} 
@@ -278,15 +278,15 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <span className="text-xl font-black text-emerald-700">SF</span>
+                  <span className="text-xl font-black text-[#0963cb]">SF</span>
                 )}
               </div>
 
               <div className="flex-1 min-w-0">
-                <h4 className="text-base font-black text-emerald-900 uppercase tracking-tight font-['Outfit']">
-                  {company.tradeName || 'Silagem Teste 02'}
+                <h4 className="text-base font-black text-[#0963cb] uppercase tracking-tight font-['Outfit']">
+                  {company.tradeName || 'Silagem Fácil'}
                 </h4>
-                {company.corporateName && (
+                {company.corporateName && company.corporateName !== company.tradeName && (
                   <p className="text-[11px] text-stone-600 font-semibold">
                     Razão Social: {company.corporateName}
                   </p>
@@ -301,12 +301,12 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               </div>
 
               <div className="text-right shrink-0">
-                <span className="inline-block bg-emerald-700 text-white text-[10px] font-extrabold px-2.5 py-1 rounded uppercase tracking-wider">
+                <span className="inline-block bg-[#0963cb] text-white text-[10px] font-extrabold px-2.5 py-1 rounded uppercase tracking-wider">
                   {documentType}
                 </span>
                 <div className="text-[10px] text-stone-500 mt-1.5 space-y-0.5">
                   <div>Emissão: <strong>{dateFormatted} às {timeFormatted}</strong></div>
-                  <div>Sistema: <strong>Silagem Fácil Pro</strong></div>
+                  <div>Sistema: <strong>Silagem Fácil ERP</strong></div>
                 </div>
               </div>
             </div>
@@ -329,10 +329,10 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
 
             {/* Signature Area */}
             {showSignatures && (
-              <div className="pt-8 flex justify-around gap-8 text-center text-[10px] text-stone-600 border-t border-stone-200 mt-6">
+              <div className="pt-6 flex justify-around gap-8 text-center text-[10px] text-stone-600 border-t border-stone-200 mt-6 page-break-inside-avoid break-inside-avoid">
                 {signatureLabels.map((lbl, idx) => (
-                  <div key={idx} className="flex-1 max-w-[240px]">
-                    <div className="border-t border-stone-800 mb-1.5 pt-1 font-bold text-stone-900">
+                  <div key={idx} className="flex-1 max-w-[260px] page-break-inside-avoid break-inside-avoid">
+                    <div className="border-t-1.5 border-stone-800 mb-1.5 pt-1 font-bold text-stone-900">
                       {lbl}
                     </div>
                     <div className="text-[9px] text-stone-400">
@@ -344,9 +344,9 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             )}
 
             {/* Footer */}
-            <div className="border-t border-dashed border-stone-200 pt-2 flex items-center justify-between text-[9px] text-stone-400">
-              <span>Relatório oficial emitido eletronicamente pelo Silagem Fácil.</span>
-              <span>Página 1 de 1</span>
+            <div className="border-t border-dashed border-stone-200 pt-2 flex items-center justify-between text-[9px] text-stone-400 page-break-inside-avoid break-inside-avoid">
+              <span>Relatório gerado automaticamente por: Silagem Fácil ERP - Gestão Integrada de Silagem & Frotas Agrícolas</span>
+              <span>Emissão: {dateFormatted} às {timeFormatted} • Página 1 de 1</span>
             </div>
 
           </div>

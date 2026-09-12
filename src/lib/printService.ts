@@ -55,7 +55,7 @@ export function generatePrintableHtml(options: PrintDocumentOptions): string {
   <style>
     @page {
       size: ${orientation === 'landscape' ? 'A4 landscape' : 'A4 portrait'};
-      margin: 12mm 10mm 15mm 10mm;
+      margin: ${orientation === 'landscape' ? '8mm 8mm 10mm 8mm' : '12mm 10mm 15mm 10mm'};
     }
     *, *::before, *::after {
       box-sizing: border-box;
@@ -251,9 +251,10 @@ export function generatePrintableHtml(options: PrintDocumentOptions): string {
 
     /* Signatures */
     .signatures-section {
-      margin-top: 30px;
-      padding-top: 15px;
+      margin-top: 24px;
+      padding-top: 12px;
       page-break-inside: avoid;
+      break-inside: avoid;
       display: flex;
       justify-content: space-around;
       gap: 24px;
@@ -262,6 +263,8 @@ export function generatePrintableHtml(options: PrintDocumentOptions): string {
       flex: 1;
       text-align: center;
       max-width: 280px;
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
     .signature-line {
       border-top: 1.5px solid #334155;
@@ -279,7 +282,7 @@ export function generatePrintableHtml(options: PrintDocumentOptions): string {
 
     /* Footer */
     .print-footer {
-      margin-top: 20px;
+      margin-top: 16px;
       border-top: 1px dashed #cbd5e1;
       padding-top: 8px;
       font-size: 7.5pt;
@@ -287,6 +290,8 @@ export function generatePrintableHtml(options: PrintDocumentOptions): string {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
 
     .no-print {
