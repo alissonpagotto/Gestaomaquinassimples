@@ -76,27 +76,27 @@ export function generatePrintableHtml(options: PrintDocumentOptions): string {
       max-width: 100%;
       margin: 0 auto;
     }
-    /* Company Header */
+    /* Company Header - 2 Columns Standard */
     .company-header {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
-      border-bottom: 2.5px solid #047857;
+      border-bottom: 2.5px solid #0963cb;
       padding-bottom: 12px;
       margin-bottom: 16px;
       gap: 16px;
     }
     .company-logo-box {
-      width: 85px;
-      height: 85px;
-      min-width: 85px;
+      width: 90px;
+      height: 90px;
+      min-width: 90px;
       border-radius: 8px;
-      border: 1px solid #e7e5e4;
+      border: 1px solid #cbd5e1;
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
-      background: #f0fdf4;
+      background: #ffffff;
       padding: 4px;
     }
     .company-logo-box img {
@@ -104,52 +104,55 @@ export function generatePrintableHtml(options: PrintDocumentOptions): string {
       max-height: 100%;
       object-fit: contain;
     }
-    .company-info {
+    .company-info-right {
       flex: 1;
-      padding: 0 8px;
+      text-align: right;
+      padding-left: 12px;
     }
     .company-trade-name {
       font-size: 16pt;
       font-weight: 900;
-      color: #064e3b;
+      color: #0963cb;
       margin: 0 0 2px 0;
       text-transform: uppercase;
-      letter-spacing: -0.5px;
+      letter-spacing: -0.3px;
     }
     .company-corporate-name {
-      font-size: 9pt;
+      font-size: 8.5pt;
       font-weight: 600;
-      color: #44403c;
+      color: #475569;
       margin: 0 0 4px 0;
     }
     .company-details {
       font-size: 8.5pt;
-      color: #57534e;
+      color: #334155;
       line-height: 1.35;
     }
     .doc-badge-box {
-      text-align: right;
-      min-width: 170px;
+      margin-top: 6px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
     }
     .doc-type-badge {
       display: inline-block;
-      background: #047857;
+      background: #0963cb;
       color: #ffffff;
-      font-size: 8.5pt;
+      font-size: 8pt;
       font-weight: 800;
-      padding: 4px 10px;
+      padding: 3px 8px;
       border-radius: 4px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-bottom: 6px;
     }
     .doc-meta {
       font-size: 8pt;
-      color: #78716c;
+      color: #64748b;
       line-height: 1.3;
     }
     .doc-meta strong {
-      color: #292524;
+      color: #1e293b;
     }
 
     /* Document Title */
@@ -294,30 +297,30 @@ export function generatePrintableHtml(options: PrintDocumentOptions): string {
 <body>
   <div class="print-container">
     
-    <!-- Top Official Company Header -->
+    <!-- Top Official Company Header (Standard 2 Columns) -->
     <header class="company-header">
+      <!-- Lado Esquerdo: Logomarca da Empresa -->
       <div class="company-logo-box">
-        ${logoSrc ? `<img src="${logoSrc}" alt="Logo ${company.tradeName}" />` : `<div style="font-weight:900;color:#047857;font-size:24pt;">SF</div>`}
+        ${logoSrc ? `<img src="${logoSrc}" alt="Logo ${company.tradeName}" />` : `<div style="font-weight:900;color:#0963cb;font-size:22pt;">SF</div>`}
       </div>
 
-      <div class="company-info">
-        <h2 class="company-trade-name">${company.tradeName || 'SILAGEM AGRÍCOLA'}</h2>
-        ${company.corporateName ? `<p class="company-corporate-name">Razão Social: ${company.corporateName}</p>` : ''}
+      <!-- Lado Direito: Nome Fantasia em destaque, CNPJ e Cidade/UF -->
+      <div class="company-info-right">
+        <h2 class="company-trade-name">${company.tradeName || company.corporateName || 'SILAGEM FÁCIL ERP'}</h2>
+        ${company.corporateName && company.corporateName !== company.tradeName ? `<p class="company-corporate-name">Razão Social: ${company.corporateName}</p>` : ''}
         <div class="company-details">
-          ${company.cnpjCpf ? `<strong>CNPJ/CPF:</strong> ${company.cnpjCpf}` : ''}
-          ${company.stateRegistration ? ` &nbsp;|&nbsp; <strong>IE:</strong> ${company.stateRegistration}` : ''}
-          ${company.phone ? `<br><strong>Contato:</strong> ${company.phone}` : ''}
+          ${company.cnpjCpf ? `<strong>CNPJ:</strong> ${company.cnpjCpf}` : ''}
+          ${company.city ? ` • <strong>${company.city}${company.state ? `/${company.state}` : ''}</strong>` : ''}
+          ${company.phone ? ` &nbsp;|&nbsp; <strong>Contato:</strong> ${company.phone}` : ''}
           ${company.email ? ` &nbsp;|&nbsp; <strong>E-mail:</strong> ${company.email}` : ''}
-          ${fullAddress ? `<br><strong>Endereço:</strong> ${fullAddress}` : ''}
+          ${fullAddress ? `<br><span style="font-size:7.5pt;color:#64748b;">${fullAddress}</span>` : ''}
         </div>
-      </div>
-
-      <div class="doc-badge-box">
-        <span class="doc-type-badge">${documentType}</span>
-        <div class="doc-meta">
-          <div>Emissão: <strong>${dateFormatted} às ${timeFormatted}</strong></div>
-          <div>Sistema: <strong>Silagem Fácil Pro</strong></div>
-          <div>Autenticação: <strong>SF-${now.getTime().toString(36).toUpperCase()}</strong></div>
+        <div class="doc-badge-box">
+          <span class="doc-type-badge">${documentType}</span>
+          <div class="doc-meta">
+            <span>Emissão: <strong>${dateFormatted} às ${timeFormatted}</strong></span>
+            <span>• Autenticação: <strong>SF-${now.getTime().toString(36).toUpperCase()}</strong></span>
+          </div>
         </div>
       </div>
     </header>
@@ -346,9 +349,9 @@ export function generatePrintableHtml(options: PrintDocumentOptions): string {
     </div>
     ` : ''}
 
-    <!-- Footer -->
+    <!-- Footer (Standard Fixed) -->
     <footer class="print-footer">
-      <div>Relatório emitido através do sistema de Gestão de Silagem & Frotas Agrícolas.</div>
+      <div>Relatório gerado automaticamente por: Silagem Fácil ERP - Gestão Integrada de Silagem & Frotas Agrícolas</div>
       <div>Página 1 de 1</div>
     </footer>
 

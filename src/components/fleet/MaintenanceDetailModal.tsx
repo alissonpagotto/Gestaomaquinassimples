@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { MaintenanceLog, Machinery, CompanyProfile } from '../../types';
 import { formatCurrencyBRL, formatDateBR } from '../../lib/storage';
+import { PrintReportHeader } from '../common/PrintReportHeader';
+import { PrintReportFooter } from '../common/PrintReportFooter';
 
 interface MaintenanceDetailModalProps {
   isOpen: boolean;
@@ -73,13 +75,16 @@ export const MaintenanceDetailModal: React.FC<MaintenanceDetailModalProps> = ({
   const locBadge = getLocationBadge(log.location);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto print:p-0 print:bg-white print:static">
+      <div 
+        id="printable-os-container"
+        className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200 print:max-h-none print:shadow-none print:border-none print:rounded-none print:w-full"
+      >
         
-        {/* Header - Não impresso ou adaptado */}
+        {/* Header - Não impresso */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-800/40 print:hidden">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600/10 text-indigo-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-[#0963cb] flex items-center justify-center">
               <FileText className="w-5 h-5" />
             </div>
             <div>
@@ -95,7 +100,7 @@ export const MaintenanceDetailModal: React.FC<MaintenanceDetailModalProps> = ({
           <div className="flex items-center space-x-2">
             <button
               onClick={handlePrint}
-              className="inline-flex items-center space-x-1.5 px-3 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-bold transition cursor-pointer"
+              className="inline-flex items-center space-x-1.5 px-3 py-2 bg-[#0963cb] hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-xs"
             >
               <Printer className="w-4 h-4" />
               <span>Imprimir OS</span>
@@ -110,30 +115,15 @@ export const MaintenanceDetailModal: React.FC<MaintenanceDetailModalProps> = ({
         </div>
 
         {/* Conteúdo Imprimível / Visualizável */}
-        <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 text-stone-900 dark:text-stone-100" id="printable-os">
+        <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 text-stone-900 dark:text-stone-100 print:p-2 print:overflow-visible" id="printable-os">
           
-          {/* Cabeçalho da Empresa */}
-          <div className="flex justify-between items-start border-b border-stone-200 pb-4">
-            <div>
-              <h2 className="text-lg font-black font-['Outfit'] text-indigo-700">
-                {companyProfile?.corporateName || 'SILAGEM FÁCIL - GESTÃO AGRÍCOLA'}
-              </h2>
-              <p className="text-xs text-stone-500">
-                CNPJ: {companyProfile?.cnpjCpf || '578.722.222-2'} • {companyProfile?.city || 'Boa Esperança do Iguaçu'} - {companyProfile?.state || 'PR'}
-              </p>
-              <p className="text-xs text-stone-500">
-                Telefone: {companyProfile?.phone || '(46) 99999-0000'}
-              </p>
-            </div>
-            <div className="text-right">
-              <span className="text-xl font-mono font-black text-stone-900 dark:text-stone-100 block">
-                {log.osNumber || log.id}
-              </span>
-              <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">
-                Data: {formatDateBR(log.date)}
-              </span>
-            </div>
-          </div>
+          {/* Cabeçalho Corporativo Padronizado */}
+          <PrintReportHeader
+            companyProfile={companyProfile}
+            reportTitle="ORDEM DE SERVIÇO DE MANUTENÇÃO"
+            reportSubtitle={`Veículo: ${log.machineryPlateOrName} • Categoria: ${log.serviceCategory}`}
+            documentTypeBadge={`O.S. Nº ${log.osNumber || log.id}`}
+          />
 
           {/* Dados do Veículo & Status */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-stone-50 dark:bg-stone-800/40 p-4 rounded-xl border border-stone-200 dark:border-stone-800 text-xs">
@@ -303,21 +293,16 @@ export const MaintenanceDetailModal: React.FC<MaintenanceDetailModalProps> = ({
             </div>
           </div>
 
-          {/* Assinaturas / Laudo de Campo */}
-          <div className="grid grid-cols-2 gap-8 pt-10 mt-6 border-t border-stone-300">
-            <div className="text-center">
-              <div className="border-t border-stone-400 pt-2 text-xs font-bold text-stone-700">
-                Mecânico / Prestador do Serviço
-              </div>
-              <span className="text-[10px] text-stone-500">{log.workshopOrMechanic}</span>
-            </div>
-            <div className="text-center">
-              <div className="border-t border-stone-400 pt-2 text-xs font-bold text-stone-700">
-                Motorista / Responsável pela Frota
-              </div>
-              <span className="text-[10px] text-stone-500">Visto de Liberação do Equipamento</span>
-            </div>
-          </div>
+          {/* Rodapé Corporativo Padronizado com Assinaturas */}
+          <PrintReportFooter
+            showSignatures={true}
+            signatureLabels={[
+              `Mecânico / Prestador: ${log.workshopOrMechanic || 'Oficina'}`,
+              'Motorista / Responsável pela Frota'
+            ]}
+            companyName={companyProfile?.tradeName || companyProfile?.companyName || 'Silagem Fácil ERP'}
+            authCode={`OS-${(log.osNumber || log.id).toString().replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase()}`}
+          />
 
         </div>
 

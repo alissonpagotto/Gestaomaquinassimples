@@ -34,8 +34,10 @@ import {
   Receipt
 } from 'lucide-react';
 import { Machinery, Employee, FuelLog, MaintenanceLog, Expense, ServiceOrder, SilageOrder } from '../../types';
-import { formatCurrencyBRL, formatDateBR } from '../../lib/storage';
+import { formatCurrencyBRL, formatDateBR, getStoredCompanyProfile } from '../../lib/storage';
 import { calculateVehicleConsumptionMetrics } from '../../lib/fleetMetrics';
+import { PrintReportHeader } from '../common/PrintReportHeader';
+import { PrintReportFooter } from '../common/PrintReportFooter';
 
 interface VehicleHistoryModalProps {
   isOpen: boolean;
@@ -481,17 +483,29 @@ const VehicleHistoryModalContent: React.FC<VehicleHistoryModalProps & { vehicle:
     window.print();
   };
 
+  const companyProfile = getStoredCompanyProfile();
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-150 print:p-0 print:bg-white print:static">
       <div 
         id="vehicle-history-modal"
-        className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden"
+        className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden print:max-h-none print:shadow-none print:border-none print:rounded-none print:w-full"
       >
         
+        {/* --- PRINT HEADER (Corporate 2 Columns) --- */}
+        <div className="hidden print:block p-4 pb-0 bg-white">
+          <PrintReportHeader
+            companyProfile={companyProfile}
+            reportTitle="HISTÓRICO OPERACIONAL & DRE DO VEÍCULO"
+            reportSubtitle={`Veículo: ${vehicle.licensePlateOrSerial || 'SEM PLACA'} • ${vehicle.model || vehicle.name || ''}`}
+            documentTypeBadge="DRE DO VEÍCULO"
+          />
+        </div>
+
         {/* --- HEADER --- */}
-        <div className="px-5 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-850/80 flex items-center justify-between gap-3">
+        <div className="px-5 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-850/80 flex items-center justify-between gap-3 print:border-none print:bg-white">
           <div className="flex items-center space-x-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-pink-100 dark:bg-pink-950/70 text-pink-700 dark:text-pink-300 flex items-center justify-center font-bold shrink-0 border border-pink-200 dark:border-pink-800">
+            <div className="w-10 h-10 rounded-xl bg-pink-100 dark:bg-pink-950/70 text-pink-700 dark:text-pink-300 flex items-center justify-center font-bold shrink-0 border border-pink-200 dark:border-pink-800 print:hidden">
               <TrendingUp className="w-5 h-5" />
             </div>
             <div className="min-w-0">
@@ -525,14 +539,14 @@ const VehicleHistoryModalContent: React.FC<VehicleHistoryModalProps & { vehicle:
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 shrink-0">
+          <div className="flex items-center space-x-2 shrink-0 print:hidden">
             <button
               onClick={handlePrint}
               title="Imprimir Relatório de Lucratividade"
-              className="p-2 text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100 hover:bg-stone-200/60 dark:hover:bg-stone-800 rounded-lg transition cursor-pointer flex items-center space-x-1 text-xs font-semibold"
+              className="px-3 py-1.5 bg-[#0963cb] hover:bg-blue-700 text-white rounded-lg transition cursor-pointer flex items-center space-x-1.5 text-xs font-bold shadow-xs"
             >
               <Printer className="w-4 h-4" />
-              <span className="hidden sm:inline">Imprimir DRE</span>
+              <span>Imprimir DRE</span>
             </button>
             <button
               onClick={onClose}
@@ -1277,7 +1291,7 @@ const VehicleHistoryModalContent: React.FC<VehicleHistoryModalProps & { vehicle:
         </div>
 
         {/* --- MODAL FOOTER --- */}
-        <div className="px-5 py-3 border-t border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-850/80 flex items-center justify-between text-xs">
+        <div className="px-5 py-3 border-t border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-850/80 flex items-center justify-between text-xs print:hidden">
           <div className="text-stone-500">
             Veículo: <strong className="text-stone-700 dark:text-stone-300">{vehicle.model || vehicle.name}</strong> • Placa: <strong className="text-stone-700 dark:text-stone-300">{vehicle.licensePlateOrSerial || '--'}</strong>
           </div>
@@ -1287,6 +1301,16 @@ const VehicleHistoryModalContent: React.FC<VehicleHistoryModalProps & { vehicle:
           >
             Fechar Histórico
           </button>
+        </div>
+
+        {/* --- PRINT FOOTER (Corporate Fixed) --- */}
+        <div className="hidden print:block p-4 pt-0 bg-white">
+          <PrintReportFooter
+            showSignatures={true}
+            signatureLabels={['Gestão de Frota / Controladoria', 'Diretoria / Operações']}
+            companyName={companyProfile?.tradeName || 'Silagem Fácil ERP'}
+            authCode={`VEIC-${(vehicle.licensePlateOrSerial || vehicle.id).replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase()}`}
+          />
         </div>
 
       </div>

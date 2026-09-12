@@ -52,6 +52,8 @@ import {
   PrintContentType, 
   PrintPaperFormat 
 } from './ServiceDocumentPreview';
+import { PrintReportHeader } from '../common/PrintReportHeader';
+import { PrintReportFooter } from '../common/PrintReportFooter';
 import { 
   isForrageira, 
   findLinkedOperator, 
@@ -1783,10 +1785,19 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
             <p className="font-black text-xs uppercase tracking-wider">Silagem Fácil - Ordem de Serviço</p>
             <p className="text-[9px] text-gray-700 font-mono">Comprovante de Execução Operacional</p>
           </div>
+
+          {/* Cabeçalho Corporativo Oficial do Sistema para Impressão A4 */}
+          <div className="hidden print:block p-3 pb-2 bg-white">
+            <PrintReportHeader
+              title="ORDEM DE SERVIÇO / PRESTAÇÃO AGRÍCOLA"
+              subtitle={numero ? `OS Nº ${numero}` : undefined}
+              companyProfile={companyProfile}
+            />
+          </div>
           
           {/* CABEÇALHO DO MODAL (COMPACTO) */}
           <div 
-            className="flex items-center justify-between px-4 sm:px-5 py-2.5 sm:py-3 border-b border-gray-200 dark:border-slate-800 bg-gray-50/70 dark:bg-slate-900/90 shrink-0 w-full"
+            className="flex items-center justify-between px-4 sm:px-5 py-2.5 sm:py-3 border-b border-gray-200 dark:border-slate-800 bg-gray-50/70 dark:bg-slate-900/90 shrink-0 w-full print:hidden"
             style={{ backgroundColor: '#2f4db8' }}
           >
             <div className="flex items-center gap-2.5">
@@ -2714,41 +2725,17 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
 
             {/* BLOCO DE ASSINATURAS E RODAPÉ INSTITUCIONAL (EXCLUSIVO PARA IMPRESSÃO A4) */}
             <div 
-              className="hidden print:block page-break-inside-avoid break-inside-avoid w-full" 
+              className="hidden print:block page-break-inside-avoid break-inside-avoid w-full pt-4 mt-3" 
               style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}
             >
-              <div className="print-signatures-area grid grid-cols-2 gap-8 pt-4 mt-3 border-t border-gray-300 text-center text-xs text-gray-700">
-                <div className="space-y-1">
-                  <div className="border-b border-gray-400 w-4/5 mx-auto mb-1.5 signature-line"></div>
-                  <p className="font-bold text-gray-900">
-                    {clientName || 'Produtor Rural (Cliente)'}
-                  </p>
-                  <p className="text-[10px] text-gray-500">
-                    Declaro conferência dos serviços e área discriminada
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <div className="border-b border-gray-400 w-4/5 mx-auto mb-1.5 signature-line"></div>
-                  <p className="font-bold text-gray-900">
-                    {companyProfile?.tradeName || 'Silagem Fácil'} - Prestador de Serviços
-                  </p>
-                  <p className="text-[10px] text-gray-500">
-                    Conferência operacional, horímetros e frotas
-                  </p>
-                </div>
-              </div>
-
-              {/* RODAPÉ INSTITUCIONAL DO SISTEMA PARA IMPRESSÃO A4 */}
-              <div className="footer-sistema border-t border-slate-300 pt-2 mt-3 text-center text-[9px] text-slate-500 leading-tight">
-                <p className="font-bold text-slate-700">
-                  {companyProfile?.tradeName || 'Silagem Fácil'} — Sistema de Gestão e Operações Agrícolas
-                </p>
-                <p>
-                  {companyProfile?.cnpjCpf ? `CNPJ/CPF: ${companyProfile.cnpjCpf}` : 'CNPJ: 00.000.000/0001-00'}
-                  {companyProfile?.phone ? ` • Contato: ${companyProfile.phone}` : ' • Contato: (00) 00000-0000'}
-                  {companyProfile?.email ? ` • E-mail: ${companyProfile.email}` : ' • suporte@silagemfacil.com.br'}
-                </p>
-              </div>
+              <PrintReportFooter
+                companyProfile={companyProfile}
+                showSignatures={true}
+                leftSignatureLabel={clientName || 'Produtor Rural (Cliente)'}
+                leftSignatureRole="Declaro conferência dos serviços e área discriminada"
+                rightSignatureLabel={`${companyProfile?.tradeName || 'Silagem Fácil'} - Prestador de Serviços`}
+                rightSignatureRole="Conferência operacional, horímetros e frotas"
+              />
             </div>
 
           </div>

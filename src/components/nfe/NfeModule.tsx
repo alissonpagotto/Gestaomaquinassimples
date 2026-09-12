@@ -944,6 +944,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
   const [searchNfeNumber, setSearchNfeNumber] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [showExtraPrices, setShowExtraPrices] = useState(false);
   const [notaParaExcluir, setNotaParaExcluir] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -1922,7 +1923,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
   // Atualização interativa dos itens da NF-e com recálculo automático dos totais
   const handleItemChange = (
     index: number,
-    field: 'description' | 'quantity' | 'unitPrice' | 'salePrice' | 'wholesalePrice' | 'promoPrice',
+    field: 'description' | 'quantity' | 'unitPrice' | 'totalPrice' | 'salePrice' | 'wholesalePrice' | 'promoPrice',
     value: string
   ) => {
     if (!parsedData || !parsedData.items) return;
@@ -1942,6 +1943,13 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       const num = sanitized === '' ? 0 : parseFloat(sanitized);
       currentItem.unitPrice = isNaN(num) ? 0 : num;
       currentItem.totalPrice = Math.round(((currentItem.quantity || 0) * currentItem.unitPrice) * 100) / 100;
+    } else if (field === 'totalPrice') {
+      const sanitized = value.replace(',', '.');
+      const num = sanitized === '' ? 0 : parseFloat(sanitized);
+      currentItem.totalPrice = isNaN(num) ? 0 : num;
+      if (currentItem.quantity && currentItem.quantity > 0) {
+        currentItem.unitPrice = Math.round((currentItem.totalPrice / currentItem.quantity) * 10000) / 10000;
+      }
     } else if (field === 'salePrice') {
       const sanitized = value.replace(',', '.');
       const num = sanitized === '' ? undefined : parseFloat(sanitized);
@@ -2802,59 +2810,72 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                   {/* Tabela de Produtos da NF-e (100% da Largura da Tela - Formato Lista Enxuta) */}
                   {parsedData.items && parsedData.items.length > 0 && (
                     <div className="border border-[#96c1e5] dark:border-stone-700 rounded-xl overflow-hidden shadow-2xs w-full bg-[#b0d2ed]">
-                      <div className="bg-[#96c1e5]/90 dark:bg-stone-800/80 px-3.5 py-2 flex items-center justify-between text-black">
+                      <div className="bg-[#96c1e5]/90 dark:bg-stone-800/80 px-3 py-1.5 flex items-center justify-between text-black">
                         <div className="flex items-center space-x-2 text-xs font-black text-black dark:text-stone-200">
-                          <Package className="w-3.5 h-3.5 text-sky-900 shrink-0" />
+                          <Package className="w-3.5 h-3.5 text-[#0963cb] shrink-0" />
                           <span>Itens Identificados na Nota Fiscal ({parsedData.items.length})</span>
                         </div>
-                        <span className="text-[10px] text-black font-bold hidden sm:inline">
-                          Lista enxuta com precificação de venda sincronizada ao estoque
-                        </span>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowExtraPrices(!showExtraPrices)}
+                            className="text-[10px] font-bold px-2 py-0.5 rounded border border-[#0963cb]/40 bg-white/80 hover:bg-white text-[#0963cb] transition cursor-pointer"
+                          >
+                            {showExtraPrices ? 'Ocultar Atacado/Promo' : '+ Atacado/Promo'}
+                          </button>
+                          <span className="text-[10px] text-black/80 font-bold hidden sm:inline">
+                            Lista enxuta com precificação de venda sincronizada ao estoque
+                          </span>
+                        </div>
                       </div>
                       <div className="overflow-x-auto max-h-80 overflow-y-auto w-full">
                         <table className="w-full text-left text-xs border-collapse">
-                          <thead className="bg-[#b0d2ed] dark:bg-stone-800 text-black uppercase text-[10px] font-black border-b border-[#96c1e5] dark:border-stone-700 sticky top-0 z-10 whitespace-nowrap">
+                          <thead className="bg-[#b0d2ed] dark:bg-stone-800 text-black uppercase text-[9.5px] font-black border-b border-[#96c1e5] dark:border-stone-700 sticky top-0 z-10 whitespace-nowrap">
                             <tr>
-                              <th className="py-1.5 px-2 w-12 text-center">Cód</th>
-                              <th className="py-1.5 px-2 min-w-[160px]">Descrição do Produto</th>
-                              <th className="py-1.5 px-2 min-w-[210px]">Produto no Sistema (De-Para)</th>
-                              <th className="py-1.5 px-1.5 text-center w-16">NCM</th>
-                              <th className="py-1.5 px-1.5 text-right w-22 bg-sky-100/60 dark:bg-sky-950/40">V. Final (R$)</th>
-                              <th className="py-1.5 px-1.5 text-right w-22 bg-sky-100/60 dark:bg-sky-950/40">V. Atacado (R$)</th>
-                              <th className="py-1.5 px-1.5 text-right w-22 bg-sky-100/60 dark:bg-sky-950/40">V. Promo (R$)</th>
-                              <th className="py-1.5 px-1.5 text-right w-20">Qtd</th>
-                              <th className="py-1.5 px-1.5 text-right w-22">Unitário</th>
-                              <th className="py-1.5 px-2 text-right w-24">Total</th>
+                              <th className="py-1 px-1.5 w-10 text-center">Cód</th>
+                              <th className="py-1 px-1.5 min-w-[150px]">Descrição do Produto</th>
+                              <th className="py-1 px-1.5 min-w-[200px]">Produto no Sistema (De-Para)</th>
+                              <th className="py-1 px-1 text-center w-14">NCM</th>
+                              <th className="py-1 px-1 text-right w-20 bg-sky-100/70 dark:bg-sky-950/40 text-[#0963cb] dark:text-sky-300">V. Final (R$)</th>
+                              {showExtraPrices && (
+                                <>
+                                  <th className="py-1 px-1 text-right w-20 bg-sky-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300">V. Atacado (R$)</th>
+                                  <th className="py-1 px-1 text-right w-20 bg-sky-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300">V. Promo (R$)</th>
+                                </>
+                              )}
+                              <th className="py-1 px-1 text-right w-20">V. Unit (R$)</th>
+                              <th className="py-1 px-1 text-right w-22">V. Total (R$)</th>
+                              <th className="py-1 px-1.5 text-right w-20">Qtd</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-[#96c1e5]/30 bg-white/95 dark:bg-stone-900 text-black">
                             {parsedData.items.map((item, idx) => (
                               <tr key={idx} className="hover:bg-sky-50/50 dark:hover:bg-stone-800/30 transition-colors">
-                                <td className="py-1 px-2 font-mono text-black text-[10px] text-center align-middle">
+                                <td className="py-0.5 px-1 font-mono text-black text-[9.5px] text-center align-middle">
                                   {item.code || '-'}
                                 </td>
-                                <td className="py-1 px-1.5 align-middle">
+                                <td className="py-0.5 px-1 align-middle">
                                   <input
                                     type="text"
                                     value={item.description}
                                     onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
-                                    className="w-full h-7 px-2 text-[11px] rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 focus:ring-1 focus:ring-sky-500 focus:border-sky-500 font-medium"
+                                    className="w-full h-6 px-1.5 text-[10px] rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 focus:ring-1 focus:ring-[#0963cb] font-medium"
                                     placeholder="Descrição do produto"
                                   />
                                 </td>
-                                <td className="py-1 px-1.5 align-middle">
+                                <td className="py-0.5 px-1 align-middle">
                                   {item.linkedInventoryId ? (
                                     (() => {
                                       const linked = localInventory.find(p => p.id === item.linkedInventoryId);
                                       return (
-                                        <div className="flex items-center justify-between gap-1.5 h-7 px-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded">
-                                          <div className="min-w-0 flex-1 flex items-center space-x-1.5">
-                                            <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                            <span className="text-[10px] font-bold text-black dark:text-stone-100 truncate" title={linked?.name}>
+                                        <div className="flex items-center justify-between gap-1 h-6 px-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded">
+                                          <div className="min-w-0 flex-1 flex items-center space-x-1">
+                                            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                            <span className="text-[9.5px] font-bold text-black dark:text-stone-100 truncate" title={linked?.name}>
                                               {linked?.code ? `[${linked.code}] ` : ''}{linked?.name || 'Vinculado'}
                                             </span>
-                                            <span className="text-[9px] text-emerald-900 dark:text-emerald-300 font-bold shrink-0 bg-emerald-100 dark:bg-emerald-900/60 px-1 rounded">
-                                              Est: {linked?.quantity || 0} {linked?.unit || 'UN'}
+                                            <span className="text-[8.5px] text-emerald-900 dark:text-emerald-300 font-bold shrink-0 bg-emerald-100 dark:bg-emerald-900/60 px-0.5 rounded">
+                                              {linked?.quantity || 0} {linked?.unit || 'UN'}
                                             </span>
                                           </div>
                                           <button
@@ -2863,7 +2884,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                             title="Desvincular produto"
                                             className="p-0.5 text-stone-400 hover:text-rose-600 rounded transition cursor-pointer shrink-0"
                                           >
-                                            <X className="w-3 h-3" />
+                                            <X className="w-2.5 h-2.5" />
                                           </button>
                                         </div>
                                       );
@@ -2879,10 +2900,10 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                             handleLinkProduct(idx, e.target.value);
                                           }
                                         }}
-                                        className="flex-1 h-7 min-w-[130px] px-1.5 text-[10px] rounded border border-amber-300 dark:border-amber-700 bg-amber-50/60 dark:bg-stone-900 text-black dark:text-stone-100 focus:ring-1 focus:ring-sky-500 font-medium"
+                                        className="flex-1 h-6 min-w-[120px] px-1 text-[9.5px] rounded border border-amber-300 dark:border-amber-700 bg-amber-50/60 dark:bg-stone-900 text-black dark:text-stone-100 focus:ring-1 focus:ring-[#0963cb] font-medium"
                                       >
                                         <option value="">Selecione no estoque...</option>
-                                        <option value="__NEW__" className="font-bold text-sky-700 dark:text-sky-400">
+                                        <option value="__NEW__" className="font-bold text-[#0963cb]">
                                           + Cadastrar Novo
                                         </option>
                                         {localInventory.map((inv) => (
@@ -2895,18 +2916,18 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                         type="button"
                                         onClick={() => handleOpenNewProductModal(idx)}
                                         title="Cadastrar Novo Produto no Estoque"
-                                        className="h-7 px-1.5 text-[10px] font-bold text-sky-900 dark:text-sky-200 bg-sky-100 dark:bg-sky-950/60 hover:bg-sky-200 dark:hover:bg-sky-900 border border-sky-300 dark:border-sky-700 rounded transition flex items-center space-x-0.5 shrink-0 cursor-pointer"
+                                        className="h-6 px-1.5 text-[9.5px] font-bold text-blue-900 dark:text-blue-200 bg-blue-100 dark:bg-blue-950/60 hover:bg-blue-200 dark:hover:bg-blue-900 border border-blue-300 dark:border-blue-700 rounded transition flex items-center space-x-0.5 shrink-0 cursor-pointer"
                                       >
-                                        <Plus className="w-3 h-3" />
+                                        <Plus className="w-2.5 h-2.5" />
                                         <span>Novo</span>
                                       </button>
                                     </div>
                                   )}
                                 </td>
-                                <td className="py-1 px-1.5 text-center font-mono text-black text-[10px] align-middle">
+                                <td className="py-0.5 px-1 text-center font-mono text-black text-[9.5px] align-middle">
                                   {item.ncm || '-'}
                                 </td>
-                                <td className="py-1 px-1.5 text-right align-middle">
+                                <td className="py-0.5 px-1 text-right align-middle">
                                   <input
                                     type="number"
                                     step="0.01"
@@ -2914,35 +2935,63 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                     value={item.salePrice ?? ''}
                                     onChange={(e) => handleItemChange(idx, 'salePrice', e.target.value)}
                                     placeholder="0.00"
-                                    className="w-20 h-7 px-1.5 text-[11px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-sky-500"
-                                    title="Preço de Venda Final (V. Final)"
+                                    className="w-18 h-6 px-1 text-[10px] text-right rounded border border-sky-300 dark:border-sky-700 bg-sky-50/70 dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-bold focus:ring-1 focus:ring-[#0963cb]"
+                                    title="Preço de Venda Final / Balcão (V. Final)"
                                   />
                                 </td>
-                                <td className="py-1 px-1.5 text-right align-middle">
+                                {showExtraPrices && (
+                                  <>
+                                    <td className="py-0.5 px-1 text-right align-middle">
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={item.wholesalePrice ?? ''}
+                                        onChange={(e) => handleItemChange(idx, 'wholesalePrice', e.target.value)}
+                                        placeholder="0.00"
+                                        className="w-18 h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-[#0963cb]"
+                                        title="Preço de Venda em Atacado (V. Atacado)"
+                                      />
+                                    </td>
+                                    <td className="py-0.5 px-1 text-right align-middle">
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={item.promoPrice ?? ''}
+                                        onChange={(e) => handleItemChange(idx, 'promoPrice', e.target.value)}
+                                        placeholder="0.00"
+                                        className="w-18 h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-[#0963cb]"
+                                        title="Preço Promocional (V. Promo)"
+                                      />
+                                    </td>
+                                  </>
+                                )}
+                                <td className="py-0.5 px-1 text-right align-middle">
                                   <input
                                     type="number"
-                                    step="0.01"
+                                    step="any"
                                     min="0"
-                                    value={item.wholesalePrice ?? ''}
-                                    onChange={(e) => handleItemChange(idx, 'wholesalePrice', e.target.value)}
+                                    value={item.unitPrice}
+                                    onChange={(e) => handleItemChange(idx, 'unitPrice', e.target.value)}
+                                    className="w-18 h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-semibold focus:ring-1 focus:ring-[#0963cb]"
                                     placeholder="0.00"
-                                    className="w-20 h-7 px-1.5 text-[11px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-sky-500"
-                                    title="Preço de Venda em Atacado (V. Atacado)"
+                                    title="Valor Unitário Original da NF (V. Unit)"
                                   />
                                 </td>
-                                <td className="py-1 px-1.5 text-right align-middle">
+                                <td className="py-0.5 px-1 text-right align-middle">
                                   <input
                                     type="number"
-                                    step="0.01"
+                                    step="any"
                                     min="0"
-                                    value={item.promoPrice ?? ''}
-                                    onChange={(e) => handleItemChange(idx, 'promoPrice', e.target.value)}
+                                    value={item.totalPrice}
+                                    onChange={(e) => handleItemChange(idx, 'totalPrice', e.target.value)}
+                                    className="w-20 h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-bold focus:ring-1 focus:ring-[#0963cb]"
                                     placeholder="0.00"
-                                    className="w-20 h-7 px-1.5 text-[11px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-sky-500"
-                                    title="Preço Promocional (V. Promo)"
+                                    title="Valor Total do Item na NF (V. Total)"
                                   />
                                 </td>
-                                <td className="py-1 px-1.5 text-right align-middle">
+                                <td className="py-0.5 px-1.5 text-right align-middle">
                                   <div className="flex items-center justify-end space-x-1">
                                     <input
                                       type="number"
@@ -2950,30 +2999,14 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                       min="0"
                                       value={item.quantity}
                                       onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)}
-                                      className="w-16 h-7 px-1.5 text-[11px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-sky-500"
+                                      className="w-14 h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-semibold focus:ring-1 focus:ring-[#0963cb]"
                                       placeholder="0"
+                                      title="Quantidade"
                                     />
-                                    <span className="text-[10px] text-black font-bold uppercase shrink-0 w-5 text-left">
+                                    <span className="text-[9.5px] text-black font-black uppercase shrink-0 w-5 text-left">
                                       {item.unit || 'UN'}
                                     </span>
                                   </div>
-                                </td>
-                                <td className="py-1 px-1.5 text-right align-middle">
-                                  <div className="flex items-center justify-end space-x-0.5">
-                                    <span className="text-[10px] text-black/60 font-semibold shrink-0">R$</span>
-                                    <input
-                                      type="number"
-                                      step="any"
-                                      min="0"
-                                      value={item.unitPrice}
-                                      onChange={(e) => handleItemChange(idx, 'unitPrice', e.target.value)}
-                                      className="w-18 h-7 px-1.5 text-[11px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-sky-500"
-                                      placeholder="0.00"
-                                    />
-                                  </div>
-                                </td>
-                                <td className="py-1 px-2 text-right font-black text-black dark:text-stone-100 font-mono align-middle text-[11px]">
-                                  {formatCurrencyBRL(item.totalPrice)}
                                 </td>
                               </tr>
                             ))}

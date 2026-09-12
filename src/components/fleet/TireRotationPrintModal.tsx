@@ -1,8 +1,10 @@
 import React from 'react';
-import { X, Printer, CheckCircle2, ShieldCheck, Layers, Calendar, User, Gauge } from 'lucide-react';
+import { X, Printer } from 'lucide-react';
 import { TireRotationLog, Machinery, CompanyProfile } from '../../types';
 import { formatDateBR, formatCurrencyBRL } from '../../lib/storage';
 import { getPositionReadableLabel } from '../../lib/tireAndAxlePresets';
+import { PrintReportHeader } from '../common/PrintReportHeader';
+import { PrintReportFooter } from '../common/PrintReportFooter';
 
 interface TireRotationPrintModalProps {
   isOpen: boolean;
@@ -26,8 +28,11 @@ export const TireRotationPrintModal: React.FC<TireRotationPrintModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-stone-900 rounded-2xl max-w-3xl w-full border border-stone-200 dark:border-stone-800 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200 print:p-0 print:bg-white print:static">
+      <div 
+        id="printable-tire-rotation"
+        className="bg-white dark:bg-stone-900 rounded-2xl max-w-3xl w-full border border-stone-200 dark:border-stone-800 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden print:max-h-none print:shadow-none print:border-none print:rounded-none print:w-full"
+      >
         
         {/* Header - Not printed */}
         <div className="px-5 py-3 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between bg-stone-50/80 dark:bg-stone-800/50 print:hidden">
@@ -43,7 +48,7 @@ export const TireRotationPrintModal: React.FC<TireRotationPrintModalProps> = ({
             <button
               type="button"
               onClick={handlePrint}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-sky-600 hover:bg-sky-700 text-white shadow-xs transition cursor-pointer"
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-[#0963cb] hover:bg-blue-700 text-white shadow-xs transition cursor-pointer"
             >
               <Printer className="w-4 h-4" />
               <span>Imprimir Documento</span>
@@ -59,28 +64,18 @@ export const TireRotationPrintModal: React.FC<TireRotationPrintModalProps> = ({
         </div>
 
         {/* Printable Area */}
-        <div className="p-6 sm:p-8 overflow-y-auto space-y-6 text-stone-900 bg-white">
+        <div className="p-6 sm:p-8 overflow-y-auto space-y-5 text-stone-900 bg-white print:p-2 print:overflow-visible">
           
-          {/* Header Empresa */}
-          <div className="flex items-start justify-between border-b pb-4 border-stone-300">
-            <div>
-              <h1 className="text-xl font-black font-['Outfit'] text-stone-900 uppercase tracking-tight">
-                {companyProfile?.tradeName || companyProfile?.companyName || 'Silagem Fácil Gestão Agrícola'}
-              </h1>
-              <p className="text-xs text-stone-600">
-                {companyProfile?.cnpj ? `CNPJ: ${companyProfile.cnpj}` : 'CRM Gestão de Frotas & Colheita'} • {companyProfile?.city || 'Controle Operacional de Pneus'}
-              </p>
-            </div>
-            <div className="text-right">
-              <span className="px-2.5 py-1 rounded-md text-xs font-extrabold uppercase bg-stone-100 text-stone-800 border border-stone-300">
-                O.S. Rodízio Nº {rotationLog.id.slice(-6).toUpperCase()}
-              </span>
-              <p className="text-[11px] text-stone-500 mt-1">Data: {formatDateBR(rotationLog.date)}</p>
-            </div>
-          </div>
+          {/* Cabeçalho Corporativo Padronizado */}
+          <PrintReportHeader
+            companyProfile={companyProfile}
+            reportTitle="COMPROVANTE DE RODÍZIO DE PNEUS"
+            reportSubtitle={`Data da Operação: ${formatDateBR(rotationLog.date)}`}
+            documentTypeBadge={`O.S. RODÍZIO Nº ${rotationLog.id.slice(-6).toUpperCase()}`}
+          />
 
           {/* Dados do Veículo */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-lg bg-stone-50 border border-stone-200 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-lg bg-stone-50 border border-stone-200 text-xs break-inside-avoid">
             <div>
               <span className="text-[10px] uppercase font-bold text-stone-500 block">Veículo / Placa</span>
               <span className="font-extrabold text-stone-900 text-sm">{rotationLog.vehiclePlate}</span>
@@ -100,25 +95,25 @@ export const TireRotationPrintModal: React.FC<TireRotationPrintModalProps> = ({
           </div>
 
           {/* Tipo de Rodízio */}
-          <div className="flex items-center justify-between p-3 rounded-lg border border-sky-200 bg-sky-50/60 text-xs">
+          <div className="flex items-center justify-between p-3 rounded-lg border border-sky-200 bg-sky-50/60 text-xs break-inside-avoid">
             <div>
-              <span className="text-[10px] uppercase font-bold text-sky-700 block">Tipo de Rodízio Executado</span>
+              <span className="text-[10px] uppercase font-bold text-[#0963cb] block">Tipo de Rodízio Executado</span>
               <span className="font-bold text-stone-900 text-sm">{rotationLog.rotationTypeName}</span>
             </div>
             <div>
-              <span className="text-[10px] uppercase font-bold text-sky-700 block">Operador / Responsável</span>
+              <span className="text-[10px] uppercase font-bold text-[#0963cb] block">Operador / Responsável</span>
               <span className="font-semibold text-stone-900">{rotationLog.operatorName || 'Oficina Própria'}</span>
             </div>
             {rotationLog.cost ? (
               <div>
-                <span className="text-[10px] uppercase font-bold text-sky-700 block">Custo do Serviço</span>
+                <span className="text-[10px] uppercase font-bold text-[#0963cb] block">Custo do Serviço</span>
                 <span className="font-extrabold text-stone-900">{formatCurrencyBRL(rotationLog.cost)}</span>
               </div>
             ) : null}
           </div>
 
           {/* Tabela de Movimentações */}
-          <div className="space-y-2">
+          <div className="space-y-2 break-inside-avoid">
             <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700">
               Movimentação e Posicionamento dos Pneus
             </h4>
@@ -154,23 +149,19 @@ export const TireRotationPrintModal: React.FC<TireRotationPrintModalProps> = ({
 
           {/* Observações */}
           {rotationLog.notes && (
-            <div className="p-3 rounded-lg border border-stone-200 bg-stone-50 text-xs">
+            <div className="p-3 rounded-lg border border-stone-200 bg-stone-50 text-xs break-inside-avoid">
               <span className="text-[10px] uppercase font-bold text-stone-500 block mb-0.5">Observações da Operação</span>
               <p className="text-stone-700">{rotationLog.notes}</p>
             </div>
           )}
 
-          {/* Assinaturas */}
-          <div className="pt-8 grid grid-cols-2 gap-8 text-center text-xs">
-            <div className="border-t border-stone-400 pt-2">
-              <span className="font-bold text-stone-800 block">Responsável Técnico / Mecânico</span>
-              <span className="text-stone-500 text-[11px]">{rotationLog.operatorName || 'Assinatura'}</span>
-            </div>
-            <div className="border-t border-stone-400 pt-2">
-              <span className="font-bold text-stone-800 block">Gestor de Frota / Encarregado</span>
-              <span className="text-stone-500 text-[11px]">Visto de Conformidade</span>
-            </div>
-          </div>
+          {/* Rodapé Corporativo Padronizado com Assinaturas */}
+          <PrintReportFooter
+            showSignatures={true}
+            signatureLabels={['Responsável Técnico / Mecânico', 'Gestor de Frota / Encarregado']}
+            companyName={companyProfile?.tradeName || 'Silagem Fácil ERP'}
+            authCode={`ROD-${rotationLog.id.slice(-6).toUpperCase()}`}
+          />
 
         </div>
 

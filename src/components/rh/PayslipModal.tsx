@@ -2,6 +2,8 @@ import React from 'react';
 import { X, Printer, Download, CheckCircle2, User, Building, Calendar, DollarSign } from 'lucide-react';
 import { PayrollRecord, Employee, CompanyProfile } from '../../types';
 import { formatCurrencyBRL, formatDateBR } from '../../lib/storage';
+import { PrintReportHeader } from '../common/PrintReportHeader';
+import { PrintReportFooter } from '../common/PrintReportFooter';
 
 interface PayslipModalProps {
   payroll: PayrollRecord | null;
@@ -28,8 +30,8 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
   const totalDiscounts = payroll.inssDiscount + payroll.advancesDiscount + payroll.otherDiscounts;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:static">
+      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150 print:max-h-none print:shadow-none print:border-none print:rounded-none print:w-full">
         
         {/* Modal Action Header (Non-printable) */}
         <div className="print:hidden flex items-center justify-between px-5 py-3.5 bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-800">
@@ -37,7 +39,7 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
             <span className="text-sm font-bold text-stone-900 dark:text-stone-100">
               Demonstrativo de Pagamento de Salário (Holerite)
             </span>
-            <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-[#009688]/10 text-[#009688]">
+            <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-[#0963cb]/10 text-[#0963cb]">
               {payroll.referenceMonth}
             </span>
           </div>
@@ -45,7 +47,7 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
             <button
               type="button"
               onClick={handlePrint}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-bold hover:bg-stone-800 transition cursor-pointer"
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#0963cb] text-white text-xs font-bold hover:bg-blue-700 transition cursor-pointer shadow-xs"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Imprimir / PDF</span>
@@ -53,7 +55,7 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded-lg hover:bg-stone-200 dark:hover:bg-stone-700 transition"
+              className="p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded-lg hover:bg-stone-200 dark:hover:bg-stone-700 transition cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -61,49 +63,36 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
         </div>
 
         {/* Printable Holerite Content */}
-        <div className="p-6 sm:p-8 space-y-6 text-stone-900 dark:text-stone-100 bg-white dark:bg-stone-900" id="printable-payslip">
+        <div className="p-6 sm:p-8 space-y-5 text-stone-900 dark:text-stone-100 bg-white dark:bg-stone-900 print:p-2" id="printable-payslip">
           
-          {/* Header Empresa & Empregado */}
-          <div className="border border-stone-300 dark:border-stone-700 rounded-xl p-4 space-y-3">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3 gap-2">
-              <div>
-                <h2 className="text-base font-black uppercase text-stone-900 dark:text-stone-100">
-                  {companyProfile.tradeName || companyProfile.corporateName || 'SILAGEM TESTE 02 - GESTÃO AGRÍCOLA'}
-                </h2>
-                <p className="text-xs text-stone-500 dark:text-stone-400">
-                  CNPJ: {companyProfile.cnpjCpf || '57.872.222/0001-22'} | {companyProfile.city || 'Boa Esperança do Iguaçu'} - {companyProfile.state || 'PR'}
-                </p>
-              </div>
-              <div className="text-right">
-                <span className="text-xs font-bold text-stone-500 dark:text-stone-400 block uppercase">
-                  Recibo de Pagamento
-                </span>
-                <span className="text-sm font-extrabold text-[#009688]">
-                  Mês Referência: {payroll.referenceMonth}
-                </span>
-              </div>
-            </div>
+          {/* Cabeçalho Corporativo Padronizado */}
+          <PrintReportHeader
+            companyProfile={companyProfile}
+            reportTitle="DEMONSTRATIVO DE PAGAMENTO DE SALÁRIO (HOLERITE)"
+            reportSubtitle={`Colaborador: ${payroll.employeeName} • Função: ${payroll.employeeRole}`}
+            documentTypeBadge={`REF: ${payroll.referenceMonth}`}
+          />
 
+          {/* Dados do Empregado */}
+          <div className="border border-stone-300 dark:border-stone-700 rounded-xl p-4 bg-stone-50/50 dark:bg-stone-800/30">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div>
-                <span className="text-stone-400 block text-[11px]">Nome do Colaborador:</span>
+                <span className="text-stone-500 block text-[11px] font-bold">Colaborador:</span>
                 <span className="font-bold text-stone-900 dark:text-stone-100">{payroll.employeeName}</span>
               </div>
               <div>
-                <span className="text-stone-400 block text-[11px]">Função / Cargo:</span>
+                <span className="text-stone-500 block text-[11px] font-bold">Função / Cargo:</span>
                 <span className="font-medium text-stone-800 dark:text-stone-200">{payroll.employeeRole}</span>
               </div>
               <div>
-                <span className="text-stone-400 block text-[11px]">Admissão:</span>
+                <span className="text-stone-500 block text-[11px] font-bold">Admissão:</span>
                 <span className="font-medium text-stone-800 dark:text-stone-200">
                   {employee?.admissionDate ? formatDateBR(employee.admissionDate) : '01/03/2023'}
                 </span>
               </div>
               <div>
-                <span className="text-stone-400 block text-[11px]">Situação:</span>
-                <span className="font-bold text-emerald-600">
-                  {payroll.status === 'pago' ? 'LIQUIDADO' : 'EM PROCESSAMENTO'}
-                </span>
+                <span className="text-stone-500 block text-[11px] font-bold">Mês Referência:</span>
+                <span className="font-bold text-[#0963cb]">{payroll.referenceMonth}</span>
               </div>
             </div>
           </div>
@@ -247,17 +236,16 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
             </div>
           </div>
 
-          {/* Campo de Assinatura */}
-          <div className="pt-6 border-t border-dashed border-stone-300 dark:border-stone-700 flex flex-col sm:flex-row items-center justify-between text-xs text-stone-500 gap-6">
-            <div className="text-left w-full sm:w-auto">
-              <p>Recebi a importância líquida supra discriminada.</p>
-              <p className="mt-1">Data: ____/____/________</p>
-            </div>
-            <div className="text-center w-full sm:w-72 border-t border-stone-400 pt-1">
-              <span className="font-semibold text-stone-700 dark:text-stone-300 block">{payroll.employeeName}</span>
-              <span className="text-[10px] text-stone-400">Assinatura do Funcionário</span>
-            </div>
-          </div>
+          {/* Rodapé Corporativo Padronizado */}
+          <PrintReportFooter
+            showSignatures={true}
+            signatureLabels={[
+              'Empregador / Departamento Pessoal',
+              `Colaborador: ${payroll.employeeName}`
+            ]}
+            companyName={companyProfile.tradeName || companyProfile.corporateName || 'Silagem Fácil ERP'}
+            authCode={`HOL-${payroll.id.replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase()}`}
+          />
 
         </div>
 

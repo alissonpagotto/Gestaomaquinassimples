@@ -11,7 +11,9 @@ import {
   ArrowDownRight
 } from 'lucide-react';
 import { Expense, SilageOrder, CropSeason, ThirdPartySettlement } from '../../types';
-import { formatCurrencyBRL, formatDateBR } from '../../lib/storage';
+import { formatCurrencyBRL, formatDateBR, getStoredCompanyProfile } from '../../lib/storage';
+import { PrintReportHeader } from '../common/PrintReportHeader';
+import { PrintReportFooter } from '../common/PrintReportFooter';
 
 interface FinancialExportTabProps {
   expenses: Expense[];
@@ -71,10 +73,21 @@ export const FinancialExportTab: React.FC<FinancialExportTabProps> = ({
     window.print();
   };
 
+  const companyProfile = getStoredCompanyProfile();
+
+  const getReportTitle = () => {
+    switch (selectedFormat) {
+      case 'dre': return 'RELATÓRIO DE DRE FINANCEIRO CONSOLIDADO';
+      case 'despesas': return 'RELATÓRIO DE DESPESAS E PAGAMENTOS';
+      case 'receitas': return 'RELATÓRIO DE FATURAMENTO E RECEITAS';
+      case 'terceiros': return 'RELATÓRIO DE ACERTOS DE TERCEIROS';
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Export Options Banner */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 text-black">
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 text-black print:hidden">
         <div>
           <h3 className="text-base font-bold text-black">
             Exportação & Relatórios Gerenciais Financeiros
@@ -88,7 +101,7 @@ export const FinancialExportTab: React.FC<FinancialExportTabProps> = ({
           <button
             type="button"
             onClick={handlePrint}
-            className="inline-flex items-center space-x-2 px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-black text-xs sm:text-sm font-bold transition shadow-xs cursor-pointer"
+            className="inline-flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-[#0963cb] hover:bg-blue-700 text-white text-xs sm:text-sm font-bold transition shadow-xs cursor-pointer"
           >
             <Printer className="w-4 h-4" />
             <span>Imprimir / PDF</span>
@@ -106,13 +119,13 @@ export const FinancialExportTab: React.FC<FinancialExportTabProps> = ({
       </div>
 
       {/* Selector Tabs */}
-      <div className="bg-white rounded-xl border border-slate-200 p-1.5 flex items-center space-x-2 overflow-x-auto shadow-xs">
+      <div className="bg-white rounded-xl border border-slate-200 p-1.5 flex items-center space-x-2 overflow-x-auto shadow-xs print:hidden">
         <button
           type="button"
           onClick={() => setSelectedFormat('dre')}
           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
             selectedFormat === 'dre'
-              ? 'bg-sky-600 text-white shadow-xs'
+              ? 'bg-[#0963cb] text-white shadow-xs'
               : 'bg-slate-100 text-black hover:bg-slate-200'
           }`}
         >
@@ -123,7 +136,7 @@ export const FinancialExportTab: React.FC<FinancialExportTabProps> = ({
           onClick={() => setSelectedFormat('despesas')}
           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
             selectedFormat === 'despesas'
-              ? 'bg-sky-600 text-white shadow-xs'
+              ? 'bg-[#0963cb] text-white shadow-xs'
               : 'bg-slate-100 text-black hover:bg-slate-200'
           }`}
         >
@@ -134,7 +147,7 @@ export const FinancialExportTab: React.FC<FinancialExportTabProps> = ({
           onClick={() => setSelectedFormat('receitas')}
           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
             selectedFormat === 'receitas'
-              ? 'bg-sky-600 text-white shadow-xs'
+              ? 'bg-[#0963cb] text-white shadow-xs'
               : 'bg-slate-100 text-black hover:bg-slate-200'
           }`}
         >
@@ -145,7 +158,7 @@ export const FinancialExportTab: React.FC<FinancialExportTabProps> = ({
           onClick={() => setSelectedFormat('terceiros')}
           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
             selectedFormat === 'terceiros'
-              ? 'bg-sky-600 text-white shadow-xs'
+              ? 'bg-[#0963cb] text-white shadow-xs'
               : 'bg-slate-100 text-black hover:bg-slate-200'
           }`}
         >
@@ -154,8 +167,19 @@ export const FinancialExportTab: React.FC<FinancialExportTabProps> = ({
       </div>
 
       {/* Preview Sheet */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs space-y-4 text-black">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs space-y-4 text-black print:border-none print:shadow-none print:p-0">
+        
+        {/* Printable Header */}
+        <div className="hidden print:block mb-4">
+          <PrintReportHeader
+            companyProfile={companyProfile}
+            reportTitle={getReportTitle()}
+            reportSubtitle={`Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}`}
+            documentTypeBadge={selectedFormat.toUpperCase()}
+          />
+        </div>
+
+        <div className="flex items-center justify-between border-b border-slate-200 pb-4 print:hidden">
           <div>
             <h4 className="font-bold text-black text-base">
               Pré-visualização do Relatório
@@ -210,6 +234,16 @@ export const FinancialExportTab: React.FC<FinancialExportTabProps> = ({
             <p>Total Líquido: <strong className="font-black text-black">{formatCurrencyBRL(settlements.reduce((acc, s) => acc + s.netAmount, 0))}</strong></p>
           </div>
         )}
+
+        {/* Printable Footer */}
+        <div className="hidden print:block pt-4">
+          <PrintReportFooter
+            showSignatures={true}
+            signatureLabels={['Setor Financeiro / Controladoria', 'Diretoria Executiva']}
+            companyName={companyProfile?.tradeName || companyProfile?.corporateName || 'Silagem Fácil ERP'}
+            authCode={`FIN-${selectedFormat.toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`}
+          />
+        </div>
       </div>
     </div>
   );

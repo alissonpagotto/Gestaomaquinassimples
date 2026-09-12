@@ -39,9 +39,12 @@ import {
   saveStoredExpenses,
   getStoredServices, 
   getStoredOrders, 
-  getStoredPayrolls 
+  getStoredPayrolls,
+  getStoredCompanyProfile 
 } from '../../lib/storage';
 import { calculateVehicleConsumptionMetrics } from '../../lib/fleetMetrics';
+import { PrintReportHeader } from '../common/PrintReportHeader';
+import { PrintReportFooter } from '../common/PrintReportFooter';
 
 interface VehicleHistoryDreTabProps {
   vehicle: Machinery | null;
@@ -727,7 +730,17 @@ export const VehicleHistoryDreTab: React.FC<VehicleHistoryDreTabProps> = ({
       {/* ============================================================ */}
       {activeSubTab === 'dre' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-2">
+          {/* Print Header */}
+          <div className="hidden print:block mb-3">
+            <PrintReportHeader
+              companyProfile={getStoredCompanyProfile()}
+              reportTitle="DEMONSTRATIVO DE RESULTADO DO EXERCÍCIO (DRE)"
+              reportSubtitle={`Veículo: ${vehicle.licensePlateOrSerial || vehicle.name} • ${vehicle.brand || ''} ${vehicle.model || ''}`}
+              documentTypeBadge="DRE DO VEÍCULO"
+            />
+          </div>
+
+          <div className="flex items-center justify-between flex-wrap gap-2 print:hidden">
             <div>
               <h3 className="text-sm font-black text-stone-900 dark:text-stone-100 uppercase tracking-wider">
                 Demonstrativo de Resultado do Exercício (DRE)
@@ -739,7 +752,7 @@ export const VehicleHistoryDreTab: React.FC<VehicleHistoryDreTabProps> = ({
             <button
               type="button"
               onClick={handlePrintDRE}
-              className="px-3 py-1.5 bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 text-stone-800 dark:text-stone-200 text-xs font-bold rounded-lg transition flex items-center space-x-1.5 cursor-pointer"
+              className="px-3 py-1.5 bg-[#0963cb] hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition flex items-center space-x-1.5 cursor-pointer shadow-xs"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Imprimir DRE</span>
@@ -871,6 +884,16 @@ export const VehicleHistoryDreTab: React.FC<VehicleHistoryDreTabProps> = ({
               </div>
             </div>
 
+          </div>
+
+          {/* Print Footer */}
+          <div className="hidden print:block mt-4">
+            <PrintReportFooter
+              showSignatures={true}
+              signatureLabels={['Controladoria / Gestão de Frota', 'Diretoria / Operações']}
+              companyName={getStoredCompanyProfile()?.tradeName || 'Silagem Fácil ERP'}
+              authCode={`DRE-${(vehicle.licensePlateOrSerial || vehicle.id).replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase()}`}
+            />
           </div>
         </div>
       )}

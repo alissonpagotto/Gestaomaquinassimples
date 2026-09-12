@@ -166,50 +166,70 @@ export function generateFleetListHtml(
           font-size: 11px;
         }
 
-        /* HEADER */
+        /* HEADER - 2 Columns Corporate Standard */
         .doc-header {
           display: flex;
           justify-content: space-between;
-          align-items: center;
-          border-bottom: 2px solid #0284c7;
+          align-items: flex-start;
+          border-bottom: 2.5px solid #0963cb;
           padding-bottom: 10px;
-          margin-bottom: 12px;
+          margin-bottom: 14px;
+          gap: 16px;
         }
         .header-left {
           display: flex;
           align-items: center;
           gap: 12px;
         }
+        .company-logo-box {
+          width: 75px;
+          height: 75px;
+          min-width: 75px;
+          border-radius: 6px;
+          border: 1px solid #cbd5e1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #ffffff;
+          padding: 3px;
+        }
         .company-logo {
-          max-height: 48px;
-          max-width: 130px;
+          max-height: 100%;
+          max-width: 100%;
           object-fit: contain;
         }
+        .company-logo-fallback {
+          font-size: 20px;
+          font-weight: 900;
+          color: #0963cb;
+        }
+        .header-right {
+          text-align: right;
+          flex: 1;
+        }
         .company-title {
-          font-size: 15px;
-          font-weight: 800;
-          color: #0f172a;
+          font-size: 16px;
+          font-weight: 900;
+          color: #0963cb;
           margin: 0;
           text-transform: uppercase;
           letter-spacing: -0.2px;
         }
         .company-meta {
           font-size: 10px;
-          color: #64748b;
+          color: #475569;
           margin-top: 2px;
-        }
-        .header-right {
-          text-align: right;
+          line-height: 1.3;
         }
         .doc-name {
-          font-size: 14px;
+          font-size: 12px;
           font-weight: 800;
-          color: #0369a1;
-          margin: 0;
+          color: #1e293b;
+          margin: 4px 0 0 0;
           text-transform: uppercase;
         }
         .doc-date {
-          font-size: 10px;
+          font-size: 9.5px;
           color: #64748b;
           margin-top: 2px;
         }
@@ -437,19 +457,21 @@ export function generateFleetListHtml(
         }
       </style>
 
-      <!-- HEADER -->
+      <!-- HEADER - 2 Columns Standard -->
       <div class="doc-header">
+        <!-- Lado Esquerdo: Logomarca da Empresa -->
         <div class="header-left">
-          ${company?.logoUrl ? `<img src="${company.logoUrl}" alt="Logo" class="company-logo" />` : ''}
-          <div>
-            <h1 class="company-title">${companyName}</h1>
-            <div class="company-meta">
-              ${[companyCnpj, companyPhone, companyEmail].filter(Boolean).join(' • ')}
-              ${companyAddress ? `<br/>${companyAddress}` : ''}
-            </div>
+          <div class="company-logo-box">
+            ${company?.logoUrl ? `<img src="${company.logoUrl}" alt="Logo" class="company-logo" />` : '<span class="company-logo-fallback">SF</span>'}
           </div>
         </div>
+
+        <!-- Lado Direito: Nome Fantasia em destaque, CNPJ e Cidade/UF -->
         <div class="header-right">
+          <h1 class="company-title">${companyName}</h1>
+          <div class="company-meta">
+            ${[companyCnpj, companyAddress, companyPhone, companyEmail].filter(Boolean).join(' • ')}
+          </div>
           <h2 class="doc-name">RELATÓRIO GERAL DA FROTA & VEÍCULOS</h2>
           <div class="doc-date">Emissão: ${dateFormatted} às ${timeFormatted} • Total: <strong>${totalVehicles} veículos</strong></div>
           ${filterInfo?.category && filterInfo.category !== 'todos' ? `<div class="doc-date">Filtro Categoria: <strong>${filterInfo.category}</strong></div>` : ''}
@@ -506,8 +528,8 @@ export function generateFleetListHtml(
       <!-- FOOTER & SIGNATURES -->
       <div class="doc-footer">
         <div class="footer-note">
-          Relatório emitido pelo Sistema Integrado de Gestão de Frotas • ${companyName}<br/>
-          Página 1 de 1 • Autenticidade gerada em ${dateFormatted}
+          Relatório gerado automaticamente por: Silagem Fácil ERP - Gestão Integrada de Silagem & Frotas Agrícolas<br/>
+          Emissão: ${dateFormatted} às ${timeFormatted} • Página 1 de 1
         </div>
         <div class="signature-box">
           <div class="sig-line"></div>
