@@ -555,19 +555,31 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/75 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-stone-900 rounded-2xl max-w-4xl w-full shadow-2xl border border-stone-200 dark:border-stone-800 overflow-hidden flex flex-col max-h-[92vh]">
+      <div 
+        className="bg-[#b0d2ed] rounded-2xl max-w-4xl w-full shadow-2xl border border-blue-300 overflow-hidden flex flex-col max-h-[92vh]"
+        style={{ backgroundColor: '#b0d2ed' }}
+      >
         
-        {/* Header matching design */}
-        <div className="px-5 sm:px-6 py-3.5 bg-cyan-100 dark:bg-cyan-950/70 border-b border-cyan-200 dark:border-cyan-900 flex items-center justify-between">
+        {/* Header - Solid Blue #0963cb with White Text */}
+        <div 
+          className="px-5 sm:px-6 py-3.5 bg-[#0963cb] text-white flex items-center justify-between shrink-0 shadow-xs"
+          style={{ backgroundColor: '#0963cb', color: '#ffffff' }}
+        >
           <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-xl bg-cyan-600 text-white flex items-center justify-center shadow-xs">
-              <Truck className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-xl bg-white/20 text-white flex items-center justify-center shadow-xs">
+              <Truck className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-bold text-cyan-950 dark:text-cyan-100 font-['Outfit']">
+              <h3 
+                className="text-base sm:text-lg font-bold text-white font-['Outfit']"
+                style={{ color: '#ffffff' }}
+              >
                 {editingVehicle ? 'Editar Veículo / Máquina' : 'Cadastrar Novo Veículo / Máquina'}
               </h3>
-              <p className="text-[11px] text-cyan-900/70 dark:text-cyan-200/70">
+              <p 
+                className="text-[11px] text-white/90"
+                style={{ color: '#ffffff' }}
+              >
                 Gestão de dados cadastrais, dados de propriedade, pesos e controle de compra
               </p>
             </div>
@@ -575,23 +587,29 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-cyan-900 dark:text-cyan-200 hover:bg-cyan-200/60 dark:hover:bg-cyan-900/60 transition cursor-pointer"
+            className="p-1.5 rounded-lg text-white/90 hover:text-white hover:bg-white/20 transition cursor-pointer"
+            aria-label="Fechar"
+            style={{ color: '#ffffff' }}
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 text-white" />
           </button>
         </div>
 
         {/* Tabs Bar */}
-        <div className="p-3 bg-stone-100/90 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-700/80 flex items-center justify-center">
-          <div className="grid grid-cols-2 gap-2 w-full max-w-md bg-stone-200/80 dark:bg-stone-900/80 p-1 rounded-xl">
+        <div 
+          className="p-2.5 sm:p-3 bg-[#b0d2ed] border-b border-blue-300 flex items-center justify-center shrink-0"
+          style={{ backgroundColor: '#b0d2ed' }}
+        >
+          <div className="grid grid-cols-2 gap-2 w-full max-w-md bg-white/70 p-1 rounded-xl shadow-xs">
             <button
               type="button"
               onClick={() => setActiveTab('dados')}
               className={`py-2 px-4 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center space-x-2 cursor-pointer ${
                 activeTab === 'dados'
-                  ? 'bg-white dark:bg-stone-800 text-cyan-900 dark:text-cyan-300 shadow-xs border border-cyan-500/20'
-                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
+                  ? 'bg-[#0963cb] text-white shadow-xs'
+                  : 'text-stone-700 hover:text-black'
               }`}
+              style={activeTab === 'dados' ? { backgroundColor: '#0963cb', color: '#ffffff' } : {}}
             >
               <Car className="w-4 h-4" />
               <span>Dados do Veículo</span>
@@ -601,9 +619,10 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               onClick={() => setActiveTab('historico')}
               className={`py-2 px-4 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center space-x-2 cursor-pointer ${
                 activeTab === 'historico'
-                  ? 'bg-white dark:bg-stone-800 text-cyan-900 dark:text-cyan-300 shadow-xs border border-cyan-500/20'
-                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
+                  ? 'bg-[#0963cb] text-white shadow-xs'
+                  : 'text-stone-700 hover:text-black'
               }`}
+              style={activeTab === 'historico' ? { backgroundColor: '#0963cb', color: '#ffffff' } : {}}
             >
               <Clock className="w-4 h-4" />
               <span>Histórico, Consumo & DRE</span>
@@ -613,51 +632,59 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
 
         {/* TAB 1: DADOS DO VEÍCULO */}
         {activeTab === 'dados' && (
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
+          <form 
+            onSubmit={handleSubmit} 
+            className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-[#b0d2ed]"
+            style={{ backgroundColor: '#b0d2ed' }}
+          >
             
-            {/* SEÇÃO: IDENTIFICAÇÃO BÁSICA (Placa, Nº de Série, Marca, Modelo, Ano, RENAVAM, Cor) */}
-            <div className="space-y-3.5">
+            {/* SEÇÃO 1: IDENTIFICAÇÃO BÁSICA (CARD BRANCO) */}
+            <div className="p-4 rounded-xl bg-white border border-blue-200/80 shadow-xs space-y-3.5">
+              <div className="flex items-center space-x-2">
+                <Truck className="w-4 h-4 text-[#0963cb]" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#000000]" style={{ color: '#000000' }}>
+                  Identificação do Veículo / Máquina
+                </h4>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Placa do Veículo
                   </label>
                   <input
                     type="text"
                     value={plate}
                     onChange={(e) => setPlate(e.target.value)}
-                    placeholder="Ex: AAA0002 ou ABC-1234"
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-cyan-600 shadow-xs"
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                   />
-                  <p className="text-[10px] text-black mt-1">Opcional para máquinas agrícolas</p>
+                  <p className="text-[10px] text-stone-600 mt-1">Opcional para máquinas agrícolas</p>
                 </div>
 
                 {/* Nº DE SÉRIE - Totalmente Editável (especial para tratores e ensiladeiras) */}
                 <div>
-                  <label className="block text-xs font-bold text-stone-800 dark:text-stone-200 mb-1 flex items-center justify-between">
+                  <label className="block text-xs font-bold mb-1 flex items-center justify-between text-[#000000]" style={{ color: '#000000' }}>
                     <span>Nº de Série (Chassi / Fabricante)</span>
-                    <span className="text-[10px] font-semibold text-cyan-600 dark:text-cyan-400">Editável</span>
+                    <span className="text-[10px] font-semibold text-[#0963cb]">Editável</span>
                   </label>
                   <input
                     type="text"
                     value={serialNumber}
                     onChange={(e) => setSerialNumber(e.target.value)}
-                    placeholder="Ex: CH-98745231 / JD-8520-2023"
-                    className="w-full px-3.5 py-2 rounded-xl border-2 border-cyan-500/40 dark:border-cyan-600/40 bg-cyan-50/20 dark:bg-cyan-950/20 text-stone-900 dark:text-stone-100 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-cyan-600 shadow-xs"
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                   />
-                  <p className="text-[10px] text-cyan-700 dark:text-cyan-300 mt-1">Para tratores, ensiladeiras e implementos s/ RENAVAM</p>
+                  <p className="text-[10px] text-stone-600 mt-1">Para tratores, ensiladeiras e implementos s/ RENAVAM</p>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Código RENAVAM
                   </label>
                   <input
                     type="text"
                     value={renavam}
                     onChange={(e) => setRenavam(e.target.value)}
-                    placeholder="Código RENAVAM (se houver)"
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-cyan-600 shadow-xs"
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                   />
                 </div>
               </div>
@@ -665,54 +692,50 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               {/* Marca, Modelo, Ano, Cor */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Marca
                   </label>
                   <input
                     type="text"
                     value={brand}
                     onChange={(e) => setBrand(e.target.value)}
-                    placeholder="Ex: Claas, Mercedes, John Deere"
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-cyan-600 shadow-xs"
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Modelo
                   </label>
                   <input
                     type="text"
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
-                    placeholder="Ex: Jaguar 860, Axor 3131"
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-cyan-600 shadow-xs"
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Ano de Fabricação
                   </label>
                   <input
                     type="number"
                     value={year}
                     onChange={(e) => setYear(e.target.value)}
-                    placeholder="Ex: 2023"
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-cyan-600 shadow-xs"
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Cor
                   </label>
                   <input
                     type="text"
                     value={color}
                     onChange={(e) => setColor(e.target.value)}
-                    placeholder="Ex: Branco / Verde"
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-cyan-600 shadow-xs"
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                   />
                 </div>
               </div>
@@ -722,13 +745,13 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                 {/* Categoria Geral do Sistema - Lista Editável */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold text-stone-700 dark:text-stone-300">
+                    <label className="block text-xs font-bold text-[#000000]" style={{ color: '#000000' }}>
                       Categoria Geral do Sistema
                     </label>
                     <button
                       type="button"
                       onClick={() => setIsCategoriesModalOpen(true)}
-                      className="text-[11px] text-cyan-700 dark:text-cyan-400 hover:text-cyan-900 dark:hover:text-cyan-300 font-bold flex items-center space-x-1 hover:underline cursor-pointer"
+                      className="text-[11px] text-[#0963cb] hover:underline font-bold flex items-center space-x-1 cursor-pointer"
                       title="Gerenciar lista: incluir novas ou excluir opções"
                     >
                       <Tag className="w-3 h-3" />
@@ -745,7 +768,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                           setCategoryType(e.target.value);
                         }
                       }}
-                      className="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-cyan-600 shadow-xs cursor-pointer"
+                      className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs cursor-pointer"
                     >
                       {categoriesList.map((cat) => (
                         <option key={cat} value={cat}>
@@ -762,7 +785,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsCategoriesModalOpen(true)}
-                      className="p-2 border border-stone-300 dark:border-stone-700 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 rounded-xl text-cyan-700 dark:text-cyan-400 transition cursor-pointer shrink-0 shadow-xs"
+                      className="p-2 border border-stone-300 bg-white hover:bg-stone-50 rounded-xl text-[#0963cb] transition cursor-pointer shrink-0 shadow-xs"
                       title="Incluir nova categoria ou excluir existente"
                     >
                       <Plus className="w-4 h-4" />
@@ -771,13 +794,13 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Status Operacional
                   </label>
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as any)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-cyan-600 shadow-xs"
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                   >
                     <option value="disponivel">Disponível</option>
                     <option value="operacional">Operacional (Em Atividade / Campo)</option>
@@ -788,17 +811,17 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               </div>
             </div>
 
-            {/* SEÇÃO 3: PROPRIEDADE & NO NOME DE QUEM (RAZÃO SOCIAL / NOME + CNPJ/CPF) */}
-            <div className="p-4 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700/80 space-y-3.5">
+            {/* SEÇÃO 2: PROPRIEDADE & NO NOME DE QUEM (CARD BRANCO) */}
+            <div className="p-4 rounded-xl bg-white border border-blue-200/80 shadow-xs space-y-3.5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center space-x-2">
-                  <Building className="w-4 h-4 text-emerald-600" />
-                  <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">
+                  <Building className="w-4 h-4 text-[#0963cb]" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#000000]" style={{ color: '#000000' }}>
                     Propriedade & Documentação ("No Nome de Quem")
                   </h4>
                 </div>
                 <div className="flex items-center space-x-1.5 self-end sm:self-auto">
-                  <span className="text-[11px] text-stone-500 font-semibold">Regime:</span>
+                  <span className="text-[11px] text-stone-600 font-semibold">Regime:</span>
                   <select
                     value={ownership}
                     onChange={(e) => {
@@ -808,7 +831,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                         setOwnership(e.target.value);
                       }
                     }}
-                    className="px-2.5 py-1 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-600 cursor-pointer shadow-xs"
+                    className="px-2.5 py-1 rounded-lg border border-stone-300 bg-white text-[#000000] text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#0963cb] cursor-pointer shadow-xs"
                   >
                     {regimesList.map((r) => (
                       <option key={r} value={r}>
@@ -825,7 +848,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsRegimesModalOpen(true)}
-                    className="p-1 border border-stone-300 dark:border-stone-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg text-emerald-700 dark:text-emerald-400 transition cursor-pointer shrink-0 shadow-xs"
+                    className="p-1 border border-stone-300 bg-white hover:bg-stone-50 rounded-lg text-[#0963cb] transition cursor-pointer shrink-0 shadow-xs"
                     title="Incluir novo regime ou excluir opções da lista"
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -836,39 +859,37 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               {/* Titular Principal */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Está no Nome de Quem (Razão Social ou Nome do Proprietário)
                   </label>
                   <input
                     type="text"
                     value={ownerName}
                     onChange={(e) => setOwnerName(e.target.value)}
-                    placeholder="Ex: Agropecuária Silva Ltda ou João da Silva"
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-600 shadow-xs"
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                   />
-                  <p className="text-[10px] text-stone-500 mt-1">Nome constante no documento do veículo</p>
+                  <p className="text-[10px] text-stone-600 mt-1">Nome constante no documento do veículo</p>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     CNPJ ou CPF do Proprietário
                   </label>
                   <input
                     type="text"
                     value={ownerDocument}
                     onChange={(e) => setOwnerDocument(e.target.value)}
-                    placeholder="Ex: 00.000.000/0001-00 ou 000.000.000-00"
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-600 shadow-xs"
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                   />
-                  <p className="text-[10px] text-stone-500 mt-1">Permite veículos no CPF e no CNPJ da empresa</p>
+                  <p className="text-[10px] text-stone-600 mt-1">Permite veículos no CPF e no CNPJ da empresa</p>
                 </div>
               </div>
 
               {/* Segundo Proprietário / Sócio (Opcional) */}
               {showSecondaryOwner ? (
-                <div className="p-3 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 space-y-2.5">
+                <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    <span className="text-xs font-bold text-[#000000]" style={{ color: '#000000' }}>
                       Segundo Proprietário / Coproprietário / Sócio
                     </span>
                     <button
@@ -878,7 +899,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                         setSecondaryOwnerName('');
                         setSecondaryOwnerDocument('');
                       }}
-                      className="text-[11px] text-rose-500 hover:text-rose-700 font-semibold cursor-pointer"
+                      className="text-[11px] text-rose-600 hover:text-rose-800 font-semibold cursor-pointer"
                     >
                       Remover segundo titular
                     </button>
@@ -889,8 +910,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                         type="text"
                         value={secondaryOwnerName}
                         onChange={(e) => setSecondaryOwnerName(e.target.value)}
-                        placeholder="Nome / Razão Social do segundo sócio..."
-                        className="w-full px-3 py-1.5 rounded-lg border border-stone-300 dark:border-stone-700 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                        className="w-full px-3 py-1.5 rounded-lg border border-stone-300 bg-white text-[#000000] text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                       />
                     </div>
                     <div>
@@ -898,8 +918,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                         type="text"
                         value={secondaryOwnerDocument}
                         onChange={(e) => setSecondaryOwnerDocument(e.target.value)}
-                        placeholder="CPF ou CNPJ do segundo titular..."
-                        className="w-full px-3 py-1.5 rounded-lg border border-stone-300 dark:border-stone-700 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                        className="w-full px-3 py-1.5 rounded-lg border border-stone-300 bg-white text-[#000000] text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                       />
                     </div>
                   </div>
@@ -908,7 +927,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowSecondaryOwner(true)}
-                  className="inline-flex items-center space-x-1.5 text-xs text-emerald-700 dark:text-emerald-400 font-bold hover:underline cursor-pointer"
+                  className="inline-flex items-center space-x-1.5 text-xs text-[#0963cb] font-bold hover:underline cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Possui mais de um sócio / coproprietário? Adicionar segundo titular</span>
@@ -916,11 +935,11 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               )}
             </div>
 
-            {/* SEÇÃO 4: CONTROLE DE PESO (TARA & LOTAÇÃO) E MEDIÇÕES */}
-            <div className="p-4 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700/80 space-y-3.5">
+            {/* SEÇÃO 3: CONTROLE DE PESO (TARA & LOTAÇÃO) E MEDIÇÕES (CARD BRANCO) */}
+            <div className="p-4 rounded-xl bg-white border border-blue-200/80 shadow-xs space-y-3.5">
               <div className="flex items-center space-x-2">
-                <Weight className="w-4 h-4 text-sky-600" />
-                <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">
+                <Weight className="w-4 h-4 text-[#0963cb]" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#000000]" style={{ color: '#000000' }}>
                   Controle de Pesos, Capacidade & Odômetro/Horímetro
                 </h4>
               </div>
@@ -928,7 +947,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 {/* Tara (kg) */}
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Tara (kg)
                   </label>
                   <div className="relative">
@@ -937,19 +956,18 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                       step="any"
                       value={taraWeightKg}
                       onChange={(e) => setTaraWeightKg(e.target.value)}
-                      placeholder="Ex: 8500"
-                      className="w-full px-3.5 py-2 pr-12 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-600"
+                      className="w-full px-3.5 py-2 pr-12 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-400">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-500">
                       kg
                     </span>
                   </div>
-                  <p className="text-[10px] text-stone-500 mt-1">Peso do veículo vazio sem carga</p>
+                  <p className="text-[10px] text-stone-600 mt-1">Peso do veículo vazio sem carga</p>
                 </div>
 
                 {/* Lotação (kg) */}
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Lotação (kg)
                   </label>
                   <div className="relative">
@@ -958,25 +976,24 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                       step="any"
                       value={capacityLoadKg}
                       onChange={(e) => setCapacityLoadKg(e.target.value)}
-                      placeholder="Ex: 14500"
-                      className="w-full px-3.5 py-2 pr-12 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-600"
+                      className="w-full px-3.5 py-2 pr-12 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-400">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-500">
                       kg
                     </span>
                   </div>
-                  <p className="text-[10px] text-stone-500 mt-1">Carga máxima útil permitida</p>
+                  <p className="text-[10px] text-stone-600 mt-1">Carga máxima útil permitida</p>
                 </div>
 
                 {/* PBT Calculado */}
-                <div className="p-3 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 flex flex-col justify-center">
-                  <span className="text-[10px] font-bold text-stone-500 uppercase">
+                <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex flex-col justify-center">
+                  <span className="text-[10px] font-bold text-[#000000] uppercase" style={{ color: '#000000' }}>
                     PBT Calculado (Tara + Lotação)
                   </span>
-                  <div className="text-lg font-black text-sky-700 dark:text-sky-300 font-mono mt-0.5">
+                  <div className="text-lg font-black text-[#0963cb] font-mono mt-0.5">
                     {computedPbt > 0 ? `${computedPbt.toLocaleString('pt-BR')} kg` : '--'}
                   </div>
-                  <span className="text-[10px] text-stone-400">
+                  <span className="text-[10px] text-stone-600">
                     {computedPbt > 0 ? `Equivale a ${(computedPbt / 1000).toFixed(1)} toneladas` : 'Informe Tara e Lotação'}
                   </span>
                 </div>
@@ -986,8 +1003,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
                 {/* Capacidade M³ */}
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1 flex items-center space-x-1">
-                    <Layers className="w-3.5 h-3.5 text-cyan-600" />
+                  <label className="block text-xs font-bold mb-1 flex items-center space-x-1 text-[#000000]" style={{ color: '#000000' }}>
+                    <Layers className="w-3.5 h-3.5 text-[#0963cb]" />
                     <span>Capacidade Caçamba (m³)</span>
                   </label>
                   <div className="relative">
@@ -996,10 +1013,9 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                       step="0.1"
                       value={capacityM3}
                       onChange={(e) => setCapacityM3(e.target.value)}
-                      placeholder="Ex: 40.0"
-                      className="w-full px-3.5 py-2 pr-12 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-600"
+                      className="w-full px-3.5 py-2 pr-12 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-400">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-500">
                       m³
                     </span>
                   </div>
@@ -1007,8 +1023,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
 
                 {/* Horímetro Atual */}
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1 flex items-center space-x-1">
-                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                  <label className="block text-xs font-bold mb-1 flex items-center space-x-1 text-[#000000]" style={{ color: '#000000' }}>
+                    <Clock className="w-3.5 h-3.5 text-[#0963cb]" />
                     <span>Horímetro Atual (Horas)</span>
                   </label>
                   <div className="relative">
@@ -1017,10 +1033,9 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                       step="any"
                       value={hourMeter}
                       onChange={(e) => setHourMeter(e.target.value)}
-                      placeholder="Ex: 4500"
-                      className="w-full px-3.5 py-2 pr-12 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-600"
+                      className="w-full px-3.5 py-2 pr-12 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-400">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-500">
                       h
                     </span>
                   </div>
@@ -1028,8 +1043,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
 
                 {/* Odômetro Atual */}
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1 flex items-center space-x-1">
-                    <Gauge className="w-3.5 h-3.5 text-sky-600" />
+                  <label className="block text-xs font-bold mb-1 flex items-center space-x-1 text-[#000000]" style={{ color: '#000000' }}>
+                    <Gauge className="w-3.5 h-3.5 text-[#0963cb]" />
                     <span>Odômetro Atual (KM)</span>
                   </label>
                   <div className="relative">
@@ -1038,10 +1053,9 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                       step="any"
                       value={currentKm}
                       onChange={(e) => setCurrentKm(e.target.value)}
-                      placeholder="Ex: 148500"
-                      className="w-full px-3.5 py-2 pr-12 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-600"
+                      className="w-full px-3.5 py-2 pr-12 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-400">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-500">
                       km
                     </span>
                   </div>
@@ -1049,23 +1063,23 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               </div>
             </div>
 
-            {/* SEÇÃO 5: CONTROLE DE COMPRA, NOTA FISCAL & FINANCIAMENTO (INTEGRAÇÃO CONTAS A PAGAR) */}
-            <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-50/50 via-stone-50 to-stone-100 dark:from-emerald-950/20 dark:via-stone-900 dark:to-stone-800 border border-emerald-300/60 dark:border-emerald-800/60 space-y-4">
+            {/* SEÇÃO 4: CONTROLE DE COMPRA, NOTA FISCAL & FINANCIAMENTO (CARD BRANCO) */}
+            <div className="p-4 rounded-xl bg-white border border-blue-200/80 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <Receipt className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-                  <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">
+                  <Receipt className="w-4 h-4 text-[#0963cb]" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#000000]" style={{ color: '#000000' }}>
                     Controle de Compra, Nota Fiscal & Financiamento
                   </h4>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs font-medium text-stone-600 dark:text-stone-400">Modalidade:</span>
-                  <div className="inline-flex rounded-lg p-0.5 bg-stone-200 dark:bg-stone-800">
+                  <span className="text-xs font-medium text-stone-700">Modalidade:</span>
+                  <div className="inline-flex rounded-lg p-0.5 bg-stone-200">
                     <button
                       type="button"
                       onClick={() => setIsFinanced(false)}
                       className={`px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer ${
-                        !isFinanced ? 'bg-white dark:bg-stone-700 text-emerald-800 dark:text-emerald-300 shadow-xs' : 'text-stone-500'
+                        !isFinanced ? 'bg-[#0963cb] text-white shadow-xs' : 'text-stone-700 hover:text-black'
                       }`}
                     >
                       À Vista
@@ -1074,7 +1088,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                       type="button"
                       onClick={() => setIsFinanced(true)}
                       className={`px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer ${
-                        isFinanced ? 'bg-white dark:bg-stone-700 text-emerald-800 dark:text-emerald-300 shadow-xs' : 'text-stone-500'
+                        isFinanced ? 'bg-[#0963cb] text-white shadow-xs' : 'text-stone-700 hover:text-black'
                       }`}
                     >
                       Parcelado / Financiado
@@ -1087,11 +1101,11 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 {/* Valor de Compra */}
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Valor de Compra (R$)
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-400">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-500">
                       R$
                     </span>
                     <input
@@ -1099,50 +1113,47 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                       step="0.01"
                       value={purchaseValue}
                       onChange={(e) => setPurchaseValue(e.target.value)}
-                      placeholder="0,00"
-                      className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-sm font-black font-['Outfit'] focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                      className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-black focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                     />
                   </div>
                 </div>
 
                 {/* Nota Fiscal de Compra */}
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Nota Fiscal de Compra
                   </label>
                   <input
                     type="text"
                     value={purchaseInvoiceNumber}
                     onChange={(e) => setPurchaseInvoiceNumber(e.target.value)}
-                    placeholder="Ex: NF-e 12345"
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                   />
                 </div>
 
                 {/* Data da Compra */}
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Data da Compra
                   </label>
                   <input
                     type="date"
                     value={purchaseDate}
                     onChange={(e) => setPurchaseDate(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                   />
                 </div>
 
                 {/* Fornecedor / Vendedor */}
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Concessionária / Vendedor
                   </label>
                   <input
                     type="text"
                     value={purchaseSupplier}
                     onChange={(e) => setPurchaseSupplier(e.target.value)}
-                    placeholder="Ex: MacPonta, Concessionária..."
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                   />
                 </div>
               </div>
@@ -1150,30 +1161,29 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               {/* Chave de Acesso e Anexo da Nota */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Chave de Acesso da NF-e (44 dígitos)
                   </label>
                   <input
                     type="text"
                     value={purchaseInvoiceKey}
                     onChange={(e) => setPurchaseInvoiceKey(e.target.value)}
-                    placeholder="Chave de 44 dígitos da NF-e (opcional)"
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Anexar Arquivo da Nota Fiscal (PDF ou Imagem)
                   </label>
                   <div className="flex items-center space-x-2">
-                    <label className="px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 hover:bg-stone-100 text-stone-700 dark:text-stone-200 text-xs font-bold flex items-center space-x-1.5 cursor-pointer">
-                      <Paperclip className="w-3.5 h-3.5" />
+                    <label className="px-3 py-2 rounded-xl border border-stone-300 bg-stone-50 hover:bg-stone-100 text-[#000000] text-xs font-bold flex items-center space-x-1.5 cursor-pointer">
+                      <Paperclip className="w-3.5 h-3.5 text-[#0963cb]" />
                       <span>Selecionar Arquivo...</span>
                       <input type="file" onChange={handleFileUpload} className="hidden" accept=".pdf,image/*" />
                     </label>
                     {purchaseAttachmentName && (
-                      <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium truncate max-w-xs flex items-center space-x-1">
+                      <span className="text-xs text-[#0963cb] font-medium truncate max-w-xs flex items-center space-x-1">
                         <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                         <span>{purchaseAttachmentName}</span>
                       </span>
@@ -1184,14 +1194,14 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
 
               {/* SE FINANCIADO / PARCELADO */}
               {isFinanced && (
-                <div className="p-3.5 bg-white dark:bg-stone-800 rounded-xl border border-emerald-300 dark:border-emerald-700/80 space-y-3">
+                <div className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-200 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-emerald-950 dark:text-emerald-200 flex items-center space-x-1.5">
-                      <CreditCard className="w-4 h-4 text-emerald-600" />
+                    <span className="text-xs font-bold text-[#000000] flex items-center space-x-1.5" style={{ color: '#000000' }}>
+                      <CreditCard className="w-4 h-4 text-[#0963cb]" />
                       <span>Condições do Financiamento / Parcelamento</span>
                     </span>
                     {editingVehicle?.installmentsGenerated && (
-                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-100 text-[#0963cb]">
                         Parcelas já lançadas no Contas a Pagar
                       </span>
                     )}
@@ -1200,7 +1210,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                     {/* Quantidade de parcelas */}
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                      <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                         Qtd. de Parcelas
                       </label>
                       <input
@@ -1209,14 +1219,13 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                         max="120"
                         value={installmentsCount}
                         onChange={(e) => handleInstallmentsCountChange(e.target.value)}
-                        placeholder="Ex: 36"
-                        className="w-full px-3 py-1.5 rounded-lg border border-stone-300 dark:border-stone-700 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                        className="w-full px-3 py-1.5 rounded-lg border border-stone-300 bg-white text-[#000000] text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                       />
                     </div>
 
                     {/* Valor da parcela */}
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                      <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                         Valor da Parcela (R$)
                       </label>
                       <input
@@ -1224,54 +1233,52 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                         step="0.01"
                         value={installmentValue}
                         onChange={(e) => setInstallmentValue(e.target.value)}
-                        placeholder="0,00"
-                        className="w-full px-3 py-1.5 rounded-lg border border-stone-300 dark:border-stone-700 text-xs font-bold text-emerald-700 dark:text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                        className="w-full px-3 py-1.5 rounded-lg border border-stone-300 bg-white text-[#000000] text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                       />
                     </div>
 
                     {/* Data 1º Vencimento */}
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                      <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                         1º Vencimento
                       </label>
                       <input
                         type="date"
                         value={firstInstallmentDueDate}
                         onChange={(e) => setFirstInstallmentDueDate(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-lg border border-stone-300 dark:border-stone-700 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                        className="w-full px-3 py-1.5 rounded-lg border border-stone-300 bg-white text-[#000000] text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                       />
                     </div>
 
                     {/* Banco / Financeira */}
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                      <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                         Banco / Instituição
                       </label>
                       <input
                         type="text"
                         value={financialInstitution}
                         onChange={(e) => setFinancialInstitution(e.target.value)}
-                        placeholder="Ex: Banco do Brasil, John Deere Fin..."
-                        className="w-full px-3 py-1.5 rounded-lg border border-stone-300 dark:border-stone-700 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                        className="w-full px-3 py-1.5 rounded-lg border border-stone-300 bg-white text-[#000000] text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                       />
                     </div>
                   </div>
 
                   {/* Automação: Incluir no Contas a Pagar */}
                   {!editingVehicle?.installmentsGenerated && (
-                    <div className="pt-2 border-t border-stone-100 dark:border-stone-700/60 flex items-start space-x-2.5">
+                    <div className="pt-2 border-t border-blue-200/80 flex items-start space-x-2.5">
                       <input
                         type="checkbox"
                         id="generatePayablesCheck"
                         checked={generatePayables}
                         onChange={(e) => setGeneratePayables(e.target.checked)}
-                        className="mt-0.5 h-4 w-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                        className="mt-0.5 h-4 w-4 rounded border-stone-300 text-[#0963cb] focus:ring-[#0963cb] cursor-pointer"
                       />
-                      <label htmlFor="generatePayablesCheck" className="text-xs text-stone-700 dark:text-stone-300 cursor-pointer">
-                        <strong className="text-emerald-800 dark:text-emerald-300">
+                      <label htmlFor="generatePayablesCheck" className="text-xs text-[#000000] cursor-pointer" style={{ color: '#000000' }}>
+                        <strong className="text-[#0963cb]">
                           Incluir as parcelas no Contas a Pagar automaticamente
                         </strong>
-                        <span className="block text-[11px] text-stone-500">
+                        <span className="block text-[11px] text-stone-600">
                           O sistema irá gerar as {installmentsCount || 'X'} despesas mensais sequenciais no módulo financeiro vinculadas à aquisição deste veículo.
                         </span>
                       </label>
@@ -1281,22 +1288,22 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               )}
             </div>
 
-            {/* SEÇÃO 6: MOTORISTAS / OPERADORES (Múltipla Seleção) */}
-            <div className="p-4 bg-stone-50 dark:bg-stone-800/40 rounded-xl border border-stone-200 dark:border-stone-700/80 space-y-3">
+            {/* SEÇÃO 5: MOTORISTAS / OPERADORES (CARD BRANCO) */}
+            <div className="p-4 bg-white rounded-xl border border-blue-200/80 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-stone-800 dark:text-stone-200 flex items-center space-x-1.5">
-                  <Users className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                <label className="text-xs font-bold flex items-center space-x-1.5 text-[#000000]" style={{ color: '#000000' }}>
+                  <Users className="w-4 h-4 text-[#0963cb]" />
                   <span>Motoristas & Operadores Vinculados (Múltiplos)</span>
                 </label>
-                <span className="text-[11px] font-semibold text-stone-500">
+                <span className="text-[11px] font-semibold text-stone-600">
                   {selectedDriverIds.length} selecionado(s)
                 </span>
               </div>
 
               {/* Chips of selected employees */}
-              <div className="flex flex-wrap gap-2 min-h-[38px] p-2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl">
+              <div className="flex flex-wrap gap-2 min-h-[38px] p-2 bg-stone-50 border border-stone-200 rounded-xl">
                 {selectedDriverIds.length === 0 ? (
-                  <span className="text-xs text-stone-400 italic py-1 px-1">
+                  <span className="text-xs text-stone-500 italic py-1 px-1">
                     Nenhum motorista ou operador selecionado. Escolha na lista abaixo:
                   </span>
                 ) : (
@@ -1306,17 +1313,17 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                     return (
                       <span
                         key={emp.id}
-                        className="inline-flex items-center space-x-1.5 py-1 px-2.5 rounded-lg bg-cyan-100 dark:bg-cyan-950/80 border border-cyan-300 dark:border-cyan-700 text-cyan-950 dark:text-cyan-200 text-xs font-bold shadow-2xs"
+                        className="inline-flex items-center space-x-1.5 py-1 px-2.5 rounded-lg bg-blue-50 border border-blue-200 text-[#0963cb] text-xs font-bold shadow-2xs"
                       >
-                        <UserCheck className="w-3.5 h-3.5 text-cyan-700 dark:text-cyan-400" />
+                        <UserCheck className="w-3.5 h-3.5 text-[#0963cb]" />
                         <span>{emp.name}</span>
-                        <span className="text-[10px] text-cyan-700/80 dark:text-cyan-400/80 font-normal">
+                        <span className="text-[10px] text-stone-600 font-normal">
                           ({emp.role})
                         </span>
                         <button
                           type="button"
                           onClick={() => handleRemoveDriver(emp.id)}
-                          className="hover:bg-cyan-200 dark:hover:bg-cyan-800 rounded-full p-0.5 transition cursor-pointer text-cyan-800 dark:text-cyan-200"
+                          className="hover:bg-blue-100 rounded-full p-0.5 transition cursor-pointer text-[#0963cb]"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -1333,23 +1340,23 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                     type="text"
                     value={driverSearchQuery}
                     onChange={(e) => setDriverSearchQuery(e.target.value)}
-                    placeholder="🔍 Digite para pesquisar funcionário por nome ou cargo..."
-                    className="w-full px-3.5 py-2 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl text-xs sm:text-sm text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-cyan-600"
+                    placeholder="Pesquisar funcionário..."
+                    className="w-full px-3.5 py-2 bg-white border border-stone-300 rounded-xl text-xs sm:text-sm text-[#000000] focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
                   />
                   {filteredEmployeeSuggestions.length > 0 && (
-                    <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-xl z-20 max-h-48 overflow-y-auto divide-y divide-stone-100 dark:divide-stone-800">
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-200 rounded-xl shadow-xl z-20 max-h-48 overflow-y-auto divide-y divide-stone-100">
                       {filteredEmployeeSuggestions.map((emp) => (
                         <button
                           key={emp.id}
                           type="button"
                           onClick={() => handleToggleDriver(emp.id)}
-                          className="w-full text-left px-3.5 py-2 hover:bg-cyan-50 dark:hover:bg-cyan-950/50 flex items-center justify-between text-xs transition cursor-pointer"
+                          className="w-full text-left px-3.5 py-2 hover:bg-blue-50 flex items-center justify-between text-xs transition cursor-pointer"
                         >
                           <div className="flex items-center space-x-2">
-                            <span className="font-bold text-stone-800 dark:text-stone-200">{emp.name}</span>
+                            <span className="font-bold text-[#000000]">{emp.name}</span>
                             <span className="text-stone-500 text-[11px]">({emp.role})</span>
                           </div>
-                          <span className="text-cyan-600 font-bold flex items-center space-x-1">
+                          <span className="text-[#0963cb] font-bold flex items-center space-x-1">
                             <Plus className="w-3 h-3" />
                             <span>Adicionar</span>
                           </span>
@@ -1370,8 +1377,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                         onClick={() => handleToggleDriver(emp.id)}
                         className={`text-xs py-1 px-2.5 rounded-lg border transition flex items-center space-x-1.5 cursor-pointer ${
                           isSelected
-                            ? 'bg-cyan-600 text-white border-cyan-600 font-bold'
-                            : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:border-cyan-400 font-medium'
+                            ? 'bg-[#0963cb] text-white border-[#0963cb] font-bold'
+                            : 'bg-white border-stone-200 text-[#000000] hover:border-[#0963cb] font-medium'
                         }`}
                       >
                         {isSelected ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3 text-stone-400" />}
@@ -1383,35 +1390,35 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               </div>
             </div>
 
-            {/* SEÇÃO 7: MÉDIAS DE CONSUMO AUTOMÁTICAS */}
-            <div className="p-4 rounded-xl bg-gradient-to-br from-cyan-50/80 via-emerald-50/40 to-stone-50 dark:from-cyan-950/40 dark:to-stone-900 border border-cyan-200/80 dark:border-cyan-800/60 space-y-3">
+            {/* SEÇÃO 6: MÉDIAS DE CONSUMO AUTOMÁTICAS (CARD BRANCO) */}
+            <div className="p-4 rounded-xl bg-white border border-blue-200/80 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 rounded-lg bg-cyan-600 text-white flex items-center justify-center">
-                    <Fuel className="w-3.5 h-3.5" />
+                  <div className="w-6 h-6 rounded-lg bg-[#0963cb] text-white flex items-center justify-center">
+                    <Fuel className="w-3.5 h-3.5 text-white" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-extrabold text-stone-900 dark:text-stone-100 uppercase tracking-wider">
+                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#000000]" style={{ color: '#000000' }}>
                       Médias de Consumo de Combustível
                     </h4>
-                    <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                    <p className="text-[11px] text-stone-600">
                       Calculadas automaticamente com base nos registros de abastecimento
                     </p>
                   </div>
                 </div>
-                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-200">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-100 text-[#0963cb]">
                   Cálculo Automático
                 </span>
               </div>
 
               {/* Metric Badges */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="p-3 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 flex items-center justify-between">
+                <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-center justify-between">
                   <div>
-                    <span className="text-[11px] font-bold text-stone-500 dark:text-stone-400">
+                    <span className="text-[11px] font-bold text-stone-600">
                       Média por Km (km/L)
                     </span>
-                    <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-['Outfit']">
+                    <div className="text-lg font-black text-[#0963cb] font-['Outfit']">
                       {consumptionMetrics.avgKmPerLiter !== null 
                         ? `${consumptionMetrics.avgKmPerLiter.toLocaleString('pt-BR')} km/L` 
                         : (editingVehicle?.averageConsumptionKmPerLiter 
@@ -1419,15 +1426,15 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                             : 'Aguardando Abastecimento')}
                     </div>
                   </div>
-                  <Gauge className="w-6 h-6 text-emerald-500/60" />
+                  <Gauge className="w-6 h-6 text-[#0963cb]/60" />
                 </div>
 
-                <div className="p-3 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 flex items-center justify-between">
+                <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-center justify-between">
                   <div>
-                    <span className="text-[11px] font-bold text-stone-500 dark:text-stone-400">
+                    <span className="text-[11px] font-bold text-stone-600">
                       Média por Horas (L/h)
                     </span>
-                    <div className="text-lg font-black text-amber-600 dark:text-amber-400 font-['Outfit']">
+                    <div className="text-lg font-black text-amber-600 font-['Outfit']">
                       {consumptionMetrics.avgLitersPerHour !== null 
                         ? `${consumptionMetrics.avgLitersPerHour.toLocaleString('pt-BR')} L/h` 
                         : (editingVehicle?.averageConsumptionLitersPerHour 
@@ -1440,34 +1447,37 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               </div>
             </div>
 
-            {/* SEÇÃO 8: OBSERVAÇÕES */}
-            <div>
-              <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+            {/* SEÇÃO 7: OBSERVAÇÕES (CARD BRANCO) */}
+            <div className="p-4 rounded-xl bg-white border border-blue-200/80 shadow-xs space-y-2">
+              <label className="block text-xs font-bold text-[#000000]" style={{ color: '#000000' }}>
                 Observações Adicionais
               </label>
               <textarea
                 rows={2}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Ex: Pneus trocados em 08/2026. Lâminas e contra-faca afiadas. Manutenção agendada para 5.000h."
-                className="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-cyan-600 resize-none shadow-xs"
+                className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] resize-none shadow-xs"
               />
             </div>
 
-            {/* Actions */}
-            <div className="pt-3 border-t border-stone-100 dark:border-stone-800 flex items-center justify-end space-x-2.5">
+            {/* Actions / Rodapé */}
+            <div 
+              className="p-4 bg-white rounded-xl border border-blue-200/80 shadow-xs flex items-center justify-end space-x-2.5"
+            >
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-semibold hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+                className="px-5 py-2.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-100 text-[#000000] text-xs sm:text-sm font-bold transition cursor-pointer shadow-xs"
+                style={{ color: '#000000' }}
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-xl bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold shadow-md shadow-cyan-700/20 transition flex items-center space-x-2 cursor-pointer active:scale-95"
+                className="px-6 py-2.5 rounded-xl bg-[#0963cb] hover:bg-[#074ea3] text-white text-xs sm:text-sm font-bold shadow-md transition flex items-center space-x-2 cursor-pointer active:scale-95"
+                style={{ backgroundColor: '#0963cb', color: '#ffffff' }}
               >
-                <Save className="w-4 h-4" />
+                <Save className="w-4 h-4 text-white" />
                 <span>Salvar Veículo</span>
               </button>
             </div>
