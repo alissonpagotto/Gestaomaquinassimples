@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Building2, Check, ChevronDown, Search, X } from 'lucide-react';
-import { BRAZILIAN_BANKS, BrazilianBank } from './brazilianBanks';
+import { BRAZILIAN_BANKS, BrazilianBank, bankMatchesQuery, findBankByQuery } from './brazilianBanks';
+import { BankLogoIcon } from './BankLogoIcon';
 
 interface BankComboboxProps {
   value: string;
@@ -22,27 +23,30 @@ export const BankCombobox: React.FC<BankComboboxProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  // Synchronize when value changes externally
+  // Sincroniza quando o valor muda externamente
   useEffect(() => {
     setSearchTerm(value || '');
   }, [value]);
 
-  // Click outside listener
+  // Identifica o banco selecionado
+  const selectedBank = useMemo(() => {
+    if (bankCode) {
+      const found = BRAZILIAN_BANKS.find((b) => b.code === bankCode);
+      if (found) return found;
+    }
+    return findBankByQuery(searchTerm || value, bankCode);
+  }, [bankCode, value, searchTerm]);
+
+  // Clique fora para fechar e confirmar valor digitado
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
-        // If user typed something and blurred, commit their custom text
         if (searchTerm.trim() && searchTerm !== value) {
-          const matched = BRAZILIAN_BANKS.find(
-            (b) =>
-              b.code === searchTerm.trim() ||
-              b.shortName.toLowerCase() === searchTerm.trim().toLowerCase() ||
-              b.name.toLowerCase() === searchTerm.trim().toLowerCase()
-          );
+          const matched = findBankByQuery(searchTerm);
           if (matched) {
             onChange(matched.shortName, matched.code, matched.color);
-            setSearchTerm(matched.shortName);
+            setSearchTerm(matched.displayName);
           } else {
             onChange(searchTerm.trim(), undefined);
           }
@@ -53,37 +57,17 @@ export const BankCombobox: React.FC<BankComboboxProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [searchTerm, value, onChange]);
 
-  // Filtered banks based on code or name
+  // Lista filtrada de bancos por código, nome, displayName ou apelidos
   const filteredBanks = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
+    const term = searchTerm.trim();
     if (!term) return BRAZILIAN_BANKS;
 
-    const termDigits = term.replace(/\D/g, '');
-
-    return BRAZILIAN_BANKS.filter((b) => {
-      const matchCode = b.code.toLowerCase().includes(term) || (termDigits && b.code.includes(termDigits));
-      const matchName = b.name.toLowerCase().includes(term);
-      const matchShort = b.shortName.toLowerCase().includes(term);
-      return matchCode || matchName || matchShort;
-    });
+    return BRAZILIAN_BANKS.filter((b) => bankMatchesQuery(b, term));
   }, [searchTerm]);
-
-  // Selected bank object
-  const selectedBank = useMemo(() => {
-    if (bankCode) {
-      const found = BRAZILIAN_BANKS.find((b) => b.code === bankCode);
-      if (found) return found;
-    }
-    return BRAZILIAN_BANKS.find(
-      (b) =>
-        b.shortName.toLowerCase() === (value || '').toLowerCase() ||
-        b.name.toLowerCase() === (value || '').toLowerCase()
-    );
-  }, [bankCode, value]);
 
   const handleSelectBank = (bank: BrazilianBank) => {
     onChange(bank.shortName, bank.code, bank.color);
-    setSearchTerm(bank.shortName);
+    setSearchTerm(bank.displayName);
     setIsOpen(false);
     inputRef.current?.blur();
   };
@@ -110,15 +94,20 @@ export const BankCombobox: React.FC<BankComboboxProps> = ({
       if (filteredBanks[highlightedIndex]) {
         handleSelectBank(filteredBanks[highlightedIndex]);
       } else if (searchTerm.trim()) {
-        onChange(searchTerm.trim(), undefined);
-        setIsOpen(false);
+        const matched = findBankByQuery(searchTerm);
+        if (matched) {
+          handleSelectBank(matched);
+        } else {
+          onChange(searchTerm.trim(), undefined);
+          setIsOpen(false);
+        }
       }
     } else if (e.key === 'Escape') {
       setIsOpen(false);
     }
   };
 
-  // Scroll active item into view
+  // Rolagem automática da lista ao navegar por setas
   useEffect(() => {
     if (isOpen && listRef.current) {
       const activeEl = listRef.current.children[highlightedIndex] as HTMLElement;
@@ -131,24 +120,24 @@ export const BankCombobox: React.FC<BankComboboxProps> = ({
   return (
     <div ref={containerRef} className="relative w-full">
       <div className="relative flex items-center">
-        {/* Ícone/Badge do Banco Selecionado */}
-        <div className="absolute left-2.5 flex items-center pointer-events-none z-10">
-          {selectedBank ? (
-            <span
-              className="px-1.5 py-0.5 rounded text-[10px] font-black font-mono tracking-tight text-white shadow-2xs"
-              style={{ backgroundColor: selectedBank.color || '#0963cb' }}
-              title={`Código Compensação: ${selectedBank.code}`}
-            >
-              {selectedBank.code}
-            </span>
-          ) : (
-            <Building2 className="w-4 h-4 text-stone-400" />
-          )}
+        
+        {/* Mini-ícone dentro do input: Logo oficial do banco ou Building2 clássico */}
+        <div 
+          id="mini-icone-banco-input"
+          className="absolute left-2.5 flex items-center justify-center pointer-events-none z-10 w-5 h-5"
+        >
+          <BankLogoIcon
+            code={selectedBank?.code || bankCode}
+            name={searchTerm || value}
+            size={20}
+            className="text-stone-400"
+          />
         </div>
 
         {/* Input de busca e digitação com autocomplete */}
         <input
           ref={inputRef}
+          id="input-busca-instituicao"
           type="text"
           disabled={disabled}
           value={searchTerm}
@@ -161,14 +150,18 @@ export const BankCombobox: React.FC<BankComboboxProps> = ({
             setSearchTerm(newVal);
             setIsOpen(true);
             setHighlightedIndex(0);
-            // Also notify parent of direct text edit
-            onChange(newVal, undefined);
+            
+            // Verifica se casou perfeitamente em tempo real
+            const matched = findBankByQuery(newVal);
+            if (matched) {
+              onChange(newVal, matched.code, matched.color);
+            } else {
+              onChange(newVal, undefined);
+            }
           }}
           onKeyDown={handleKeyDown}
-          placeholder="Buscar por código (ex: 001) ou nome do banco..."
-          className={`w-full py-2 pr-16 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black font-semibold focus:ring-2 focus:ring-[#0963cb] focus:border-[#0963cb] outline-hidden shadow-2xs transition ${
-            selectedBank ? 'pl-14' : 'pl-9'
-          }`}
+          placeholder="Buscar por código (ex: 001, 133, 756) ou nome..."
+          className="w-full py-2 pl-9.5 pr-16 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black font-semibold focus:ring-2 focus:ring-[#0963cb] focus:border-[#0963cb] outline-hidden shadow-2xs transition"
         />
 
         {/* Ações da Direita: Limpar & Dropdown Chevron */}
@@ -176,6 +169,7 @@ export const BankCombobox: React.FC<BankComboboxProps> = ({
           {searchTerm && !disabled && (
             <button
               type="button"
+              id="btn-limpar-banco"
               onClick={() => {
                 setSearchTerm('');
                 onChange('', undefined);
@@ -190,6 +184,7 @@ export const BankCombobox: React.FC<BankComboboxProps> = ({
 
           <button
             type="button"
+            id="btn-toggle-lista-bancos"
             disabled={disabled}
             onClick={() => {
               setIsOpen((prev) => !prev);
@@ -205,27 +200,30 @@ export const BankCombobox: React.FC<BankComboboxProps> = ({
 
       {/* Floating Dropdown com Lista de Bancos */}
       {isOpen && !disabled && (
-        <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-stone-300 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+        <div 
+          id="dropdown-lista-bancos"
+          className="absolute z-50 left-0 right-0 mt-1 bg-white border border-stone-300 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100"
+        >
           <div className="p-2 border-b border-stone-100 bg-stone-50 flex items-center justify-between text-[11px] font-bold text-stone-600">
-            <span className="flex items-center gap-1">
-              <Search className="w-3 h-3 text-[#0963cb]" />
+            <span className="flex items-center gap-1.5">
+              <Search className="w-3.5 h-3.5 text-[#0963cb]" />
               <span>Bancos e Cooperativas ({filteredBanks.length})</span>
             </span>
             <span className="text-[10px] text-stone-500 font-normal">
-              Digite código ou nome
+              Ex: 001, 104, Cresol, Sicoob, Sicredi
             </span>
           </div>
 
           <ul
             ref={listRef}
-            className="max-h-56 overflow-y-auto py-1 divide-y divide-stone-100 text-xs"
+            className="max-h-60 overflow-y-auto py-1 divide-y divide-stone-100 text-xs"
             role="listbox"
           >
             {filteredBanks.length === 0 ? (
               <li className="px-3 py-3 text-center text-stone-500 text-xs">
-                <span>Nenhum banco encontrado para "{searchTerm}".</span>
+                <span>Nenhum banco registrado para "{searchTerm}".</span>
                 <p className="text-[11px] text-stone-600 font-semibold mt-1">
-                  Você pode salvar este nome personalizado normalmente.
+                  Você pode pressionar Enter ou continuar para salvar este nome personalizado.
                 </p>
               </li>
             ) : (
@@ -236,33 +234,29 @@ export const BankCombobox: React.FC<BankComboboxProps> = ({
                 return (
                   <li
                     key={bank.code}
+                    id={`opcao-banco-${bank.code}`}
                     role="option"
                     aria-selected={isSelected}
                     onMouseEnter={() => setHighlightedIndex(index)}
                     onClick={() => handleSelectBank(bank)}
                     className={`px-3 py-2 flex items-center justify-between cursor-pointer transition ${
-                      isHighlighted ? 'bg-[#b0d2ed]/40 text-black font-bold' : 'hover:bg-stone-50 text-stone-800'
+                      isHighlighted ? 'bg-[#b0d2ed]/45 text-black font-bold' : 'hover:bg-stone-50 text-stone-800'
                     } ${isSelected ? 'bg-sky-50 font-black' : ''}`}
                   >
                     <div className="flex items-center space-x-2.5 truncate">
-                      {/* Code Badge */}
-                      <span
-                        className="px-1.5 py-0.5 rounded text-[10px] font-black font-mono text-white shrink-0 shadow-2xs"
-                        style={{ backgroundColor: bank.color || '#0963cb' }}
-                      >
-                        {bank.code}
-                      </span>
+                      {/* Logo / Identidade do Banco em Miniatura */}
+                      <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                        <BankLogoIcon code={bank.code} name={bank.shortName} size={24} />
+                      </div>
 
-                      {/* Nome do Banco */}
+                      {/* Registro Exato e Nome Formatado */}
                       <div className="truncate">
                         <span className="font-bold text-black text-xs block truncate">
-                          {bank.shortName}
+                          {bank.displayName}
                         </span>
-                        {bank.name !== bank.shortName && (
-                          <span className="text-[10px] text-stone-500 block truncate">
-                            {bank.name}
-                          </span>
-                        )}
+                        <span className="text-[10px] text-stone-500 block truncate">
+                          {bank.name}
+                        </span>
                       </div>
                     </div>
 
@@ -277,7 +271,7 @@ export const BankCombobox: React.FC<BankComboboxProps> = ({
 
           {/* Dica no rodapé do dropdown */}
           <div className="px-3 py-1.5 bg-stone-50 border-t border-stone-100 text-[10px] text-stone-500 font-medium flex justify-between items-center">
-            <span>Dica: Use as setas ↑ ↓ e Enter</span>
+            <span>Dica: Use ↑ ↓ para navegar e Enter para selecionar</span>
             {searchTerm && !selectedBank && (
               <span className="text-emerald-700 font-bold">
                 ✓ Usando nome personalizado

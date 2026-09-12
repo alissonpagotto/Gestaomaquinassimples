@@ -18,6 +18,7 @@ import { BankAccount } from '../../types';
 import { formatCurrencyBRL } from '../../lib/storage';
 import { useConfirm } from '../../context/ConfirmContext';
 import { BankAccountModal } from './BankAccountModal';
+import { BankLogoIcon } from './BankLogoIcon';
 
 interface BankAccountsTabProps {
   accounts: BankAccount[];
@@ -166,13 +167,13 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center space-x-3 truncate">
                       <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-2xs font-black shrink-0"
+                        className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-2xs font-black shrink-0 overflow-hidden"
                         style={{ backgroundColor: acc.color || '#009688' }}
                       >
                         {acc.accountType === 'caixa_fisico' ? (
                           <Wallet className="w-5 h-5" />
                         ) : (
-                          <Landmark className="w-5 h-5" />
+                          <BankLogoIcon code={acc.bankCode} name={acc.bankName} size={24} className="text-white" />
                         )}
                       </div>
                       <div className="truncate">

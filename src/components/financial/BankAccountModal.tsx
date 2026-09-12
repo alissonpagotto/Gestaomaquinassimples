@@ -19,6 +19,7 @@ import { formatCurrencyBRL } from '../../lib/storage';
 import { formatarMoeda, desformatarMoeda } from '../../lib/formatters';
 import { BankCombobox } from './BankCombobox';
 import { BRAZILIAN_BANKS } from './brazilianBanks';
+import { BankLogoIcon } from './BankLogoIcon';
 
 export interface BankAccountModalProps {
   isOpen: boolean;
@@ -335,10 +336,17 @@ export const BankAccountModal: React.FC<BankAccountModalProps> = ({
                 </label>
                 <div className="flex items-center space-x-2">
                   <div 
-                    className="w-9 h-9 rounded-xl border border-stone-300 shadow-inner flex items-center justify-center text-white shrink-0 font-bold"
+                    id="marcador-visual-banco"
+                    className="w-9 h-9 rounded-xl border border-stone-300 shadow-inner flex items-center justify-center text-white shrink-0 font-bold overflow-hidden"
                     style={{ backgroundColor: color }}
+                    title={bankName || 'Conta Bancária'}
                   >
-                    <Building2 className="w-4 h-4" />
+                    <BankLogoIcon 
+                      code={bankCode} 
+                      name={bankName} 
+                      size={24} 
+                      className="text-white" 
+                    />
                   </div>
                   <div className="flex-1 flex items-center gap-1.5 overflow-x-auto py-1">
                     {COLOR_PRESETS.slice(0, 6).map((preset) => (

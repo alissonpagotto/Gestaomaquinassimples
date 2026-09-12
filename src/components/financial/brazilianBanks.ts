@@ -1,49 +1,220 @@
 export interface BrazilianBank {
   code: string;
-  name: string;
+  displayName: string;
   shortName: string;
-  color?: string;
+  name: string;
+  color: string;
+  aliases?: string[];
 }
 
+/**
+ * Lista interna prioritária de instituições financeiras e cooperativas de crédito brasileiras
+ * Contém os registros exatos solicitados e principais instituições do agronegócio e varejo
+ */
 export const BRAZILIAN_BANKS: BrazilianBank[] = [
-  { code: '001', name: 'Banco do Brasil S.A.', shortName: 'Banco do Brasil', color: '#facc15' },
-  { code: '237', name: 'Banco Bradesco S.A.', shortName: 'Bradesco', color: '#cc092f' },
-  { code: '341', name: 'Itaú Unibanco S.A.', shortName: 'Itaú', color: '#ec7000' },
-  { code: '033', name: 'Banco Santander (Brasil) S.A.', shortName: 'Santander', color: '#ea1d25' },
-  { code: '104', name: 'Caixa Econômica Federal', shortName: 'Caixa Econômica', color: '#0066b3' },
-  { code: '260', name: 'Nu Pagamentos S.A. (Nubank)', shortName: 'Nubank', color: '#820ad1' },
-  { code: '077', name: 'Banco Inter S.A.', shortName: 'Inter', color: '#ff7a00' },
-  { code: '748', name: 'Banco Cooperativo Sicredi S.A.', shortName: 'Sicredi', color: '#00843d' },
-  { code: '756', name: 'Banco Cooperativo Sicoob S.A.', shortName: 'Sicoob', color: '#003641' },
-  { code: '041', name: 'Banco do Estado do Rio Grande do Sul (Banrisul)', shortName: 'Banrisul', color: '#004f9f' },
-  { code: '336', name: 'Banco C6 S.A. (C6 Bank)', shortName: 'C6 Bank', color: '#242424' },
-  { code: '290', name: 'PagBank / PagSeguro Internet S.A.', shortName: 'PagBank', color: '#00a868' },
-  { code: '212', name: 'Banco Original S.A.', shortName: 'Banco Original', color: '#008542' },
-  { code: '422', name: 'Banco Safra S.A.', shortName: 'Safra', color: '#b99b58' },
-  { code: '004', name: 'Banco do Nordeste do Brasil (BNB)', shortName: 'Banco do Nordeste', color: '#b5121b' },
-  { code: '003', name: 'Banco da Amazônia S.A. (BASA)', shortName: 'Banco da Amazônia', color: '#006633' },
-  { code: '655', name: 'Banco Votorantim S.A. (BV)', shortName: 'Banco BV', color: '#002b66' },
-  { code: '745', name: 'Banco Citibank S.A.', shortName: 'Citibank', color: '#003b70' },
-  { code: '070', name: 'BRB - Banco de Brasília S.A.', shortName: 'BRB', color: '#00529b' },
-  { code: '021', name: 'BANESTES S.A.', shortName: 'Banestes', color: '#004990' },
-  { code: '380', name: 'PicPay Instituição de Pagamento S.A.', shortName: 'PicPay', color: '#11c76f' },
-  { code: '085', name: 'Cooperativa Central de Crédito - Ailos', shortName: 'Ailos', color: '#00857c' },
-  { code: '136', name: 'Unicred do Brasil', shortName: 'Unicred', color: '#005544' },
-  { code: '208', name: 'Banco BTG Pactual S.A.', shortName: 'BTG Pactual', color: '#051937' },
-  { code: '099', name: 'Caixa Sede / Espécie Físico', shortName: 'Caixa Físico', color: '#475569' },
-  { code: '999', name: 'Outra Instituição Financeira / Cooperativa', shortName: 'Outra Instituição', color: '#334155' },
+  {
+    code: '001',
+    displayName: '001 - Banco do Brasil',
+    shortName: 'Banco do Brasil',
+    name: 'Banco do Brasil S.A.',
+    color: '#003882',
+    aliases: ['bb', 'banco brasil', 'brasil'],
+  },
+  {
+    code: '104',
+    displayName: '104 - Caixa Econômica Federal',
+    shortName: 'Caixa Econômica Federal',
+    name: 'Caixa Econômica Federal (CEF)',
+    color: '#0066b3',
+    aliases: ['cef', 'caixa', 'caixa federal', 'caixa economica'],
+  },
+  {
+    code: '341',
+    displayName: '341 - Itaú Unibanco',
+    shortName: 'Itaú Unibanco',
+    name: 'Itaú Unibanco S.A.',
+    color: '#ec7000',
+    aliases: ['itau', 'unibanco', 'itau unibanco'],
+  },
+  {
+    code: '133',
+    displayName: '133 - Cresol',
+    shortName: 'Cresol',
+    name: 'Confederação Cresol / Cresol Cooperativa',
+    color: '#006837',
+    aliases: ['cressol', 'cresol', 'cooperativa cresol', 'coop cresol', 'sistema cresol'],
+  },
+  {
+    code: '756',
+    displayName: '756 - Sicoob',
+    shortName: 'Sicoob',
+    name: 'Banco Cooperativo Sicoob S.A. / Sistema de Cooperativas de Crédito',
+    color: '#003641',
+    aliases: ['siccob', 'sicoob', 'banco sicoob', 'cooperativa sicoob', 'sicoob credito'],
+  },
+  {
+    code: '748',
+    displayName: '748 - Sicredi',
+    shortName: 'Sicredi',
+    name: 'Banco Cooperativo Sicredi S.A. / Sistema Sicredi',
+    color: '#00843d',
+    aliases: ['sicredi', 'sicred', 'banco sicredi', 'cooperativa sicredi'],
+  },
+  {
+    code: '237',
+    displayName: '237 - Bradesco',
+    shortName: 'Bradesco',
+    name: 'Banco Bradesco S.A.',
+    color: '#cc092f',
+    aliases: ['bradesco', 'banco bradesco', 'bradesco sa'],
+  },
+  {
+    code: '033',
+    displayName: '033 - Santander',
+    shortName: 'Santander',
+    name: 'Banco Santander (Brasil) S.A.',
+    color: '#ea1d25',
+    aliases: ['santander', 'banco santander', 'santander brasil'],
+  },
+  // Outras instituições populares adicionais
+  {
+    code: '260',
+    displayName: '260 - Nubank',
+    shortName: 'Nubank',
+    name: 'Nu Pagamentos S.A. (Nubank)',
+    color: '#820ad1',
+    aliases: ['nu', 'nubank', 'nu pagamentos'],
+  },
+  {
+    code: '077',
+    displayName: '077 - Inter',
+    shortName: 'Inter',
+    name: 'Banco Inter S.A.',
+    color: '#ff7a00',
+    aliases: ['inter', 'banco inter'],
+  },
+  {
+    code: '041',
+    displayName: '041 - Banrisul',
+    shortName: 'Banrisul',
+    name: 'Banco do Estado do Rio Grande do Sul (Banrisul)',
+    color: '#004f9f',
+    aliases: ['banrisul'],
+  },
+  {
+    code: '336',
+    displayName: '336 - C6 Bank',
+    shortName: 'C6 Bank',
+    name: 'Banco C6 S.A.',
+    color: '#242424',
+    aliases: ['c6', 'c6 bank'],
+  },
+  {
+    code: '290',
+    displayName: '290 - PagBank',
+    shortName: 'PagBank',
+    name: 'PagBank / PagSeguro Internet S.A.',
+    color: '#00a868',
+    aliases: ['pagbank', 'pagseguro'],
+  },
+  {
+    code: '422',
+    displayName: '422 - Safra',
+    shortName: 'Safra',
+    name: 'Banco Safra S.A.',
+    color: '#b99b58',
+    aliases: ['safra', 'banco safra'],
+  },
+  {
+    code: '004',
+    displayName: '004 - Banco do Nordeste',
+    shortName: 'Banco do Nordeste',
+    name: 'Banco do Nordeste do Brasil (BNB)',
+    color: '#b5121b',
+    aliases: ['bnb', 'nordeste', 'banco do nordeste'],
+  },
+  {
+    code: '085',
+    displayName: '085 - Ailos',
+    shortName: 'Ailos',
+    name: 'Cooperativa Central de Crédito - Ailos / Viacredi',
+    color: '#00857c',
+    aliases: ['ailos', 'viacredi'],
+  },
+  {
+    code: '136',
+    displayName: '136 - Unicred',
+    shortName: 'Unicred',
+    name: 'Unicred do Brasil',
+    color: '#005544',
+    aliases: ['unicred'],
+  },
+  {
+    code: '099',
+    displayName: '099 - Caixa Físico / Sede',
+    shortName: 'Caixa Sede',
+    name: 'Caixa Físico / Espécie Sede',
+    color: '#475569',
+    aliases: ['caixa fisico', 'caixa sede', 'dinheiro', 'especie'],
+  },
 ];
 
-export function findBankByQuery(query: string): BrazilianBank | undefined {
-  if (!query) return undefined;
-  const clean = query.trim().toLowerCase();
+/**
+ * Normaliza strings para busca insensível a maiúsculas, espaços e acentuação
+ */
+export function normalizeBankSearch(str?: string): string {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+/**
+ * Verifica se um banco atende à busca (por código, nome, displayName ou aliases)
+ */
+export function bankMatchesQuery(bank: BrazilianBank, query: string): boolean {
+  if (!query) return true;
+  const clean = normalizeBankSearch(query);
   const digits = clean.replace(/\D/g, '');
 
-  return BRAZILIAN_BANKS.find(
-    (b) =>
-      (digits && b.code === digits.padStart(3, '0')) ||
-      b.code.toLowerCase() === clean ||
-      b.shortName.toLowerCase() === clean ||
-      b.name.toLowerCase() === clean
-  );
+  // Match por código numérico ex: 001, 1, 104, 133, 756, etc.
+  if (digits && bank.code.includes(digits)) return true;
+  if (digits && digits.length <= 3 && bank.code === digits.padStart(3, '0')) return true;
+
+  // Match por texto no displayName, shortName ou name
+  if (normalizeBankSearch(bank.displayName).includes(clean)) return true;
+  if (normalizeBankSearch(bank.shortName).includes(clean)) return true;
+  if (normalizeBankSearch(bank.name).includes(clean)) return true;
+
+  // Match por aliases (ex: "cressol" para Cresol, "siccob" para Sicoob, "cef" para Caixa, "bb" para Banco do Brasil)
+  if (bank.aliases && bank.aliases.some((alias) => normalizeBankSearch(alias).includes(clean) || clean.includes(normalizeBankSearch(alias)))) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Encontra a instituição financeira exata ou mais próxima a partir de código ou texto
+ */
+export function findBankByQuery(query?: string, code?: string): BrazilianBank | undefined {
+  if (code) {
+    const cleanCode = code.trim().replace(/\D/g, '').padStart(3, '0');
+    const byCode = BRAZILIAN_BANKS.find((b) => b.code === cleanCode);
+    if (byCode) return byCode;
+  }
+
+  if (!query) return undefined;
+  const clean = normalizeBankSearch(query);
+  const digits = clean.replace(/\D/g, '');
+
+  if (digits && digits.length <= 3) {
+    const pad = digits.padStart(3, '0');
+    const exactCode = BRAZILIAN_BANKS.find((b) => b.code === pad);
+    if (exactCode) return exactCode;
+  }
+
+  return BRAZILIAN_BANKS.find((b) => bankMatchesQuery(b, query));
 }
