@@ -13,7 +13,8 @@ import {
   Wrench, 
   User, 
   Search,
-  Printer
+  Printer,
+  X
 } from 'lucide-react';
 import { ThirdPartySettlement } from '../../types';
 import { formatCurrencyBRL, formatDateBR } from '../../lib/storage';
@@ -410,44 +411,45 @@ export const ThirdPartySettlementsTab: React.FC<ThirdPartySettlementsTabProps> =
       {/* Modal Acerto de Terceiro */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-stone-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 dark:border-stone-800 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
-              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
+          <div className="bg-[#b0d2ed] border border-[#0963cb]/30 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
+            
+            {/* Header com azul padrão #0963cb e texto/ícone em branco #ffffff */}
+            <div className="flex items-center justify-between px-5 py-3.5 bg-[#0963cb] text-white shrink-0">
+              <h3 className="text-base font-bold text-white tracking-tight">
                 {editingItem ? 'Editar Acerto de Terceiro' : 'Novo Acerto (Freteiro / Operador)'}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 text-lg font-bold"
+                className="p-1 rounded-lg text-white hover:bg-white/20 transition cursor-pointer"
               >
-                ✕
+                <X className="w-5 h-5 text-white" />
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="space-y-3.5">
+            <form onSubmit={handleSave} className="p-5 space-y-3.5 bg-[#b0d2ed] overflow-y-auto">
               <div>
-                <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
-                  Nome do Terceiro / Motorista / Empresa *
+                <label className="block text-xs font-bold text-black mb-1">
+                  Nome do Terceiro / Motorista / Empresa <span className="text-rose-600">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Marcos Vinicius (Scania R440), José Tratorista"
                   value={thirdPartyName}
                   onChange={(e) => setThirdPartyName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#009688] outline-none"
+                  className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold text-black mb-1">
                     Tipo de Terceiro
                   </label>
                   <select
                     value={role}
                     onChange={(e) => setRole(e.target.value as any)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#009688] outline-none"
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
                   >
                     <option value="Freteiro / Caminhão">Freteiro / Caminhão</option>
                     <option value="Operador Terceirizado">Operador Terceirizado</option>
@@ -457,101 +459,96 @@ export const ThirdPartySettlementsTab: React.FC<ThirdPartySettlementsTabProps> =
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold text-black mb-1">
                     Data do Fechamento
                   </label>
                   <input
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#009688] outline-none"
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                <label className="block text-xs font-bold text-black mb-1">
                   Descrição do Trabalho
                 </label>
                 <input
                   type="text"
-                  placeholder="Ex: Transporte de Silagem Fazenda Esperança -> Silo Principal"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#009688] outline-none"
+                  className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold text-black mb-1">
                     Toneladas
                   </label>
                   <input
                     type="number"
                     step="0.1"
-                    placeholder="Ex: 360"
                     value={tons}
                     onChange={(e) => setTons(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#009688] outline-none"
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold text-black mb-1">
                     Viagens / Horas
                   </label>
                   <input
                     type="number"
                     step="1"
-                    placeholder="Ex: 18"
                     value={trips || hours}
                     onChange={(e) => {
                       setTrips(e.target.value);
                       setHours(e.target.value);
                     }}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#009688] outline-none"
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold text-black mb-1">
                     Valor Unitário (R$)
                   </label>
                   <input
                     type="number"
                     step="0.01"
-                    placeholder="Ex: 35.00"
                     value={rate}
                     onChange={(e) => setRate(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#009688] outline-none font-bold"
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none font-bold"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-rose-600 dark:text-rose-400 mb-1">
+                  <label className="block text-xs font-bold text-rose-700 mb-1">
                     (-) Abatimento / Diesel (R$)
                   </label>
                   <input
                     type="number"
                     step="0.01"
-                    placeholder="Ex: 1500.00"
                     value={deductions}
                     onChange={(e) => setDeductions(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-rose-300 dark:border-rose-800 rounded-xl bg-white dark:bg-stone-800 text-rose-600 dark:text-rose-400 focus:ring-2 focus:ring-rose-500 outline-none font-bold"
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-rose-300 rounded-xl bg-white text-rose-600 focus:ring-2 focus:ring-rose-500 outline-none font-bold"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold text-black mb-1">
                     Status do Pagamento
                   </label>
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as any)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#009688] outline-none"
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
                   >
                     <option value="pendente">Pendente / A Pagar</option>
                     <option value="parcial">Pago Parcialmente</option>
@@ -562,43 +559,41 @@ export const ThirdPartySettlementsTab: React.FC<ThirdPartySettlementsTabProps> =
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold text-black mb-1">
                     Placa / Máquina
                   </label>
                   <input
                     type="text"
-                    placeholder="Ex: BWS-9A21 / JD 8500i"
                     value={machineryPlateOrName}
                     onChange={(e) => setMachineryPlateOrName(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#009688] outline-none"
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold text-black mb-1">
                     WhatsApp / Telefone
                   </label>
                   <input
                     type="text"
-                    placeholder="(00) 00000-0000"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#009688] outline-none"
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-2 pt-3 border-t border-stone-100 dark:border-stone-800">
+              <div className="flex justify-end space-x-2 pt-3 border-t border-black/15">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800"
+                  className="px-4 py-2 text-xs sm:text-sm font-bold rounded-xl bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 cursor-pointer transition"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs sm:text-sm font-bold rounded-xl bg-[#009688] hover:bg-[#00796b] text-white shadow-xs"
+                  className="px-5 py-2 text-xs sm:text-sm font-bold rounded-xl bg-[#0963cb] hover:bg-[#0852a8] text-white shadow-xs cursor-pointer transition"
                 >
                   Salvar Acerto
                 </button>

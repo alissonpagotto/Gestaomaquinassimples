@@ -10,7 +10,8 @@ import {
   ArrowDownRight,
   Trash2,
   Edit2,
-  DollarSign
+  DollarSign,
+  X
 } from 'lucide-react';
 import { BankAccount } from '../../types';
 import { formatCurrencyBRL } from '../../lib/storage';
@@ -255,57 +256,57 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
       {/* Modal Cadastrar / Editar Conta */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-stone-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-stone-200 dark:border-stone-800 space-y-4">
-            <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
-              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
+          <div className="bg-[#b0d2ed] border border-[#0963cb]/30 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            
+            {/* Header com azul padrão #0963cb e texto/ícone em branco #ffffff */}
+            <div className="flex items-center justify-between px-5 py-3.5 bg-[#0963cb] text-white">
+              <h3 className="text-base font-bold text-white tracking-tight">
                 {editingAccount ? 'Editar Conta Bancária' : 'Nova Conta Bancária / Caixa'}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 text-lg font-bold"
+                className="p-1 rounded-lg text-white hover:bg-white/20 transition cursor-pointer"
               >
-                ✕
+                <X className="w-5 h-5 text-white" />
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="space-y-3.5">
+            <form onSubmit={handleSave} className="p-5 space-y-3.5 bg-[#b0d2ed]">
               <div>
-                <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
-                  Nome Identificador da Conta *
+                <label className="block text-xs font-bold text-black mb-1">
+                  Nome Identificador da Conta <span className="text-rose-600">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Banco do Brasil - Safra, Sicredi, Caixa Dinheiro"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#009688] outline-none"
+                  className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold text-black mb-1">
                     Instituição Financeira
                   </label>
                   <input
                     type="text"
-                    placeholder="Ex: Banco do Brasil, Sicredi, Sicoob"
                     value={bankName}
                     onChange={(e) => setBankName(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#009688] outline-none"
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold text-black mb-1">
                     Tipo de Conta
                   </label>
                   <select
                     value={accountType}
                     onChange={(e) => setAccountType(e.target.value as any)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#009688] outline-none"
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
                   >
                     <option value="corrente">Conta Corrente</option>
                     <option value="poupanca">Poupança</option>
@@ -317,35 +318,33 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold text-black mb-1">
                     Agência
                   </label>
                   <input
                     type="text"
-                    placeholder="Ex: 0458-2"
                     value={agency}
                     onChange={(e) => setAgency(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#009688] outline-none"
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold text-black mb-1">
                     Número da Conta
                   </label>
                   <input
                     type="text"
-                    placeholder="Ex: 28.940-1"
                     value={accountNumber}
                     onChange={(e) => setAccountNumber(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#009688] outline-none"
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold text-black mb-1">
                     Saldo Inicial / Atual (R$)
                   </label>
                   <input
@@ -353,35 +352,34 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
                     step="0.01"
                     value={balance}
                     onChange={(e) => setBalance(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#009688] outline-none font-bold"
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none font-bold"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-bold text-black mb-1">
                     Chave PIX (Opcional)
                   </label>
                   <input
                     type="text"
-                    placeholder="CNPJ, E-mail ou Telefone"
                     value={pixKey}
                     onChange={(e) => setPixKey(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#009688] outline-none"
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-2 pt-3 border-t border-stone-100 dark:border-stone-800">
+              <div className="flex justify-end space-x-2 pt-3 border-t border-black/15">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800"
+                  className="px-4 py-2 text-xs sm:text-sm font-bold rounded-xl bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 cursor-pointer transition"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs sm:text-sm font-bold rounded-xl bg-[#009688] hover:bg-[#00796b] text-white shadow-xs"
+                  className="px-5 py-2 text-xs sm:text-sm font-bold rounded-xl bg-[#0963cb] hover:bg-[#0852a8] text-white shadow-xs cursor-pointer transition"
                 >
                   Salvar Conta
                 </button>
