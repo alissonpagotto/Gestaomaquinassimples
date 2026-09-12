@@ -11,14 +11,15 @@ import {
   Trash2,
   Edit2,
   DollarSign,
-  X
+  QrCode,
+  Sparkles
 } from 'lucide-react';
 import { BankAccount } from '../../types';
 import { formatCurrencyBRL } from '../../lib/storage';
 import { useConfirm } from '../../context/ConfirmContext';
+import { BankAccountModal } from './BankAccountModal';
 
 interface BankAccountsTabProps {
-
   accounts: BankAccount[];
   onSaveAccounts: (accounts: BankAccount[]) => void;
 }
@@ -29,84 +30,31 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
 }) => {
   const { confirm } = useConfirm();
   const [isModalOpen, setIsModalOpen] = useState(false);
-
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
 
-  // Form State
-  const [name, setName] = useState('');
-  const [bankName, setBankName] = useState('Banco do Brasil');
-  const [accountType, setAccountType] = useState<BankAccount['accountType']>('corrente');
-  const [agency, setAgency] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
-  const [balance, setBalance] = useState('0');
-  const [pixKey, setPixKey] = useState('');
-  const [color, setColor] = useState('#009688');
-
+  // Totais consolidados
   const totalBalance = accounts.reduce((acc, a) => acc + (a.balance || 0), 0);
+  const totalOverdraftLimit = accounts.reduce((acc, a) => acc + (a.overdraftLimit || 0), 0);
+  const totalAvailableResources = totalBalance + totalOverdraftLimit;
 
   const handleOpenModal = (acc?: BankAccount) => {
-    if (acc) {
-      setEditingAccount(acc);
-      setName(acc.name);
-      setBankName(acc.bankName);
-      setAccountType(acc.accountType);
-      setAgency(acc.agency || '');
-      setAccountNumber(acc.accountNumber || '');
-      setBalance(acc.balance.toString());
-      setPixKey(acc.pixKey || '');
-      setColor(acc.color || '#009688');
-    } else {
-      setEditingAccount(null);
-      setName('');
-      setBankName('Banco do Brasil');
-      setAccountType('corrente');
-      setAgency('');
-      setAccountNumber('');
-      setBalance('0');
-      setPixKey('');
-      setColor('#009688');
-    }
+    setEditingAccount(acc || null);
     setIsModalOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-
-    const numBalance = parseFloat(balance) || 0;
-
-    if (editingAccount) {
+  const handleSaveAccount = (accountData: Omit<BankAccount, 'id'> & { id?: string }) => {
+    if (accountData.id) {
       const updated = accounts.map((a) =>
-        a.id === editingAccount.id
-          ? {
-              ...a,
-              name: name.trim(),
-              bankName: bankName.trim(),
-              accountType,
-              agency: agency.trim(),
-              accountNumber: accountNumber.trim(),
-              balance: numBalance,
-              pixKey: pixKey.trim(),
-              color,
-            }
-          : a
+        a.id === accountData.id ? ({ ...accountData, id: accountData.id } as BankAccount) : a
       );
       onSaveAccounts(updated);
     } else {
       const newAcc: BankAccount = {
+        ...accountData,
         id: `bank_${Date.now()}`,
-        name: name.trim(),
-        bankName: bankName.trim(),
-        accountType,
-        agency: agency.trim(),
-        accountNumber: accountNumber.trim(),
-        balance: numBalance,
-        pixKey: pixKey.trim(),
-        color,
-      };
+      } as BankAccount;
       onSaveAccounts([...accounts, newAcc]);
     }
-    setIsModalOpen(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -125,7 +73,6 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
     }
   };
 
-
   const getAccountTypeLabel = (type: BankAccount['accountType']) => {
     switch (type) {
       case 'corrente':
@@ -135,7 +82,7 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
       case 'aplicacao':
         return 'Investimento / Aplicação';
       case 'caixa_fisico':
-        return 'Caixa Físico / Espécie';
+        return 'Caixa Físico / Sede';
       default:
         return 'Conta Bancária';
     }
@@ -144,250 +91,192 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
   return (
     <div className="space-y-6">
       {/* Header & Total Balance */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 text-black">
-        <div>
-          <span className="text-xs font-black text-black uppercase tracking-wider">
-            Saldo Consolidado em Contas
-          </span>
-          <div className="text-2xl sm:text-3xl font-black text-black mt-1 font-['Outfit']">
-            {formatCurrencyBRL(totalBalance)}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-5 text-black">
+        <div className="space-y-1.5">
+          <div className="flex items-center space-x-2">
+            <span className="text-xs font-black text-black uppercase tracking-wider">
+              Saldo Consolidado em Contas
+            </span>
+            {totalOverdraftLimit > 0 && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
+                + Limite Cheque Especial Ativo
+              </span>
+            )}
           </div>
-          <p className="text-xs text-black/80 font-medium mt-0.5">
+
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <div className="text-2xl sm:text-3xl font-black text-black font-['Outfit']">
+              {formatCurrencyBRL(totalAvailableResources)}
+            </div>
+            {totalOverdraftLimit > 0 && (
+              <div className="text-xs text-stone-600 font-semibold">
+                (Saldo Próprio: <strong className={totalBalance < 0 ? 'text-rose-600 font-bold' : 'text-black font-bold'}>{formatCurrencyBRL(totalBalance)}</strong> + Limite Especial: <strong className="text-emerald-800 font-bold">{formatCurrencyBRL(totalOverdraftLimit)}</strong>)
+              </div>
+            )}
+          </div>
+
+          <p className="text-xs text-stone-600 font-medium">
             Total disponível somando contas correntes, cooperativas de crédito e caixa sede
           </p>
         </div>
 
         <button
           type="button"
+          id="btn-abrir-nova-conta"
           onClick={() => handleOpenModal()}
-          className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-xs cursor-pointer active:scale-95"
+          className="inline-flex items-center justify-center space-x-2 px-5 py-3 bg-[#0963cb] hover:bg-[#0852a8] text-white font-black text-xs sm:text-sm rounded-xl transition shadow-md cursor-pointer active:scale-95 shrink-0"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-4 h-4 stroke-[3]" />
           <span>Cadastrar Nova Conta</span>
         </button>
       </div>
 
       {/* Accounts Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {accounts.map((acc) => (
-          <div
-            key={acc.id}
-            className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between space-y-4 hover:border-slate-300 transition text-black"
+      {accounts.length === 0 ? (
+        <div className="bg-white border border-dashed border-stone-300 rounded-2xl p-10 text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-sky-50 text-[#0963cb] flex items-center justify-center mx-auto">
+            <Landmark className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-black text-black">Nenhuma conta bancária cadastrada</h3>
+          <p className="text-xs text-stone-600 max-w-md mx-auto">
+            Cadastre as contas correntes bancárias, cooperativas de crédito (Sicredi, Sicoob, Banco do Brasil) ou o caixa físico da fazenda para controlar saldos e conciliações.
+          </p>
+          <button
+            type="button"
+            onClick={() => handleOpenModal()}
+            className="inline-flex items-center space-x-1.5 px-4 py-2 bg-[#0963cb] text-white rounded-xl text-xs font-bold hover:bg-[#0852a8] transition cursor-pointer shadow-xs"
           >
-            <div className="space-y-3">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center space-x-3">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-xs font-bold"
-                    style={{ backgroundColor: acc.color || '#009688' }}
-                  >
-                    {acc.accountType === 'caixa_fisico' ? (
-                      <Wallet className="w-5 h-5" />
-                    ) : (
-                      <Landmark className="w-5 h-5" />
+            <Plus className="w-4 h-4" />
+            <span>Cadastrar Primeira Conta</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {accounts.map((acc) => {
+            const hasOverdraft = (acc.overdraftLimit || 0) > 0;
+            const totalAccAvailable = (acc.balance || 0) + (acc.overdraftLimit || 0);
+
+            return (
+              <div
+                key={acc.id}
+                id={`card-conta-${acc.id}`}
+                className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4 hover:border-slate-300 transition text-black"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center space-x-3 truncate">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-2xs font-black shrink-0"
+                        style={{ backgroundColor: acc.color || '#009688' }}
+                      >
+                        {acc.accountType === 'caixa_fisico' ? (
+                          <Wallet className="w-5 h-5" />
+                        ) : (
+                          <Landmark className="w-5 h-5" />
+                        )}
+                      </div>
+                      <div className="truncate">
+                        <h4 className="font-black text-black text-sm truncate">
+                          {acc.name}
+                        </h4>
+                        <div className="flex items-center space-x-1.5 text-xs text-stone-600 font-bold truncate">
+                          {acc.bankCode && (
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-black font-mono bg-stone-100 text-stone-700 border border-stone-200">
+                              {acc.bankCode}
+                            </span>
+                          )}
+                          <span className="truncate">{acc.bankName}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-black border border-slate-200 shrink-0">
+                      {getAccountTypeLabel(acc.accountType)}
+                    </span>
+                  </div>
+
+                  {/* Card de Saldo */}
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black text-black uppercase tracking-wider">
+                        {hasOverdraft ? 'Saldo Total Disponível' : 'Saldo em Conta'}
+                      </span>
+                      {hasOverdraft && (
+                        <span className="text-[9px] font-black uppercase text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                          + Limite Incluso
+                        </span>
+                      )}
+                    </div>
+
+                    <div className={`text-xl font-black font-['Outfit'] ${totalAccAvailable >= 0 ? 'text-black' : 'text-rose-600'}`}>
+                      {formatCurrencyBRL(hasOverdraft ? totalAccAvailable : acc.balance)}
+                    </div>
+
+                    {hasOverdraft && (
+                      <div className="text-[11px] text-stone-600 font-semibold border-t border-slate-200 pt-1.5 flex justify-between items-center">
+                        <span>Saldo Próprio: <strong className={acc.balance < 0 ? 'text-rose-600' : 'text-stone-900'}>{formatCurrencyBRL(acc.balance)}</strong></span>
+                        <span>Limite: <strong className="text-emerald-800">{formatCurrencyBRL(acc.overdraftLimit || 0)}</strong></span>
+                      </div>
                     )}
                   </div>
-                  <div>
-                    <h4 className="font-bold text-black text-sm">
-                      {acc.name}
-                    </h4>
-                    <p className="text-xs text-black/80 font-medium">
-                      {acc.bankName}
-                    </p>
+
+                  {/* Dados Adicionais: Agência, Conta com Dígito e PIX */}
+                  <div className="space-y-1.5 text-xs text-black pt-1 font-medium">
+                    {(acc.agency || acc.accountNumber) && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-stone-500 font-semibold">Ag / Conta:</span>
+                        <span className="font-bold font-mono text-black">
+                          {acc.agency ? `Ag: ${acc.agency}` : ''} 
+                          {acc.agency && acc.accountNumber ? ' | ' : ''}
+                          {acc.accountNumber ? `CC: ${acc.accountNumber}${acc.accountDigit ? `-${acc.accountDigit}` : ''}` : ''}
+                        </span>
+                      </div>
+                    )}
+
+                    {acc.pixKey && (
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-stone-500 font-semibold shrink-0">
+                          PIX {acc.pixKeyType ? `(${acc.pixKeyType.toUpperCase()})` : ''}:
+                        </span>
+                        <span className="font-mono text-[11px] font-bold text-emerald-900 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 truncate" title={acc.pixKey}>
+                          {acc.pixKey}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-black border border-slate-200">
-                  {getAccountTypeLabel(acc.accountType)}
-                </span>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                <span className="text-[10px] font-black text-black uppercase tracking-wider">
-                  Saldo Disponível
-                </span>
-                <div className={`text-xl font-black font-['Outfit'] ${acc.balance >= 0 ? 'text-black' : 'text-rose-600'}`}>
-                  {formatCurrencyBRL(acc.balance)}
-                </div>
-              </div>
-
-              <div className="space-y-1 text-xs text-black pt-1 font-medium">
-                {acc.agency && acc.accountNumber && (
-                  <div className="flex justify-between">
-                    <span className="text-black/70">Ag / Conta:</span>
-                    <span className="font-bold text-black">
-                      Ag: {acc.agency} | CC: {acc.accountNumber}
-                    </span>
-                  </div>
-                )}
-                {acc.pixKey && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-black/70">Chave PIX:</span>
-                    <span className="font-mono text-[11px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                      {acc.pixKey}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={() => handleOpenModal(acc)}
-                className="p-2 text-black hover:text-emerald-700 hover:bg-slate-100 rounded-lg transition"
-                title="Editar Conta"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDelete(acc.id)}
-                className="p-2 text-black hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                title="Excluir Conta"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Modal Cadastrar / Editar Conta */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
-          <div className="bg-[#b0d2ed] border border-[#0963cb]/30 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            
-            {/* Header com azul padrão #0963cb e texto/ícone em branco #ffffff */}
-            <div className="flex items-center justify-between px-5 py-3.5 bg-[#0963cb] text-white">
-              <h3 className="text-base font-bold text-white tracking-tight">
-                {editingAccount ? 'Editar Conta Bancária' : 'Nova Conta Bancária / Caixa'}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-white hover:bg-white/20 transition cursor-pointer"
-              >
-                <X className="w-5 h-5 text-white" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSave} className="p-5 space-y-3.5 bg-[#b0d2ed]">
-              <div>
-                <label className="block text-xs font-bold text-black mb-1">
-                  Nome Identificador da Conta <span className="text-rose-600">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-black mb-1">
-                    Instituição Financeira
-                  </label>
-                  <input
-                    type="text"
-                    value={bankName}
-                    onChange={(e) => setBankName(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-black mb-1">
-                    Tipo de Conta
-                  </label>
-                  <select
-                    value={accountType}
-                    onChange={(e) => setAccountType(e.target.value as any)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
+                <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenModal(acc)}
+                    className="p-2 text-stone-700 hover:text-[#0963cb] hover:bg-sky-50 rounded-xl transition cursor-pointer"
+                    title="Editar Conta"
                   >
-                    <option value="corrente">Conta Corrente</option>
-                    <option value="poupanca">Poupança</option>
-                    <option value="aplicacao">Aplicação / Renda Fixa</option>
-                    <option value="caixa_fisico">Caixa Físico / Sede</option>
-                  </select>
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(acc.id)}
+                    className="p-2 text-stone-700 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"
+                    title="Excluir Conta"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-black mb-1">
-                    Agência
-                  </label>
-                  <input
-                    type="text"
-                    value={agency}
-                    onChange={(e) => setAgency(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-black mb-1">
-                    Número da Conta
-                  </label>
-                  <input
-                    type="text"
-                    value={accountNumber}
-                    onChange={(e) => setAccountNumber(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-black mb-1">
-                    Saldo Inicial / Atual (R$)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={balance}
-                    onChange={(e) => setBalance(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none font-bold"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-black mb-1">
-                    Chave PIX (Opcional)
-                  </label>
-                  <input
-                    type="text"
-                    value={pixKey}
-                    onChange={(e) => setPixKey(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-[#0963cb] outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-3 border-t border-black/15">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs sm:text-sm font-bold rounded-xl bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 cursor-pointer transition"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 text-xs sm:text-sm font-bold rounded-xl bg-[#0963cb] hover:bg-[#0852a8] text-white shadow-xs cursor-pointer transition"
-                >
-                  Salvar Conta
-                </button>
-              </div>
-            </form>
-          </div>
+            );
+          })}
         </div>
       )}
+
+      {/* Modal Cadastrar / Editar Conta */}
+      <BankAccountModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        editingAccount={editingAccount}
+        onSave={handleSaveAccount}
+      />
     </div>
   );
 };

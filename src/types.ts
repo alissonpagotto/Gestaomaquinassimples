@@ -698,11 +698,15 @@ export interface BankAccount {
   id: string;
   name: string;
   bankName: string;
+  bankCode?: string;
   accountType: 'corrente' | 'poupanca' | 'aplicacao' | 'caixa_fisico';
   agency?: string;
   accountNumber?: string;
+  accountDigit?: string;
   balance: number;
+  overdraftLimit?: number;
   pixKey?: string;
+  pixKeyType?: 'cpf' | 'cnpj' | 'phone' | 'email' | 'random';
   color?: string;
 }
 
