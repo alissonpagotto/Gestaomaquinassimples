@@ -33,7 +33,7 @@ export const SupabaseStatusControl: React.FC = () => {
       <button
         type="button"
         onClick={() => setIsOpenMenu(prev => !prev)}
-        className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg border border-blue-600/40 dark:border-stone-700 hover:bg-blue-700/60 dark:hover:bg-stone-800 text-white dark:text-stone-200 transition cursor-pointer text-xs"
+        className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg border border-white/30 hover:bg-white/15 bg-white/10 text-white transition cursor-pointer text-xs"
         title="Status da Conexão Supabase PostgreSQL"
       >
         <Database className="w-3.5 h-3.5 text-emerald-300" />

@@ -102,6 +102,7 @@ import { CompanySettingsView } from './components/settings/CompanySettingsView';
 import { QuickMemoModal } from './components/quick/QuickMemoModal';
 import { TrialInfoModal } from './components/quick/TrialInfoModal';
 import { LovableIntegrationModal } from './components/integration/LovableIntegrationModal';
+import { CustomizeShortcutsModal, DEFAULT_SHORTCUT_IDS } from './components/layout/CustomizeShortcutsModal';
 import { PublicClientForm } from './components/crm/PublicClientForm';
 import { PublicSupplierForm } from './components/suppliers/PublicSupplierForm';
 import { useAuth } from './context/AuthContext';
@@ -130,6 +131,32 @@ export default function App() {
   const [vacations, setVacations] = useState<VacationRecord[]>(() => getStoredVacations());
   const [leaves, setLeaves] = useState<LeaveRecord[]>(() => getStoredLeaves());
   const [advances, setAdvances] = useState<SalaryAdvance[]>(() => getStoredSalaryAdvances());
+
+  // TopBar shortcuts customization state
+  const [selectedShortcuts, setSelectedShortcuts] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('silagem_facil_shortcuts');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return DEFAULT_SHORTCUT_IDS;
+  });
+  const [isCustomizeShortcutsOpen, setIsCustomizeShortcutsOpen] = useState(false);
+
+  const handleSaveShortcuts = (newShortcuts: string[]) => {
+    setSelectedShortcuts(newShortcuts);
+    try {
+      localStorage.setItem('silagem_facil_shortcuts', JSON.stringify(newShortcuts));
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const { confirm } = useConfirm();
   const { currentUser, setIsSyncing, setLastSyncedAt } = useAuth();
@@ -542,6 +569,7 @@ export default function App() {
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
         companyProfile={companyProfile}
+        onOpenCustomizeShortcuts={() => setIsCustomizeShortcutsOpen(true)}
       />
 
       {/* Backdrop for mobile sidebar */}
@@ -567,6 +595,8 @@ export default function App() {
           onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
           onOpenQuickMemo={() => setIsQuickMemoOpen(true)}
           onOpenTrialInfo={() => setIsTrialInfoOpen(true)}
+          selectedShortcuts={selectedShortcuts}
+          onOpenCustomizeShortcuts={() => setIsCustomizeShortcutsOpen(true)}
         />
 
         {/* Dynamic Page Content (100% Full Width across all modules) */}
@@ -931,6 +961,14 @@ export default function App() {
       <TrialInfoModal
         isOpen={isTrialInfoOpen}
         onClose={() => setIsTrialInfoOpen(false)}
+      />
+
+      {/* Modal de Personalizar Atalhos do Topo (Checkboxes & Ordem) */}
+      <CustomizeShortcutsModal
+        isOpen={isCustomizeShortcutsOpen}
+        onClose={() => setIsCustomizeShortcutsOpen(false)}
+        selectedShortcuts={selectedShortcuts}
+        onSave={handleSaveShortcuts}
       />
 
     </div>

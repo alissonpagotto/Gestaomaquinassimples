@@ -11,14 +11,23 @@ function getEnv(key: string): string {
   try {
     if (typeof import.meta !== 'undefined' && (import.meta as any)?.env) {
       const val = (import.meta as any).env[key] || (import.meta as any).env[`VITE_${key}`];
-      if (val) return String(val).trim();
+      if (val && String(val).trim()) return String(val).trim();
     }
   } catch (_) {}
 
   try {
     if (typeof process !== 'undefined' && process?.env) {
       const val = process.env[key] || process.env[`VITE_${key}`];
-      if (val) return String(val).trim();
+      if (val && String(val).trim()) return String(val).trim();
+    }
+  } catch (_) {}
+
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const stored = localStorage.getItem(`silagem_facil_${key.toLowerCase()}`) ||
+                     localStorage.getItem(key) ||
+                     localStorage.getItem(`VITE_${key}`);
+      if (stored && stored.trim()) return stored.trim();
     }
   } catch (_) {}
 
@@ -34,6 +43,12 @@ export const isSupabaseConfigured = Boolean(
   SUPABASE_URL.startsWith('http') &&
   !SUPABASE_URL.includes('placeholder')
 );
+
+if (isSupabaseConfigured) {
+  console.log('✅ Supabase inicializado com sucesso para:', SUPABASE_URL);
+} else {
+  console.log('ℹ️ Supabase utilizando cliente local/offline');
+}
 
 // Fallback client to prevent application crash if credentials are not yet populated in the environment
 const fallbackUrl = 'https://supabase-erp-demo.supabase.co';

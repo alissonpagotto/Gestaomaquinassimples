@@ -20,6 +20,7 @@ export interface SidebarProps {
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
   companyProfile?: CompanyProfile;
+  onOpenCustomizeShortcuts?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -28,6 +29,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile,
   onCloseMobile,
   companyProfile,
+  onOpenCustomizeShortcuts,
 }) => {
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
   const [menuOrder, setMenuOrder] = useState<string[]>(() => {
@@ -189,8 +191,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         </div>
 
-        {/* Bottom Section: Organize Shortcut & Logout */}
+        {/* Bottom Section: Organize Shortcut, Customize Topbar & Logout */}
         <div className="p-3 border-t border-blue-600/40 dark:border-stone-800 space-y-1 bg-blue-700 dark:bg-stone-900">
+          {onOpenCustomizeShortcuts && (
+            <button
+              type="button"
+              id="btn-sidebar-customize-shortcuts"
+              onClick={onOpenCustomizeShortcuts}
+              className="w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-semibold text-black dark:text-stone-300 hover:bg-blue-600/30 hover:text-white dark:hover:bg-stone-800 dark:hover:text-white transition cursor-pointer"
+            >
+              <SlidersHorizontal style={{ color: '#000000' }} className="w-4 h-4 text-black dark:text-stone-300" />
+              <span style={{ color: '#000000' }} className="text-black">Personalizar Atalhos do Topo</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setIsReorderModalOpen(true)}
