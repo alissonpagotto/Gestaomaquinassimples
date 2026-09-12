@@ -26,6 +26,42 @@ export const ReceivablesTab: React.FC<ReceivablesTabProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pendente' | 'pago'>('all');
+  const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
+
+  // Month options based on current date: 1 previous, current, 5 next
+  const monthFilterOptions = React.useMemo(() => {
+    const monthNames = [
+      'Janeiro',
+      'Fevereiro',
+      'Março',
+      'Abril',
+      'Maio',
+      'Junho',
+      'Julho',
+      'Agosto',
+      'Setembro',
+      'Outubro',
+      'Novembro',
+      'Dezembro',
+    ];
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-11
+
+    const options: { key: string; label: string; year: number; month: number }[] = [];
+
+    // -1 (Mês Anterior), 0 (Mês Atual), +1..+5 (5 Próximos Meses)
+    for (let offset = -1; offset <= 5; offset++) {
+      const d = new Date(currentYear, currentMonth + offset, 1);
+      const y = d.getFullYear();
+      const m = d.getMonth(); // 0-11
+      const key = `${y}-${String(m + 1).padStart(2, '0')}`;
+      const label = monthNames[m];
+      options.push({ key, label, year: y, month: m });
+    }
+
+    return options;
+  }, []);
 
   // Combined Receivables Items
   const receivablesFromOrders = orders.map((o) => ({
@@ -63,12 +99,24 @@ export const ReceivablesTab: React.FC<ReceivablesTabProps> = ({
 
   const filtered = allReceivables.filter((r) => {
     const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
+
+    // Monthly filter based on dueDate (or date as fallback)
+    let matchesMonth = true;
+    if (selectedMonthKey) {
+      const targetDate = r.dueDate || r.date;
+      if (targetDate) {
+        matchesMonth = targetDate.startsWith(selectedMonthKey);
+      } else {
+        matchesMonth = false;
+      }
+    }
+
     const q = searchTerm.toLowerCase();
     const matchesSearch =
       r.clientName.toLowerCase().includes(q) ||
       r.type.toLowerCase().includes(q) ||
       r.notes.toLowerCase().includes(q);
-    return matchesStatus && matchesSearch;
+    return matchesStatus && matchesMonth && matchesSearch;
   });
 
   return (
@@ -163,6 +211,29 @@ export const ReceivablesTab: React.FC<ReceivablesTabProps> = ({
           >
             Recebidos ({paidList.length})
           </button>
+
+          {/* Divisor sutil entre status e meses */}
+          <div className="h-4 w-px bg-slate-300 mx-0.5 shrink-0 hidden sm:block" />
+
+          {/* Botões de Filtro por Mês */}
+          {monthFilterOptions.map((m) => {
+            const isSelected = selectedMonthKey === m.key;
+            return (
+              <button
+                key={m.key}
+                type="button"
+                onClick={() => setSelectedMonthKey(isSelected ? null : m.key)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+                  isSelected
+                    ? 'bg-sky-600 text-white shadow-xs'
+                    : 'bg-slate-100 text-black hover:bg-slate-200'
+                }`}
+                title={`Filtrar por ${m.label}/${m.year}`}
+              >
+                {m.label}
+              </button>
+            );
+          })}
         </div>
 
         <div className="relative w-full sm:w-72">
