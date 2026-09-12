@@ -138,6 +138,7 @@ CREATE TABLE IF NOT EXISTS public.gestao_frotas (
     type TEXT,
     model TEXT,
     plate_or_serial TEXT,
+    fleet_number TEXT,
     year INTEGER,
     hourmeter NUMERIC(12,2) DEFAULT 0,
     status TEXT DEFAULT 'operacional',
@@ -146,6 +147,9 @@ CREATE TABLE IF NOT EXISTS public.gestao_frotas (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Migração automática para tabelas existentes
+ALTER TABLE public.gestao_frotas ADD COLUMN IF NOT EXISTS fleet_number TEXT;
 
 -- ==============================================================================
 -- 6. TRIGGERS: updated_at automático

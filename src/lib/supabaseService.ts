@@ -541,7 +541,15 @@ export async function fetchGestaoFrotas(): Promise<Machinery[] | null> {
       console.warn('Supabase fetchGestaoFrotas notice:', error.message);
       return null;
     }
-    return data as Machinery[];
+    return (data as any[]).map(row => ({
+      ...row,
+      fleetNumber: row.fleet_number || row.fleetNumber || undefined,
+      licensePlateOrSerial: row.plate_or_serial || row.licensePlateOrSerial,
+      hourMeter: row.hourmeter !== undefined ? Number(row.hourmeter) : row.hourMeter,
+      currentFuelPercentage: row.fuel_level !== undefined ? Number(row.fuel_level) : row.currentFuelPercentage,
+      accumulatedCost: row.accumulated_cost !== undefined ? Number(row.accumulated_cost) : row.accumulatedCost,
+      categoryType: row.type || row.categoryType,
+    })) as Machinery[];
   } catch (err) {
     console.warn('Supabase fetchGestaoFrotas err:', err);
     return null;
@@ -551,23 +559,32 @@ export async function fetchGestaoFrotas(): Promise<Machinery[] | null> {
 export async function upsertGestaoFrota(vehicle: Machinery): Promise<boolean> {
   if (!isSupabaseConfigured) return false;
   try {
-    const { error } = await supabase
+    const payload: Record<string, any> = {
+      id: toValidUUID(vehicle.id),
+      name: vehicle.name,
+      type: vehicle.categoryType || 'maquina',
+      model: vehicle.model,
+      plate_or_serial: vehicle.licensePlateOrSerial || vehicle.serialNumber || '',
+      fleet_number: vehicle.fleetNumber || '',
+      year: vehicle.year ? Number(vehicle.year) : null,
+      hourmeter: Number(vehicle.hourMeter) || 0,
+      status: vehicle.status || 'operacional',
+      fuel_level: Number(vehicle.currentFuelPercentage) || 100,
+      accumulated_cost: vehicle.accumulatedCost || 0,
+      updated_at: new Date().toISOString()
+    };
+
+    let { error } = await supabase
       .from('gestao_frotas')
-      .upsert({
-        id: toValidUUID(vehicle.id),
-        name: vehicle.name,
-        type: vehicle.categoryType || 'maquina',
-        model: vehicle.model,
-        plate_or_serial: vehicle.licensePlateOrSerial || vehicle.serialNumber || '',
-        year: vehicle.year ? Number(vehicle.year) : null,
-        hourmeter: Number(vehicle.hourMeter) || 0,
-        status: vehicle.status || 'operacional',
-        fuel_level: Number(vehicle.currentFuelPercentage) || 100,
-        accumulated_cost: vehicle.accumulatedCost || 0,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'id' });
+      .upsert(payload, { onConflict: 'id' });
 
     if (error) {
+      // Se a tabela remota ainda não tiver a coluna fleet_number, tenta salvar sem ela
+      if (error.message && (error.message.includes('fleet_number') || error.message.includes('column') || error.message.includes('schema cache'))) {
+        delete payload.fleet_number;
+        const retry = await supabase.from('gestao_frotas').upsert(payload, { onConflict: 'id' });
+        if (!retry.error) return true;
+      }
       console.warn('Supabase upsertGestaoFrota notice:', error.message);
       return false;
     }

@@ -74,6 +74,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
   const [activeTab, setActiveTab] = useState<'dados' | 'historico'>('dados');
 
   // Form Fields - Basic Identification
+  const [fleetNumber, setFleetNumber] = useState('');
   const [plate, setPlate] = useState('');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
@@ -200,6 +201,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
 
   useEffect(() => {
     if (editingVehicle) {
+      setFleetNumber(editingVehicle.fleetNumber || '');
       setPlate(editingVehicle.licensePlateOrSerial || '');
       setBrand(editingVehicle.brand || '');
       setModel(editingVehicle.model || '');
@@ -291,6 +293,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setActiveTab('dados');
     } else {
       // Defaults for new vehicle
+      setFleetNumber('');
       setPlate('');
       setBrand('');
       setModel('');
@@ -398,12 +401,12 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!plate.trim() && !serialNumber.trim()) {
-      alert('Por favor, informe ao menos a Placa ou o Nº de Série do veículo.');
+    if (!plate.trim() && !serialNumber.trim() && !fleetNumber.trim()) {
+      alert('Por favor, informe ao menos a Placa, o Nº de Série ou o Nº da Frota do veículo.');
       return;
     }
 
-    const formattedModel = model.trim() || plate.trim() || serialNumber.trim();
+    const formattedModel = model.trim() || plate.trim() || fleetNumber.trim() || serialNumber.trim();
     const formattedBrand = brand.trim() || 'Agrícola';
     const formattedName = `${formattedBrand} ${formattedModel}`.trim();
 
@@ -459,6 +462,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       year: year ? parseInt(year, 10) : undefined,
       renavam: renavam.trim() || undefined,
       color: color.trim() || undefined,
+      fleetNumber: fleetNumber.trim() || undefined,
       categoryType: categoryType || 'forrageira',
       status: status || 'disponivel',
       ownership: ownership || 'proprio',
@@ -643,11 +647,27 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               <div className="flex items-center space-x-2">
                 <Truck className="w-4 h-4 text-[#0963cb]" />
                 <h4 className="text-xs font-bold uppercase tracking-wider text-[#000000]" style={{ color: '#000000' }}>
-                  Identificação do Veículo / Máquina
+                  1. IDENTIFICAÇÃO DO VEÍCULO / MÁQUINA
                 </h4>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
+                {/* NOVO CAMPO: Nº da Frota */}
+                <div>
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                    Nº da Frota
+                  </label>
+                  <input
+                    type="text"
+                    value={fleetNumber}
+                    onChange={(e) => setFleetNumber(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                    style={{ backgroundColor: '#ffffff', color: '#000000' }}
+                  />
+                  <p className="text-[10px] text-stone-600 mt-1">Prefixo / Código Interno</p>
+                </div>
+
+                {/* Placa do Veículo */}
                 <div>
                   <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Placa do Veículo
@@ -657,6 +677,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                     value={plate}
                     onChange={(e) => setPlate(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                    style={{ backgroundColor: '#ffffff', color: '#000000' }}
                   />
                   <p className="text-[10px] text-stone-600 mt-1">Opcional para máquinas agrícolas</p>
                 </div>
@@ -672,10 +693,12 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                     value={serialNumber}
                     onChange={(e) => setSerialNumber(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                    style={{ backgroundColor: '#ffffff', color: '#000000' }}
                   />
-                  <p className="text-[10px] text-stone-600 mt-1">Para tratores, ensiladeiras e implementos s/ RENAVAM</p>
+                  <p className="text-[10px] text-stone-600 mt-1">Para tratores e implementos s/ RENAVAM</p>
                 </div>
 
+                {/* Código RENAVAM */}
                 <div>
                   <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Código RENAVAM
@@ -685,7 +708,9 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                     value={renavam}
                     onChange={(e) => setRenavam(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                    style={{ backgroundColor: '#ffffff', color: '#000000' }}
                   />
+                  <p className="text-[10px] text-stone-600 mt-1">Documento veicular oficial</p>
                 </div>
               </div>
 

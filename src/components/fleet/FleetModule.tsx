@@ -23,6 +23,7 @@ import { FuelModal } from './FuelModal';
 import { MaintenanceModal } from './MaintenanceModal';
 import { VehicleHistoryModal } from './VehicleHistoryModal';
 import { updateVehicleWithCalculatedMetrics } from '../../lib/fleetMetrics';
+import { upsertGestaoFrota } from '../../lib/supabaseService';
 import { useConfirm } from '../../context/ConfirmContext';
 import { 
   getStoredVehicleTypes, 
@@ -180,16 +181,23 @@ export const FleetModule: React.FC<FleetModuleProps> = ({
 
   const handleSaveVehicle = (vehicleData: Partial<Machinery>) => {
     if (editingVehicle) {
+      let updatedMergedVehicle: Machinery | null = null;
       const updated = machineries.map(m => {
         if (m.id === editingVehicle.id) {
           const merged = { ...m, ...vehicleData } as Machinery;
-          return updateVehicleWithCalculatedMetrics(merged, fuelLogs);
+          const calculated = updateVehicleWithCalculatedMetrics(merged, fuelLogs);
+          updatedMergedVehicle = calculated;
+          return calculated;
         }
         return m;
       });
       onSaveMachineries(updated);
+      if (updatedMergedVehicle) {
+        upsertGestaoFrota(updatedMergedVehicle).catch(console.error);
+      }
     } else {
       const newVehicle: Machinery = {
+        ...vehicleData,
         id: `mach_${Date.now()}`,
         name: vehicleData.name || vehicleData.model || 'Novo Veículo',
         model: vehicleData.model || 'Modelo',
@@ -197,10 +205,11 @@ export const FleetModule: React.FC<FleetModuleProps> = ({
         categoryType: vehicleData.categoryType || 'forrageira',
         status: vehicleData.status || 'disponivel',
         ownership: vehicleData.ownership || 'proprio',
+        licensePlateOrSerial: vehicleData.licensePlateOrSerial || '',
+        fleetNumber: vehicleData.fleetNumber || '',
         renavam: vehicleData.renavam,
         color: vehicleData.color,
         capacityM3: vehicleData.capacityM3,
-        licensePlateOrSerial: vehicleData.licensePlateOrSerial || '',
         year: vehicleData.year,
         operatorOrDriver: vehicleData.operatorOrDriver || '',
         assignedDriverIds: vehicleData.assignedDriverIds || [],
@@ -217,6 +226,7 @@ export const FleetModule: React.FC<FleetModuleProps> = ({
         notes: vehicleData.notes || '',
       };
       onSaveMachineries([newVehicle, ...machineries]);
+      upsertGestaoFrota(newVehicle).catch(console.error);
     }
     setIsVehicleModalOpen(false);
   };

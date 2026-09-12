@@ -129,6 +129,7 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
       const matchSearch =
         m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         m.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.fleetNumber && m.fleetNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (m.licensePlateOrSerial && m.licensePlateOrSerial.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (m.serialNumber && m.serialNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (m.categoryType && m.categoryType.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -528,6 +529,11 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                         {/* Identificação / Placa / Nº Série */}
                         <td className="py-3 px-4">
                           <div className="flex flex-col space-y-1">
+                            {vehicle.fleetNumber && (
+                              <span className="inline-flex items-center text-[10px] font-black text-blue-800 dark:text-blue-200 bg-blue-100 dark:bg-blue-900/60 border border-blue-300 dark:border-blue-700 px-1.5 py-0.5 rounded w-fit">
+                                Frota: {vehicle.fleetNumber}
+                              </span>
+                            )}
                             <span className="font-extrabold text-stone-900 dark:text-stone-100 font-mono text-xs px-2.5 py-1 bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-md w-fit shadow-2xs">
                               {vehicle.licensePlateOrSerial || '--'}
                             </span>
@@ -809,6 +815,11 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                   {/* Top Bar: Plate + Status + Ownership */}
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center space-x-2">
+                      {vehicle.fleetNumber && (
+                        <span className="font-mono text-xs font-black px-2 py-1 bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 border border-blue-300 dark:border-blue-700 rounded-lg shadow-2xs">
+                          #{vehicle.fleetNumber}
+                        </span>
+                      )}
                       <span className="font-extrabold text-stone-900 dark:text-stone-100 font-mono text-sm px-2.5 py-1 bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg shadow-2xs">
                         {vehicle.licensePlateOrSerial || '--'}
                       </span>

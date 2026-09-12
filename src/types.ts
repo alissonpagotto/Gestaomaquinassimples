@@ -163,6 +163,7 @@ export interface Machinery {
   year?: number;
   renavam?: string; // RENAVAM
   color?: string; // Cor do veículo
+  fleetNumber?: string; // Nº da Frota / Prefixo / Código Interno
   ownership?: 'proprio' | 'terceirizado' | 'alugado' | 'arrendado' | string; // Propriedade / Regime
   capacityM3?: number; // Capacidade de Carga / Caçamba em m³
   hourMeter?: number; // Horímetro atual
