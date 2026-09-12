@@ -26,7 +26,11 @@ import {
   CheckCircle2,
   Calendar,
   Weight,
-  Printer
+  Printer,
+  ShieldCheck,
+  Landmark,
+  CheckCircle,
+  HelpCircle
 } from 'lucide-react';
 import { Machinery, Employee, FuelLog, MaintenanceLog, Expense, ServiceOrder, SilageOrder } from '../../types';
 import { 
@@ -161,6 +165,27 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
   const [generatePayables, setGeneratePayables] = useState(true);
   const [installmentsCreatedFeedback, setInstallmentsCreatedFeedback] = useState(false);
 
+  // 4. Controle Patrimonial, Impostos & Taxas (FIPE, IPVA & Licenciamento)
+  const [fipeValue, setFipeValue] = useState('');
+  const [ipvaBaseValue, setIpvaBaseValue] = useState('');
+  const [ipvaRatePercent, setIpvaRatePercent] = useState('2'); // Default 2% (comum em veículos utilitários/caminhões/agrícola)
+  const [ipvaInstallmentsCount, setIpvaInstallmentsCount] = useState('1'); // 1x até 5x
+  const [licensingValue, setLicensingValue] = useState('');
+  const [ipvaFinancialStatus, setIpvaFinancialStatus] = useState<'pendente' | 'lancado'>('pendente');
+  const [licensingFinancialStatus, setLicensingFinancialStatus] = useState<'pendente' | 'lancado'>('pendente');
+  const [isLaunchingIpva, setIsLaunchingIpva] = useState(false);
+  const [isLaunchingLicensing, setIsLaunchingLicensing] = useState(false);
+
+  // Computed IPVA Total
+  const computedIpvaTotal = useMemo(() => {
+    const base = parseFloat(ipvaBaseValue) || 0;
+    const rate = parseFloat(ipvaRatePercent) || 0;
+    if (base > 0 && rate > 0) {
+      return (base * (rate / 100));
+    }
+    return 0;
+  }, [ipvaBaseValue, ipvaRatePercent]);
+
   // Multiple Assigned Drivers / Operators
   const [selectedDriverIds, setSelectedDriverIds] = useState<string[]>([]);
   const [driverSearchQuery, setDriverSearchQuery] = useState('');
@@ -279,6 +304,15 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       installmentValue: isFinanced && numInstallmentVal > 0 ? numInstallmentVal : undefined,
       firstInstallmentDueDate: isFinanced ? firstInstallmentDueDate : undefined,
       financialInstitution: isFinanced ? financialInstitution.trim() : undefined,
+      // 4. Controle Patrimonial, Impostos & Taxas
+      fipeValue: fipeValue ? parseFloat(fipeValue) : undefined,
+      ipvaBaseValue: ipvaBaseValue ? parseFloat(ipvaBaseValue) : undefined,
+      ipvaRatePercent: ipvaRatePercent ? parseFloat(ipvaRatePercent) : undefined,
+      ipvaTotalAmount: computedIpvaTotal > 0 ? computedIpvaTotal : undefined,
+      ipvaInstallmentsCount: ipvaInstallmentsCount ? parseInt(ipvaInstallmentsCount, 10) : undefined,
+      ipvaFinancialStatus,
+      licensingValue: licensingValue ? parseFloat(licensingValue) : undefined,
+      licensingFinancialStatus,
       capacityM3: capacityM3 ? parseFloat(capacityM3) : undefined,
       fuelCapacityLiters: fuelCapacityLiters ? parseFloat(fuelCapacityLiters) : undefined,
       licensePlateOrSerial: (plate.trim() || serialNumber.trim() || fleetNumber.trim()).toUpperCase(),
@@ -440,6 +474,15 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setFinancialInstitution(editingVehicle.financialInstitution || '');
       setGeneratePayables(!editingVehicle.installmentsGenerated);
       
+      // 4. Controle Patrimonial, Impostos & Taxas
+      setFipeValue(editingVehicle.fipeValue !== undefined ? String(editingVehicle.fipeValue) : '');
+      setIpvaBaseValue(editingVehicle.ipvaBaseValue !== undefined ? String(editingVehicle.ipvaBaseValue) : '');
+      setIpvaRatePercent(editingVehicle.ipvaRatePercent !== undefined ? String(editingVehicle.ipvaRatePercent) : '2');
+      setIpvaInstallmentsCount(editingVehicle.ipvaInstallmentsCount ? String(editingVehicle.ipvaInstallmentsCount) : '1');
+      setLicensingValue(editingVehicle.licensingValue !== undefined ? String(editingVehicle.licensingValue) : '');
+      setIpvaFinancialStatus(editingVehicle.ipvaFinancialStatus || 'pendente');
+      setLicensingFinancialStatus(editingVehicle.licensingFinancialStatus || 'pendente');
+      
       // Drivers
       if (editingVehicle.assignedDriverIds && editingVehicle.assignedDriverIds.length > 0) {
         setSelectedDriverIds(editingVehicle.assignedDriverIds);
@@ -504,6 +547,17 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setGeneratePayables(true);
       setInstallmentsCreatedFeedback(false);
 
+      // 4. Controle Patrimonial, Impostos & Taxas
+      setFipeValue('');
+      setIpvaBaseValue('');
+      setIpvaRatePercent('2');
+      setIpvaInstallmentsCount('1');
+      setLicensingValue('');
+      setIpvaFinancialStatus('pendente');
+      setLicensingFinancialStatus('pendente');
+      setIsLaunchingIpva(false);
+      setIsLaunchingLicensing(false);
+
       setSelectedDriverIds([]);
       setRevisionStatus('Em dia');
       setNotes('');
@@ -562,6 +616,98 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     if (file) {
       setPurchaseAttachmentName(file.name);
     }
+  };
+
+  // Launch IPVA directly into Contas a Pagar
+  const handleLaunchIpva = () => {
+    if (!onAddExpense) {
+      alert('Módulo financeiro indisponível para lançamento direto.');
+      return;
+    }
+    const totalIpva = computedIpvaTotal;
+    if (totalIpva <= 0) {
+      alert('Informe o Valor Base Venal e a Alíquota do IPVA para calcular o valor antes de lançar.');
+      return;
+    }
+
+    const vName = `${brand.trim() || 'Veículo'} ${model.trim() || plate.trim() || 'Frota'}`.trim();
+    const vIdentifier = (plate.trim() || serialNumber.trim() || fleetNumber.trim() || 'S/N').toUpperCase();
+    const installments = Math.max(1, parseInt(ipvaInstallmentsCount, 10) || 1);
+    const installmentVal = parseFloat((totalIpva / installments).toFixed(2));
+    const today = new Date();
+    const currentYear = year ? parseInt(year, 10) : today.getFullYear();
+    const vehicleId = editingVehicle?.id || `veh_${Date.now()}`;
+
+    for (let i = 1; i <= installments; i++) {
+      // Due dates: IPVA usually starting next month or spaced by 30 days
+      const targetDate = new Date(today.getFullYear(), today.getMonth() + (i - 1), 20);
+      const yyyy = targetDate.getFullYear();
+      const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(targetDate.getDate()).padStart(2, '0');
+      const dueDate = `${yyyy}-${mm}-${dd}`;
+
+      onAddExpense({
+        description: installments > 1 
+          ? `IPVA ${currentYear} - Parcela ${i}/${installments} - ${vName} (${vIdentifier})`
+          : `IPVA ${currentYear} (Cota Única) - ${vName} (${vIdentifier})`,
+        amount: installmentVal,
+        category: 'IPVA / Impostos de Frotas',
+        dueDate,
+        status: 'pendente',
+        paymentMethod: 'boleto',
+        supplier: 'SEFAZ / Detran - Secretaria da Fazenda',
+        machineryId: vehicleId,
+        machineryName: vName,
+        notes: `Imposto IPVA exercício ${currentYear} para o veículo ${vName} (Placa/Identificador: ${vIdentifier}). Valor Venal Base: R$ ${parseFloat(ipvaBaseValue).toFixed(2)}, Alíquota: ${ipvaRatePercent}%. Parcela ${i} de ${installments}.`,
+      });
+    }
+
+    setIpvaFinancialStatus('lancado');
+    setIsLaunchingIpva(true);
+    setTimeout(() => setIsLaunchingIpva(false), 3000);
+  };
+
+  // Launch Licensing directly into Contas a Pagar
+  const handleLaunchLicensing = () => {
+    if (!onAddExpense) {
+      alert('Módulo financeiro indisponível para lançamento direto.');
+      return;
+    }
+    const val = parseFloat(licensingValue) || 0;
+    if (val <= 0) {
+      alert('Informe o valor da Taxa de Licenciamento Anual antes de lançar.');
+      return;
+    }
+
+    const vName = `${brand.trim() || 'Veículo'} ${model.trim() || plate.trim() || 'Frota'}`.trim();
+    const vIdentifier = (plate.trim() || serialNumber.trim() || fleetNumber.trim() || 'S/N').toUpperCase();
+    const today = new Date();
+    const currentYear = year ? parseInt(year, 10) : today.getFullYear();
+    const vehicleId = editingVehicle?.id || `veh_${Date.now()}`;
+
+    // Due date in 30 days
+    const targetDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const yyyy = targetDate.getFullYear();
+    const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(targetDate.getDate()).padStart(2, '0');
+    const dueDate = `${yyyy}-${mm}-${dd}`;
+
+    onAddExpense({
+      description: `Taxa de Licenciamento Anual ${currentYear} - ${vName} (${vIdentifier})`,
+      amount: val,
+      category: 'Licenciamento / Taxas Detran',
+      dueDate,
+      status: 'pendente',
+      paymentMethod: 'boleto',
+      supplier: 'Detran - Departamento Estadual de Trânsito',
+      machineryId: vehicleId,
+      machineryName: vName,
+      notes: `Taxa anual de licenciamento CRLV exercício ${currentYear} para o veículo ${vName} (Placa/Identificador: ${vIdentifier}).`,
+    });
+
+    setLicensingFinancialStatus('lancado');
+    setIsLaunchingLicensing(true);
+    setTimeout(() => setIsLaunchingLicensing(false), 3000);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -665,6 +811,16 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       firstInstallmentDueDate: isFinanced ? firstInstallmentDueDate : undefined,
       financialInstitution: isFinanced ? financialInstitution.trim() : undefined,
       installmentsGenerated: editingVehicle?.installmentsGenerated || willGenerateInstallments,
+
+      // 4. Controle Patrimonial, Impostos & Taxas
+      fipeValue: fipeValue ? parseFloat(fipeValue) : undefined,
+      ipvaBaseValue: ipvaBaseValue ? parseFloat(ipvaBaseValue) : undefined,
+      ipvaRatePercent: ipvaRatePercent ? parseFloat(ipvaRatePercent) : undefined,
+      ipvaTotalAmount: computedIpvaTotal > 0 ? computedIpvaTotal : undefined,
+      ipvaInstallmentsCount: ipvaInstallmentsCount ? parseInt(ipvaInstallmentsCount, 10) : undefined,
+      ipvaFinancialStatus,
+      licensingValue: licensingValue ? parseFloat(licensingValue) : undefined,
+      licensingFinancialStatus,
 
       // Capacity & Meters
       capacityM3: capacityM3 ? parseFloat(capacityM3) : undefined,
@@ -1501,6 +1657,183 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                   )}
                 </div>
               )}
+            </div>
+
+            {/* SEÇÃO 4: CONTROLE PATRIMONIAL, IMPOSTOS & TAXAS (FUNDO BRANCO, LABELS EM PRETO #000000) */}
+            <div className="p-4 rounded-xl bg-white border border-blue-200/80 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-stone-200">
+                <div className="flex items-center space-x-2">
+                  <ShieldCheck className="w-4 h-4 text-[#0963cb]" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#000000]" style={{ color: '#000000' }}>
+                    4. Controle Patrimonial, Impostos & Taxas
+                  </h4>
+                </div>
+                <span className="text-[11px] text-stone-600 font-medium">
+                  Ativo Imobilizado, Avaliação FIPE e Tributos da Frota
+                </span>
+              </div>
+
+              {/* Grid dos Campos de Avaliação e IPVA */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {/* 1. Valor Comercial Tabela FIPE (R$) */}
+                <div className="sm:col-span-1 lg:col-span-2">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                    Valor Comercial Tabela FIPE (R$)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-500">
+                      R$
+                    </span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="0,00"
+                      value={fipeValue}
+                      onChange={(e) => setFipeValue(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
+                    />
+                  </div>
+                </div>
+
+                {/* 2. Valor Base para IPVA (R$) */}
+                <div className="sm:col-span-1 lg:col-span-2">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                    Valor Base para IPVA (R$)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-500">
+                      R$
+                    </span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="0,00"
+                      value={ipvaBaseValue}
+                      onChange={(e) => setIpvaBaseValue(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
+                    />
+                  </div>
+                </div>
+
+                {/* 3. Alíquota IPVA (%) */}
+                <div>
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                    Alíquota IPVA (%)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="Ex: 2"
+                      value={ipvaRatePercent}
+                      onChange={(e) => setIpvaRatePercent(e.target.value)}
+                      className="w-full px-3 py-2 pr-7 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-500">
+                      %
+                    </span>
+                  </div>
+                </div>
+
+                {/* 4. Valor Total IPVA (R$) - Calculado Automaticamente */}
+                <div>
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                    Total IPVA (R$)
+                  </label>
+                  <div className="px-3 py-2 rounded-xl border border-stone-300 bg-stone-100 text-[#000000] text-xs sm:text-sm font-black text-[#0963cb] flex items-center h-[38px]">
+                    {computedIpvaTotal > 0 
+                      ? computedIpvaTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                      : 'R$ 0,00'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Linha de Parcelamento e Licenciamento */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+                {/* 5. Qtd. Parcelas IPVA */}
+                <div>
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                    Qtd. Parcelas IPVA
+                  </label>
+                  <select
+                    value={ipvaInstallmentsCount}
+                    onChange={(e) => setIpvaInstallmentsCount(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
+                  >
+                    <option value="1">1x (À Vista / Cota Única)</option>
+                    <option value="2">2x mensais</option>
+                    <option value="3">3x mensais</option>
+                    <option value="4">4x mensais</option>
+                    <option value="5">5x mensais</option>
+                  </select>
+                </div>
+
+                {/* 6. Valor do Licenciamento Anual (R$) */}
+                <div>
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                    Valor do Licenciamento (R$)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-500">
+                      R$
+                    </span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="0,00"
+                      value={licensingValue}
+                      onChange={(e) => setLicensingValue(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
+                    />
+                  </div>
+                </div>
+
+                {/* 7. Ação de Lançar IPVA no Financeiro */}
+                <div className="flex flex-col justify-end">
+                  <span className="block text-[10px] font-bold text-stone-500 mb-1">
+                    Integração Contas a Pagar
+                  </span>
+                  {ipvaFinancialStatus === 'lancado' ? (
+                    <div className="h-[38px] px-3 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center justify-center space-x-1.5 text-emerald-800 text-xs font-black">
+                      <CheckCircle className="w-4 h-4 text-emerald-600" />
+                      <span>IPVA Lançado no Financeiro</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleLaunchIpva}
+                      disabled={computedIpvaTotal <= 0}
+                      className="h-[38px] px-3 rounded-xl border border-stone-300 bg-white hover:bg-[#b0d2ed] text-[#000000] text-xs font-bold transition flex items-center justify-center space-x-1.5 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Landmark className="w-4 h-4 text-[#000000]" />
+                      <span>💰 Lançar IPVA no Financeiro</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* 8. Ação de Lançar Licenciamento no Financeiro */}
+                <div className="flex flex-col justify-end">
+                  <span className="block text-[10px] font-bold text-stone-500 mb-1">
+                    Taxa Anual CRLV
+                  </span>
+                  {licensingFinancialStatus === 'lancado' ? (
+                    <div className="h-[38px] px-3 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center justify-center space-x-1.5 text-emerald-800 text-xs font-black">
+                      <CheckCircle className="w-4 h-4 text-emerald-600" />
+                      <span>Licenciamento Lançado</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleLaunchLicensing}
+                      disabled={!licensingValue || parseFloat(licensingValue) <= 0}
+                      className="h-[38px] px-3 rounded-xl border border-stone-300 bg-white hover:bg-[#b0d2ed] text-[#000000] text-xs font-bold transition flex items-center justify-center space-x-1.5 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <DollarSign className="w-4 h-4 text-[#000000]" />
+                      <span>💰 Lançar Licenciamento</span>
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* SEÇÃO 5: MOTORISTAS / OPERADORES (CARD BRANCO) */}

@@ -10,7 +10,8 @@ import {
   DollarSign, 
   Fuel,
   LayoutDashboard,
-  ChevronDown
+  ChevronDown,
+  Building2
 } from 'lucide-react';
 import { 
   Expense, 
@@ -30,6 +31,7 @@ import { ReportsCortesTab } from './ReportsCortesTab';
 import { ReportsVendasTab } from './ReportsVendasTab';
 import { ReportsDespesasTab } from './ReportsDespesasTab';
 import { ReportsConsumoTab } from './ReportsConsumoTab';
+import { ReportsAtivoImobilizadoTab } from './ReportsAtivoImobilizadoTab';
 import { formatCurrencyBRL, formatDateBR } from '../../lib/storage';
 
 export interface ReportsModuleProps {
@@ -55,7 +57,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 }) => {
   // Navigation Subtabs
   const [activeSubTab, setActiveSubTab] = useState<
-    'dashboard' | 'resumo' | 'exportar' | 'cortes' | 'vendas' | 'despesas' | 'consumo'
+    'dashboard' | 'resumo' | 'exportar' | 'cortes' | 'vendas' | 'despesas' | 'consumo' | 'imobilizado'
   >('dashboard');
 
   // Month & Year state
@@ -233,6 +235,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   const navSubTabs = [
     { id: 'dashboard', label: 'Dashboard Consolidado', icon: LayoutDashboard },
     { id: 'resumo', label: 'Resumo Geral', icon: FileText },
+    { id: 'imobilizado', label: '📊 Ativo Imobilizado', icon: Building2 },
     { id: 'exportar', label: 'Exportar Excel', icon: Download },
     { id: 'cortes', label: 'Cortes', icon: Scissors },
     { id: 'vendas', label: 'Vendas', icon: ShoppingCart },
@@ -385,6 +388,15 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         <ReportsConsumoTab
           fuelLogs={fuelLogs}
           machineries={machineries}
+          startDate={startDate}
+          endDate={endDate}
+        />
+      )}
+
+      {activeSubTab === 'imobilizado' && (
+        <ReportsAtivoImobilizadoTab
+          machineries={machineries}
+          companyProfile={companyProfile}
           startDate={startDate}
           endDate={endDate}
         />

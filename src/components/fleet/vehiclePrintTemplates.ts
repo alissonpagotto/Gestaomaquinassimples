@@ -171,21 +171,42 @@ export function generateVehicleRegistrationPrintHtml(
           </div>
         </div>
 
-        <!-- Motoristas e Médias de Consumo -->
+        <!-- Controle Patrimonial, Impostos & Licenciamento -->
         <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 14px;">
           <div style="border-bottom: 1.5px solid #0963cb; padding-bottom: 6px; margin-bottom: 10px;">
             <h3 style="margin: 0; font-size: 12px; font-weight: 800; color: #0963cb; text-transform: uppercase;">
-              5. Operadores & Médias Registradas
+              5. Controle Patrimonial & Impostos
             </h3>
           </div>
           <div style="font-size: 11px;">
-            <div style="margin-bottom: 6px;"><strong>Motoristas / Operadores Vinculados:</strong><br><span style="color: #0f172a; font-weight: 600;">${driversText}</span></div>
-            <div style="margin-bottom: 4px;"><strong>Média Histórica por Km:</strong> ${vehicle.averageConsumptionKmPerLiter ? `${vehicle.averageConsumptionKmPerLiter.toLocaleString('pt-BR')} km/L` : 'Aguardando registros'}</div>
-            <div style="margin-bottom: 4px;"><strong>Média Histórica por Hora:</strong> ${vehicle.averageConsumptionLitersPerHour ? `${vehicle.averageConsumptionLitersPerHour.toLocaleString('pt-BR')} L/h` : 'Aguardando registros'}</div>
-            <div><strong>Capacidade do Tanque:</strong> ${vehicle.fuelCapacityLiters ? `${vehicle.fuelCapacityLiters} L` : '--'}</div>
+            <div style="margin-bottom: 4px;"><strong>Valor Comercial FIPE:</strong> ${vehicle.fipeValue ? formatCurrencyBRL(vehicle.fipeValue) : 'Não informado'}</div>
+            <div style="margin-bottom: 4px;"><strong>Valor Base IPVA (Venal):</strong> ${vehicle.ipvaBaseValue ? formatCurrencyBRL(vehicle.ipvaBaseValue) : 'Não informado'}</div>
+            <div style="margin-bottom: 4px;"><strong>Alíquota IPVA:</strong> ${vehicle.ipvaRatePercent ? `${vehicle.ipvaRatePercent}%` : '--'}</div>
+            <div style="margin-bottom: 4px;"><strong>Total IPVA:</strong> <span style="font-weight: 800; color: #0963cb;">${vehicle.ipvaTotalAmount ? formatCurrencyBRL(vehicle.ipvaTotalAmount) : (vehicle.ipvaBaseValue && vehicle.ipvaRatePercent ? formatCurrencyBRL(vehicle.ipvaBaseValue * (vehicle.ipvaRatePercent / 100)) : 'R$ 0,00')}</span> ${vehicle.ipvaInstallmentsCount ? `(${vehicle.ipvaInstallmentsCount}x)` : ''}</div>
+            <div style="margin-bottom: 4px;"><strong>Licenciamento Anual:</strong> ${vehicle.licensingValue ? formatCurrencyBRL(vehicle.licensingValue) : 'Não informado'}</div>
+            <div><strong>Status Financeiro:</strong> IPVA (${vehicle.ipvaFinancialStatus === 'lancado' ? 'Lançado no Contas a Pagar' : 'Pendente'}) | Licenc. (${vehicle.licensingFinancialStatus === 'lancado' ? 'Lançado' : 'Pendente'})</div>
           </div>
         </div>
 
+      </div>
+
+      <!-- OPERADORES E MÉDIAS DE CONSUMO -->
+      <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 14px; margin-bottom: 16px; page-break-inside: avoid; break-inside: avoid;">
+        <div style="border-bottom: 1.5px solid #0963cb; padding-bottom: 6px; margin-bottom: 10px;">
+          <h3 style="margin: 0; font-size: 12px; font-weight: 800; color: #0963cb; text-transform: uppercase;">
+            6. Operadores & Médias Registradas
+          </h3>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 11px;">
+          <div>
+            <div style="margin-bottom: 6px;"><strong>Motoristas / Operadores Vinculados:</strong><br><span style="color: #0f172a; font-weight: 600;">${driversText}</span></div>
+            <div><strong>Capacidade do Tanque:</strong> ${vehicle.fuelCapacityLiters ? `${vehicle.fuelCapacityLiters} L` : '--'}</div>
+          </div>
+          <div>
+            <div style="margin-bottom: 4px;"><strong>Média Histórica por Km:</strong> ${vehicle.averageConsumptionKmPerLiter ? `${vehicle.averageConsumptionKmPerLiter.toLocaleString('pt-BR')} km/L` : 'Aguardando registros'}</div>
+            <div style="margin-bottom: 4px;"><strong>Média Histórica por Hora:</strong> ${vehicle.averageConsumptionLitersPerHour ? `${vehicle.averageConsumptionLitersPerHour.toLocaleString('pt-BR')} L/h` : 'Aguardando registros'}</div>
+          </div>
+        </div>
       </div>
 
       <!-- OBSERVAÇÕES ADICIONAIS -->
