@@ -488,32 +488,33 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
       {/* Modal Lançamento / Edição de Folha */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl w-full max-w-xl shadow-xl overflow-hidden my-auto">
+          <div className="bg-[#b0d2ed] border border-[#0963cb]/30 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
             
-            <div className="flex items-center justify-between px-5 py-3.5 bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-800">
-              <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">
+            {/* Header com azul padrão #0963cb e texto/ícone em branco #ffffff */}
+            <div className="flex items-center justify-between px-5 py-3.5 bg-[#0963cb] text-white">
+              <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
                 {editingPayroll ? 'Editar Folha de Pagamento' : 'Lançar Folha de Pagamento'} ({currentMonthRef})
               </h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded-lg hover:bg-stone-200 dark:hover:bg-stone-700 transition"
+                className="p-1 text-white hover:bg-white/20 rounded-lg transition cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5 text-white" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveModal} className="p-5 space-y-4 text-xs">
+            <form onSubmit={handleSaveModal} className="p-5 space-y-4 text-xs bg-[#b0d2ed]">
               
               {/* Colaborador */}
               <div>
-                <label className="block font-bold text-stone-700 dark:text-stone-300 mb-1">
-                  Colaborador / Funcionário *
+                <label className="block font-bold text-black mb-1">
+                  Colaborador / Funcionário <span className="text-rose-600">*</span>
                 </label>
                 <select
                   value={selectedEmployeeId}
                   onChange={(e) => handleSelectEmployee(e.target.value)}
-                  className="w-full p-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 outline-none focus:ring-1 focus:ring-[#009688]"
+                  className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black outline-none focus:ring-1 focus:ring-[#0963cb] font-medium"
                   required
                 >
                   <option value="">Selecione um funcionário...</option>
@@ -525,14 +526,14 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                 </select>
               </div>
 
-              {/* Grid de Proventos */}
-              <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 rounded-xl space-y-3">
-                <span className="text-[11px] font-black uppercase text-emerald-800 dark:text-emerald-300 block">
+              {/* Grid de Proventos com fundo branco */}
+              <div className="p-3.5 bg-white border border-stone-300 rounded-xl space-y-3 shadow-xs">
+                <span className="text-[11px] font-black uppercase text-black block tracking-wider">
                   Proventos (Vencimentos)
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
+                    <label className="block text-[11px] font-bold text-black mb-1">
                       Salário Base (R$)
                     </label>
                     <input
@@ -540,12 +541,12 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                       step="0.01"
                       value={baseSalary || ''}
                       onChange={(e) => setBaseSalary(parseFloat(e.target.value) || 0)}
-                      className="w-full p-1.5 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-800 font-bold"
+                      className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-bold outline-none focus:ring-1 focus:ring-[#0963cb]"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
+                    <label className="block text-[11px] font-bold text-black mb-1">
                       Horas Extras / Safra (R$)
                     </label>
                     <input
@@ -553,11 +554,11 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                       step="0.01"
                       value={overtimeAmount || ''}
                       onChange={(e) => setOvertimeAmount(parseFloat(e.target.value) || 0)}
-                      className="w-full p-1.5 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-800 font-medium"
+                      className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
+                    <label className="block text-[11px] font-bold text-black mb-1">
                       Bônus / Insalubridade (R$)
                     </label>
                     <input
@@ -565,20 +566,20 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                       step="0.01"
                       value={bonusAmount || ''}
                       onChange={(e) => setBonusAmount(parseFloat(e.target.value) || 0)}
-                      className="w-full p-1.5 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-800 font-medium"
+                      className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Grid de Deduções */}
-              <div className="p-3 bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 rounded-xl space-y-3">
-                <span className="text-[11px] font-black uppercase text-rose-800 dark:text-rose-300 block">
+              {/* Grid de Deduções com fundo branco */}
+              <div className="p-3.5 bg-white border border-stone-300 rounded-xl space-y-3 shadow-xs">
+                <span className="text-[11px] font-black uppercase text-black block tracking-wider">
                   Deduções (Descontos & Vales)
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
+                    <label className="block text-[11px] font-bold text-black mb-1">
                       INSS (R$)
                     </label>
                     <input
@@ -586,11 +587,11 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                       step="0.01"
                       value={inssDiscount || ''}
                       onChange={(e) => setInssDiscount(parseFloat(e.target.value) || 0)}
-                      className="w-full p-1.5 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-800 font-medium"
+                      className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
+                    <label className="block text-[11px] font-bold text-black mb-1">
                       Vales / Adiantamentos (R$)
                     </label>
                     <input
@@ -598,11 +599,11 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                       step="0.01"
                       value={advancesDiscount || ''}
                       onChange={(e) => setAdvancesDiscount(parseFloat(e.target.value) || 0)}
-                      className="w-full p-1.5 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-800 font-medium"
+                      className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
+                    <label className="block text-[11px] font-bold text-black mb-1">
                       Outros Descontos / Faltas
                     </label>
                     <input
@@ -610,74 +611,73 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                       step="0.01"
                       value={otherDiscounts || ''}
                       onChange={(e) => setOtherDiscounts(parseFloat(e.target.value) || 0)}
-                      className="w-full p-1.5 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-800 font-medium"
+                      className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Status & Valor Líquido Preview */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-stone-100 dark:bg-stone-800 rounded-xl">
+              {/* Status & Valor Líquido Preview com fundo branco */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-white border border-stone-300 rounded-xl shadow-xs">
                 <div>
-                  <span className="text-[11px] font-bold text-stone-500 uppercase block">Situação do Pagamento:</span>
-                  <div className="flex items-center space-x-2 mt-1">
-                    <label className="flex items-center space-x-1 cursor-pointer">
+                  <span className="text-[11px] font-bold text-black uppercase block mb-1">Situação do Pagamento:</span>
+                  <div className="flex items-center space-x-3 mt-1">
+                    <label className="flex items-center space-x-1.5 cursor-pointer">
                       <input
                         type="radio"
                         name="status"
                         checked={payrollStatus === 'pendente'}
                         onChange={() => setPayrollStatus('pendente')}
-                        className="text-[#009688]"
+                        className="text-[#0963cb] focus:ring-[#0963cb] accent-[#0963cb] cursor-pointer"
                       />
-                      <span className="font-bold text-amber-600">A Pagar</span>
+                      <span className="font-bold text-amber-700">A Pagar</span>
                     </label>
-                    <label className="flex items-center space-x-1 cursor-pointer">
+                    <label className="flex items-center space-x-1.5 cursor-pointer">
                       <input
                         type="radio"
                         name="status"
                         checked={payrollStatus === 'pago'}
                         onChange={() => setPayrollStatus('pago')}
-                        className="text-[#009688]"
+                        className="text-[#0963cb] focus:ring-[#0963cb] accent-[#0963cb] cursor-pointer"
                       />
-                      <span className="font-bold text-emerald-600">Já Liquidado / Pago</span>
+                      <span className="font-bold text-emerald-700">Já Liquidado / Pago</span>
                     </label>
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <span className="text-[11px] font-bold text-stone-500 uppercase block">Salário Líquido</span>
-                  <span className="text-lg font-black text-[#009688]">
+                  <span className="text-[11px] font-bold text-black uppercase block">Salário Líquido</span>
+                  <span className="text-lg sm:text-xl font-black text-[#0963cb]">
                     {formatCurrencyBRL(calculatedModalNet)}
                   </span>
                 </div>
               </div>
 
-              {/* Observações */}
+              {/* Observações Internas (sem placeholder) */}
               <div>
-                <label className="block font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
+                <label className="block font-bold text-black mb-1">
                   Observações Internas (Opcional)
                 </label>
-                <input
-                  type="text"
-                  placeholder="Ex: Diárias extras da colheita no Talhão 02..."
+                <textarea
+                  rows={2}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full p-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 outline-none"
+                  className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black outline-none focus:ring-1 focus:ring-[#0963cb] resize-none"
                 />
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end space-x-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-black/15">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-3 py-1.5 rounded-lg border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-bold hover:bg-stone-100 dark:hover:bg-stone-800"
+                  className="px-4 py-2 rounded-lg bg-white border border-stone-300 text-stone-700 font-bold hover:bg-stone-50 cursor-pointer transition"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-lg bg-[#009688] hover:bg-[#00796b] text-white font-bold transition shadow-xs"
+                  className="px-5 py-2 rounded-lg bg-[#0963cb] hover:bg-[#0852a8] text-white font-bold transition shadow-xs cursor-pointer"
                 >
                   Salvar Folha
                 </button>

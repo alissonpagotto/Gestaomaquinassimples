@@ -954,30 +954,30 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
       {/* Modal Cadastro/Edição de Colaborador */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 no-print">
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl max-w-4xl w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[92vh]">
+          <div className="bg-[#b0d2ed] border border-[#0963cb]/30 rounded-2xl max-w-4xl w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[92vh]">
             
-            {/* Header - Solid Green Bar */}
-            <div className="px-5 py-3 bg-[#00897b] text-white flex items-center justify-between shrink-0">
+            {/* Header - Solid Blue Bar */}
+            <div className="px-5 py-3 bg-[#0963cb] text-white flex items-center justify-between shrink-0">
               <div className="flex items-center space-x-2">
-                <UserSquare2 className="w-5 h-5 text-white/90" />
-                <h3 className="text-base sm:text-lg font-bold tracking-tight">
+                <UserSquare2 className="w-5 h-5 text-white" />
+                <h3 className="text-base sm:text-lg font-bold tracking-tight text-white">
                   {editingEmployee ? 'Editar Cadastro de Funcionário' : 'Novo Cadastro de Funcionário'}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition cursor-pointer"
+                className="p-1 rounded-lg text-white hover:bg-white/20 transition cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5 text-white" />
               </button>
             </div>
 
             {/* Quick Action Highlight Banner: Imprimir Cadastro */}
-            <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800/60 px-5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
+            <div className="bg-amber-50 border-b border-amber-200 px-5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
               <div className="flex items-center space-x-2">
-                <Printer className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
-                <p className="text-xs text-amber-900 dark:text-amber-300 font-medium">
+                <Printer className="w-4 h-4 text-amber-700 shrink-0" />
+                <p className="text-xs text-amber-900 font-medium">
                   Pronto para colher assinatura física? Imprima a ficha A4 com termo de responsabilidade e dados cadastrais.
                 </p>
               </div>
@@ -991,13 +991,13 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="p-4 sm:p-6 space-y-6 overflow-y-auto flex-1 no-scrollbar bg-[#0a8bc1]">
+            <form onSubmit={handleSave} className="p-4 sm:p-6 space-y-6 overflow-y-auto flex-1 no-scrollbar bg-[#b0d2ed]">
               
               {/* SECTION 1: DADOS BÁSICOS & FOTO */}
               <div className="space-y-3">
-                <div className="flex items-center space-x-2 pb-1.5 border-b border-stone-200 dark:border-stone-800">
-                  <UserSquare2 className="w-4 h-4 text-[#00897b]" />
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800 dark:text-stone-200">
+                <div className="flex items-center space-x-2 pb-1.5 border-b border-black/15">
+                  <UserSquare2 className="w-4 h-4 text-black" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-black">
                     1. Dados Básicos do Funcionário
                   </h4>
                 </div>
@@ -1006,13 +1006,13 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start">
                   
                   {/* Photo Upload Thumbnail */}
-                  <div className="sm:col-span-3 flex flex-col items-center justify-center p-3 border border-dashed border-stone-300 dark:border-stone-700 rounded-xl bg-stone-50 dark:bg-stone-800/40 text-center">
+                  <div className="sm:col-span-3 flex flex-col items-center justify-center p-3 border border-dashed border-stone-300 rounded-xl bg-white text-center">
                     {photoUrl ? (
                       <div className="relative group">
                         <img 
                           src={photoUrl} 
                           alt="Foto Perfil" 
-                          className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-[#00897b] shadow-sm"
+                          className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-[#0963cb] shadow-sm"
                         />
                         <button
                           type="button"
@@ -1024,12 +1024,12 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                         </button>
                       </div>
                     ) : (
-                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-stone-200 dark:bg-stone-700 flex items-center justify-center text-stone-400">
+                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-stone-100 flex items-center justify-center text-stone-400">
                         <Camera className="w-8 h-8" />
                       </div>
                     )}
 
-                    <label className="mt-2.5 inline-flex items-center space-x-1 px-2.5 py-1 text-[11px] font-semibold text-[#00897b] bg-[#00897b]/10 hover:bg-[#00897b]/20 rounded-lg cursor-pointer transition">
+                    <label className="mt-2.5 inline-flex items-center space-x-1 px-2.5 py-1 text-[11px] font-semibold text-[#0963cb] bg-[#0963cb]/10 hover:bg-[#0963cb]/20 rounded-lg cursor-pointer transition">
                       <Camera className="w-3 h-3" />
                       <span>{photoUrl ? 'Alterar foto' : 'Upload de Foto'}</span>
                       <input 
@@ -1039,7 +1039,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                         onChange={handlePhotoUpload}
                       />
                     </label>
-                    <span className="text-[10px] text-stone-400 mt-1">JPG ou PNG até 5MB</span>
+                    <span className="text-[10px] text-stone-600 mt-1">JPG ou PNG até 5MB</span>
                   </div>
 
                   {/* Basic fields in grid */}
@@ -1052,76 +1052,72 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                         onChange={setRegistrationType}
                         options={regTypeOptions}
                         onOptionsChange={handleUpdateRegTypeOptions}
-                        placeholder="Selecione o tipo..."
+                        placeholder=""
                         newItemPlaceholder="Novo tipo..."
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 mb-1">
-                        Nome completo <span className="text-rose-500">*</span>
+                      <label className="block text-xs font-bold text-black mb-1">
+                        Nome completo <span className="text-rose-600">*</span>
                       </label>
                       <input
                         type="text"
                         required
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="Nome e Sobrenome completo"
-                        className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#00897b]"
+                        className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
                       />
                     </div>
 
                     {/* CPF & RG */}
                     <div>
-                      <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 mb-1">
+                      <label className="block text-xs font-bold text-black mb-1">
                         CPF
                       </label>
                       <input
                         type="text"
                         value={cpf}
                         onChange={(e) => setCpf(formatCpfCnpj(e.target.value))}
-                        placeholder="000.000.000-00"
                         maxLength={14}
-                        className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#00897b]"
+                        className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 mb-1">
+                      <label className="block text-xs font-bold text-black mb-1">
                         Número do RG
                       </label>
                       <input
                         type="text"
                         value={rg}
                         onChange={(e) => setRg(e.target.value)}
-                        placeholder="Ex: 00.000.000-0 SSP/UF"
-                        className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#00897b]"
+                        className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
                       />
                     </div>
 
                     {/* Data de Nascimento & PIS */}
                     <div>
-                      <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 mb-1">
+                      <label className="block text-xs font-bold text-black mb-1">
                         Data de Nascimento
                       </label>
                       <input
                         type="date"
                         value={birthDate}
                         onChange={(e) => setBirthDate(e.target.value)}
-                        className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#00897b]"
+                        className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 mb-1">
+                      <label className="block text-xs font-bold text-black mb-1">
                         Número do PIS / PASEP
                       </label>
                       <input
                         type="text"
                         value={pis}
                         onChange={(e) => setPis(e.target.value)}
-                        placeholder="000.00000.00-0"
-                        className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#00897b]"
+                        className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
                       />
                     </div>
                   </div>
@@ -1130,9 +1126,9 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
 
               {/* SECTION 2: DADOS PROFISSIONAIS & CONTRATUAIS */}
               <div className="space-y-3">
-                <div className="flex items-center space-x-2 pb-1.5 border-b border-stone-200 dark:border-stone-800">
-                  <Briefcase className="w-4 h-4 text-[#00897b]" />
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800 dark:text-stone-200">
+                <div className="flex items-center space-x-2 pb-1.5 border-b border-black/15">
+                  <Briefcase className="w-4 h-4 text-black" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-black">
                     2. Dados Profissionais & Contrato
                   </h4>
                 </div>
@@ -1146,27 +1142,26 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                       onChange={setRole}
                       options={roleOptions}
                       onOptionsChange={handleUpdateRoleOptions}
-                      placeholder="Selecione o cargo..."
+                      placeholder=""
                       newItemPlaceholder="Novo cargo..."
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 mb-1">
+                    <label className="block text-xs font-bold text-black mb-1">
                       Telefone / WhatsApp
                     </label>
                     <input
                       type="text"
                       value={phone}
                       onChange={(e) => setPhone(formatPhone(e.target.value))}
-                      placeholder="(00) 00000-0000"
                       maxLength={15}
-                      className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#00897b]"
+                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 mb-1">
+                    <label className="block text-xs font-bold text-black mb-1">
                       Salário Base (R$)
                     </label>
                     <input
@@ -1179,8 +1174,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                           setBaseSalary(formatCurrencyInputDisplay(parsed));
                         }
                       }}
-                      placeholder="0,00"
-                      className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#00897b]"
+                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
                     />
                   </div>
 
@@ -1191,33 +1185,33 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                       onChange={setContractType}
                       options={contractTypeOptions}
                       onOptionsChange={handleUpdateContractTypeOptions}
-                      placeholder="Selecione o regime..."
+                      placeholder=""
                       newItemPlaceholder="Novo regime..."
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 mb-1">
-                      Data de Admissão <span className="text-rose-500">*</span>
+                    <label className="block text-xs font-bold text-black mb-1">
+                      Data de Admissão <span className="text-rose-600">*</span>
                     </label>
                     <input
                       type="date"
                       required
                       value={admissionDate}
                       onChange={(e) => setAdmissionDate(e.target.value)}
-                      className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#00897b]"
+                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 mb-1">
+                    <label className="block text-xs font-bold text-black mb-1">
                       Data de Demissão
                     </label>
                     <input
                       type="date"
                       value={terminationDate}
                       onChange={(e) => setTerminationDate(e.target.value)}
-                      className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#00897b]"
+                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
                     />
                   </div>
                 </div>
@@ -1228,7 +1222,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                     onClick={() => setIsActive(!isActive)}
                     className={`
                       relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none
-                      ${isActive ? 'bg-[#00897b]' : 'bg-stone-300 dark:bg-stone-700'}
+                      ${isActive ? 'bg-[#0963cb]' : 'bg-stone-300'}
                     `}
                   >
                     <span
@@ -1238,21 +1232,21 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                       `}
                     />
                   </button>
-                  <span className="text-xs sm:text-sm font-semibold text-stone-800 dark:text-stone-200">
+                  <span className="text-xs sm:text-sm font-bold text-black">
                     Funcionário ativo no quadro de colaboradores
                   </span>
                 </div>
               </div>
 
               {/* SECTION 3: COMISSÃO */}
-              <div className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-[#fffdf5] dark:bg-amber-950/20 p-3 space-y-2">
+              <div className="rounded-xl border border-stone-300 bg-white/70 p-3 space-y-2">
                 <div className="flex items-center space-x-2.5">
                   <button
                     type="button"
                     onClick={() => setReceivesCommission(!receivesCommission)}
                     className={`
                       relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none
-                      ${receivesCommission ? 'bg-[#00897b]' : 'bg-stone-300 dark:bg-stone-700'}
+                      ${receivesCommission ? 'bg-[#0963cb]' : 'bg-stone-300'}
                     `}
                   >
                     <span
@@ -1262,14 +1256,14 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                       `}
                     />
                   </button>
-                  <span className="text-xs sm:text-sm font-bold text-[#b45309] dark:text-amber-400">
+                  <span className="text-xs sm:text-sm font-bold text-black">
                     Recebe comissão variável sobre produção
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-0.5">
                   <div>
-                    <label className="block text-[11px] font-semibold text-[#b45309] dark:text-amber-400 mb-1">
+                    <label className="block text-[11px] font-bold text-black mb-1">
                       Por hora (R$/h)
                     </label>
                     <input
@@ -1282,16 +1276,15 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                           setCommissionPerHour(formatCurrencyInputDisplay(parsed));
                         }
                       }}
-                      placeholder="0,00"
                       disabled={!receivesCommission}
-                      className={`w-full px-3 py-1.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#00897b] ${
-                        !receivesCommission ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''
+                      className={`w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb] ${
+                        !receivesCommission ? 'opacity-60 cursor-not-allowed bg-stone-100' : ''
                       }`}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-[#b45309] dark:text-amber-400 mb-1">
+                    <label className="block text-[11px] font-bold text-black mb-1">
                       Por alqueire (R$/alq)
                     </label>
                     <input
@@ -1304,16 +1297,15 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                           setCommissionPerAlqueire(formatCurrencyInputDisplay(parsed));
                         }
                       }}
-                      placeholder="0,00"
                       disabled={!receivesCommission}
-                      className={`w-full px-3 py-1.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#00897b] ${
-                        !receivesCommission ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''
+                      className={`w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb] ${
+                        !receivesCommission ? 'opacity-60 cursor-not-allowed bg-stone-100' : ''
                       }`}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-[#b45309] dark:text-amber-400 mb-1">
+                    <label className="block text-[11px] font-bold text-black mb-1">
                       Por hectare (R$/ha)
                     </label>
                     <input
@@ -1326,10 +1318,9 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                           setCommissionPerHectare(formatCurrencyInputDisplay(parsed));
                         }
                       }}
-                      placeholder="0,00"
                       disabled={!receivesCommission}
-                      className={`w-full px-3 py-1.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#00897b] ${
-                        !receivesCommission ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''
+                      className={`w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb] ${
+                        !receivesCommission ? 'opacity-60 cursor-not-allowed bg-stone-100' : ''
                       }`}
                     />
                   </div>
@@ -1337,43 +1328,42 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
               </div>
 
               {/* SECTION 4: CNH & MELHORAR CATEGORIA (DT) */}
-              <div className="border border-stone-200 dark:border-stone-800 rounded-xl overflow-hidden">
+              <div className="border border-stone-300 rounded-xl overflow-hidden bg-white/70">
                 <button
                   type="button"
                   onClick={() => setShowCnhFields(!showCnhFields)}
-                  className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800/60 flex items-center justify-between text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+                  className="w-full px-3.5 py-2.5 bg-white/80 flex items-center justify-between text-xs font-bold text-black hover:bg-white transition cursor-pointer"
                 >
                   <div className="flex items-center space-x-2">
-                    <CreditCard className="w-4 h-4 text-[#00897b]" />
+                    <CreditCard className="w-4 h-4 text-[#0963cb]" />
                     <span>Carteira de Habilitação (CNH) & Opção de Melhorar Categoria (DT)</span>
                   </div>
-                  {showCnhFields ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  {showCnhFields ? <ChevronUp className="w-4 h-4 text-black" /> : <ChevronDown className="w-4 h-4 text-black" />}
                 </button>
 
                 {showCnhFields && (
-                  <div className="p-4 bg-white dark:bg-stone-900 space-y-4 border-t border-stone-200 dark:border-stone-800 animate-fade-in">
+                  <div className="p-4 bg-white space-y-4 border-t border-stone-300 animate-fade-in">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-[10px] font-bold text-stone-600 dark:text-stone-400 uppercase tracking-wider mb-1">
+                        <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-1">
                           Nº CNH
                         </label>
                         <input
                           type="text"
                           value={cnhNumber}
                           onChange={(e) => setCnhNumber(e.target.value)}
-                          placeholder="00000000000"
-                          className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:ring-1 focus:ring-[#00897b]"
+                          className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-stone-600 dark:text-stone-400 uppercase tracking-wider mb-1">
+                        <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-1">
                           CATEGORIA CNH ATUAL
                         </label>
                         <select
                           value={cnhCategory}
                           onChange={(e) => setCnhCategory(e.target.value)}
-                          className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:ring-1 focus:ring-[#00897b]"
+                          className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
                         >
                           <option value="A">A (Moto / Veículo 2 rodas)</option>
                           <option value="B">B (Carro / Utilitário leve)</option>
@@ -1388,20 +1378,20 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-stone-600 dark:text-stone-400 uppercase tracking-wider mb-1">
+                        <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-1">
                           VALIDADE CNH
                         </label>
                         <input
                           type="date"
                           value={cnhExpiration}
                           onChange={(e) => setCnhExpiration(e.target.value)}
-                          className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:ring-1 focus:ring-[#00897b]"
+                          className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
                         />
                       </div>
                     </div>
 
                     {/* Sub-bloco: Melhorar categoria (DT) */}
-                    <div className="p-3 bg-sky-50/70 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900/40 rounded-xl space-y-2.5">
+                    <div className="p-3 bg-sky-50/80 border border-sky-200 rounded-xl space-y-2.5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <input
@@ -1409,27 +1399,27 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                             id="cnh-upgrade-checkbox"
                             checked={cnhUpgradeDT}
                             onChange={(e) => setCnhUpgradeDT(e.target.checked)}
-                            className="w-4 h-4 text-[#00897b] rounded border-stone-300 focus:ring-[#00897b] cursor-pointer"
+                            className="w-4 h-4 text-[#0963cb] rounded border-stone-300 focus:ring-[#0963cb] cursor-pointer"
                           />
-                          <label htmlFor="cnh-upgrade-checkbox" className="text-xs font-bold text-sky-900 dark:text-sky-300 cursor-pointer">
+                          <label htmlFor="cnh-upgrade-checkbox" className="text-xs font-bold text-black cursor-pointer">
                             Melhorar categoria (DT)
                           </label>
                         </div>
-                        <span className="text-[11px] text-sky-700 dark:text-sky-400 font-medium">
+                        <span className="text-[11px] text-sky-800 font-medium">
                           Incentivo de evolução / plano de habilitação
                         </span>
                       </div>
 
                       {cnhUpgradeDT && (
-                        <div className="pt-2 border-t border-sky-200 dark:border-sky-900/50 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fade-in">
+                        <div className="pt-2 border-t border-sky-200 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fade-in">
                           <div>
-                            <label className="block text-[10px] font-bold text-sky-950 dark:text-sky-300 uppercase tracking-wider mb-1">
+                            <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-1">
                               Categoria Alvo / Associação (DT):
                             </label>
                             <select
                               value={cnhUpgradeCategory}
                               onChange={(e) => setCnhUpgradeCategory(e.target.value)}
-                              className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-sky-300 dark:border-sky-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:ring-1 focus:ring-[#00897b]"
+                              className="w-full px-3 py-1.5 bg-white border border-sky-300 rounded-lg text-black text-xs focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
                             >
                               <option value="A">A (Habilitação para Motocicletas)</option>
                               <option value="A + C">A + C (Moto + Caminhão)</option>
@@ -1441,7 +1431,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                               <option value="Outra Associação">Outra Associação Personalizada</option>
                             </select>
                           </div>
-                          <div className="flex items-center text-[11px] text-sky-800 dark:text-sky-300 pt-3">
+                          <div className="flex items-center text-[11px] text-stone-700 pt-3">
                             Indica que o colaborador está em processo de alteração ou evolução de categoria junto ao DETRAN.
                           </div>
                         </div>
@@ -1453,63 +1443,59 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
 
               {/* SECTION 5: INFORMAÇÕES DE PAGAMENTO / RECEBIMENTO */}
               <div className="space-y-3">
-                <div className="flex items-center space-x-2 pb-1.5 border-b border-stone-200 dark:border-stone-800">
-                  <Building2 className="w-4 h-4 text-[#00897b]" />
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800 dark:text-stone-200">
+                <div className="flex items-center space-x-2 pb-1.5 border-b border-black/15">
+                  <Building2 className="w-4 h-4 text-black" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-black">
                     3. Informações de Pagamento / Recebimento
                   </h4>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 mb-1">
+                    <label className="block text-xs font-bold text-black mb-1">
                       Local de Recebimento
                     </label>
                     <input
                       type="text"
                       value={paymentLocation}
                       onChange={(e) => setPaymentLocation(e.target.value)}
-                      placeholder="Ex: Conta Bancária / Sede / Fazenda"
-                      className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#00897b]"
+                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 mb-1">
+                    <label className="block text-xs font-bold text-black mb-1">
                       Banco / Chave PIX
                     </label>
                     <input
                       type="text"
                       value={bankPixKey}
                       onChange={(e) => setBankPixKey(e.target.value)}
-                      placeholder="Ex: Banco do Brasil / PIX CPF"
-                      className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#00897b]"
+                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 mb-1">
+                    <label className="block text-xs font-bold text-black mb-1">
                       Agência (Ag.)
                     </label>
                     <input
                       type="text"
                       value={bankAgency}
                       onChange={(e) => setBankAgency(e.target.value)}
-                      placeholder="0000-0"
-                      className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#00897b]"
+                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-stone-900 dark:text-stone-100 mb-1">
+                    <label className="block text-xs font-bold text-black mb-1">
                       Conta Corrente (C.C.)
                     </label>
                     <input
                       type="text"
                       value={bankAccount}
                       onChange={(e) => setBankAccount(e.target.value)}
-                      placeholder="00000-0"
-                      className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#00897b]"
+                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
                     />
                   </div>
                 </div>
@@ -1517,9 +1503,9 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
 
               {/* SECTION 6: ANEXOS & ARQUIVOS DE RETORNO (PDF/IMAGEM) */}
               <div className="space-y-3">
-                <div className="flex items-center space-x-2 pb-1.5 border-b border-stone-200 dark:border-stone-800">
-                  <Paperclip className="w-4 h-4 text-[#00897b]" />
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800 dark:text-stone-200">
+                <div className="flex items-center space-x-2 pb-1.5 border-b border-black/15">
+                  <Paperclip className="w-4 h-4 text-black" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-black">
                     4. Anexos & Documentos de Retorno (PDF / Imagem)
                   </h4>
                 </div>
@@ -1527,31 +1513,31 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   
                   {/* Item 1: Exame Admissional */}
-                  <div className="p-3 border border-stone-200 dark:border-stone-800 rounded-xl bg-stone-50/50 dark:bg-stone-800/30 flex flex-col justify-between space-y-2">
+                  <div className="p-3 border border-stone-300 rounded-xl bg-white flex flex-col justify-between space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <FileText className="w-4 h-4 text-stone-500" />
-                        <span className="text-xs font-bold text-stone-800 dark:text-stone-200">
+                        <FileText className="w-4 h-4 text-stone-600" />
+                        <span className="text-xs font-bold text-black">
                           Exame Admissional (ASO)
                         </span>
                       </div>
                       {admissionExamDoc && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                           <CheckCircle2 className="w-3 h-3 mr-1" /> Anexado
                         </span>
                       )}
                     </div>
 
                     {admissionExamDoc ? (
-                      <div className="flex items-center justify-between text-xs bg-white dark:bg-stone-800 p-2 rounded-lg border border-stone-200 dark:border-stone-700">
-                        <span className="truncate max-w-[180px] font-medium text-stone-700 dark:text-stone-300" title={admissionExamDoc.name}>
+                      <div className="flex items-center justify-between text-xs bg-stone-50 p-2 rounded-lg border border-stone-200">
+                        <span className="truncate max-w-[180px] font-medium text-stone-700" title={admissionExamDoc.name}>
                           {admissionExamDoc.name}
                         </span>
                         <div className="flex items-center space-x-2 shrink-0">
                           <a 
                             href={admissionExamDoc.fileData} 
                             download={admissionExamDoc.name} 
-                            className="text-[#00897b] hover:underline flex items-center text-[11px]"
+                            className="text-[#0963cb] hover:underline flex items-center text-[11px]"
                           >
                             <Download className="w-3.5 h-3.5 mr-0.5" /> Baixar
                           </a>
@@ -1566,7 +1552,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                         </div>
                       </div>
                     ) : (
-                      <label className="flex items-center justify-center space-x-2 px-3 py-2 border border-dashed border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 cursor-pointer transition">
+                      <label className="flex items-center justify-center space-x-2 px-3 py-2 border border-dashed border-stone-300 rounded-lg text-xs font-semibold text-stone-700 hover:bg-stone-50 cursor-pointer transition">
                         <UploadCloud className="w-4 h-4 text-stone-500" />
                         <span>Upload ASO (PDF ou Imagem)</span>
                         <input
@@ -1580,31 +1566,31 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                   </div>
 
                   {/* Item 2: Contrato de Experiência */}
-                  <div className="p-3 border border-stone-200 dark:border-stone-800 rounded-xl bg-stone-50/50 dark:bg-stone-800/30 flex flex-col justify-between space-y-2">
+                  <div className="p-3 border border-stone-300 rounded-xl bg-white flex flex-col justify-between space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <FileText className="w-4 h-4 text-stone-500" />
-                        <span className="text-xs font-bold text-stone-800 dark:text-stone-200">
+                        <FileText className="w-4 h-4 text-stone-600" />
+                        <span className="text-xs font-bold text-black">
                           Contrato de Experiência
                         </span>
                       </div>
                       {experienceContractDoc && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                           <CheckCircle2 className="w-3 h-3 mr-1" /> Anexado
                         </span>
                       )}
                     </div>
 
                     {experienceContractDoc ? (
-                      <div className="flex items-center justify-between text-xs bg-white dark:bg-stone-800 p-2 rounded-lg border border-stone-200 dark:border-stone-700">
-                        <span className="truncate max-w-[180px] font-medium text-stone-700 dark:text-stone-300" title={experienceContractDoc.name}>
+                      <div className="flex items-center justify-between text-xs bg-stone-50 p-2 rounded-lg border border-stone-200">
+                        <span className="truncate max-w-[180px] font-medium text-stone-700" title={experienceContractDoc.name}>
                           {experienceContractDoc.name}
                         </span>
                         <div className="flex items-center space-x-2 shrink-0">
                           <a 
                             href={experienceContractDoc.fileData} 
                             download={experienceContractDoc.name} 
-                            className="text-[#00897b] hover:underline flex items-center text-[11px]"
+                            className="text-[#0963cb] hover:underline flex items-center text-[11px]"
                           >
                             <Download className="w-3.5 h-3.5 mr-0.5" /> Baixar
                           </a>
@@ -1619,7 +1605,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                         </div>
                       </div>
                     ) : (
-                      <label className="flex items-center justify-center space-x-2 px-3 py-2 border border-dashed border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 cursor-pointer transition">
+                      <label className="flex items-center justify-center space-x-2 px-3 py-2 border border-dashed border-stone-300 rounded-lg text-xs font-semibold text-stone-700 hover:bg-stone-50 cursor-pointer transition">
                         <UploadCloud className="w-4 h-4 text-stone-500" />
                         <span>Upload Contrato (PDF ou Imagem)</span>
                         <input
@@ -1633,31 +1619,31 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                   </div>
 
                   {/* Item 3: Documentos Gerais (RE + CNH) */}
-                  <div className="p-3 border border-stone-200 dark:border-stone-800 rounded-xl bg-stone-50/50 dark:bg-stone-800/30 flex flex-col justify-between space-y-2">
+                  <div className="p-3 border border-stone-300 rounded-xl bg-white flex flex-col justify-between space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <FileText className="w-4 h-4 text-stone-500" />
-                        <span className="text-xs font-bold text-stone-800 dark:text-stone-200">
+                        <FileText className="w-4 h-4 text-stone-600" />
+                        <span className="text-xs font-bold text-black">
                           Documentos Gerais (RE + CNH)
                         </span>
                       </div>
                       {generalDocs && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                           <CheckCircle2 className="w-3 h-3 mr-1" /> Anexado
                         </span>
                       )}
                     </div>
 
                     {generalDocs ? (
-                      <div className="flex items-center justify-between text-xs bg-white dark:bg-stone-800 p-2 rounded-lg border border-stone-200 dark:border-stone-700">
-                        <span className="truncate max-w-[180px] font-medium text-stone-700 dark:text-stone-300" title={generalDocs.name}>
+                      <div className="flex items-center justify-between text-xs bg-stone-50 p-2 rounded-lg border border-stone-200">
+                        <span className="truncate max-w-[180px] font-medium text-stone-700" title={generalDocs.name}>
                           {generalDocs.name}
                         </span>
                         <div className="flex items-center space-x-2 shrink-0">
                           <a 
                             href={generalDocs.fileData} 
                             download={generalDocs.name} 
-                            className="text-[#00897b] hover:underline flex items-center text-[11px]"
+                            className="text-[#0963cb] hover:underline flex items-center text-[11px]"
                           >
                             <Download className="w-3.5 h-3.5 mr-0.5" /> Baixar
                           </a>
@@ -1672,7 +1658,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                         </div>
                       </div>
                     ) : (
-                      <label className="flex items-center justify-center space-x-2 px-3 py-2 border border-dashed border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 cursor-pointer transition">
+                      <label className="flex items-center justify-center space-x-2 px-3 py-2 border border-dashed border-stone-300 rounded-lg text-xs font-semibold text-stone-700 hover:bg-stone-50 cursor-pointer transition">
                         <UploadCloud className="w-4 h-4 text-stone-500" />
                         <span>Upload RE + CNH (PDF ou Imagem)</span>
                         <input
@@ -1686,31 +1672,31 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                   </div>
 
                   {/* Item 4: Upload do Cadastro Assinado (Retorno) */}
-                  <div className="p-3 border border-stone-200 dark:border-stone-800 rounded-xl bg-stone-50/50 dark:bg-stone-800/30 flex flex-col justify-between space-y-2">
+                  <div className="p-3 border border-stone-300 rounded-xl bg-white flex flex-col justify-between space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <FileCheck className="w-4 h-4 text-[#00897b]" />
-                        <span className="text-xs font-bold text-stone-800 dark:text-stone-200">
+                        <FileCheck className="w-4 h-4 text-[#0963cb]" />
+                        <span className="text-xs font-bold text-black">
                           Ficha Cadastral Assinada (Retorno)
                         </span>
                       </div>
                       {signedRegistrationDoc && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                           <CheckCircle2 className="w-3 h-3 mr-1" /> Anexado
                         </span>
                       )}
                     </div>
 
                     {signedRegistrationDoc ? (
-                      <div className="flex items-center justify-between text-xs bg-white dark:bg-stone-800 p-2 rounded-lg border border-stone-200 dark:border-stone-700">
-                        <span className="truncate max-w-[180px] font-medium text-stone-700 dark:text-stone-300" title={signedRegistrationDoc.name}>
+                      <div className="flex items-center justify-between text-xs bg-stone-50 p-2 rounded-lg border border-stone-200">
+                        <span className="truncate max-w-[180px] font-medium text-stone-700" title={signedRegistrationDoc.name}>
                           {signedRegistrationDoc.name}
                         </span>
                         <div className="flex items-center space-x-2 shrink-0">
                           <a 
                             href={signedRegistrationDoc.fileData} 
                             download={signedRegistrationDoc.name} 
-                            className="text-[#00897b] hover:underline flex items-center text-[11px]"
+                            className="text-[#0963cb] hover:underline flex items-center text-[11px]"
                           >
                             <Download className="w-3.5 h-3.5 mr-0.5" /> Baixar
                           </a>
@@ -1725,8 +1711,8 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                         </div>
                       </div>
                     ) : (
-                      <label className="flex items-center justify-center space-x-2 px-3 py-2 border border-dashed border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 cursor-pointer transition">
-                        <UploadCloud className="w-4 h-4 text-[#00897b]" />
+                      <label className="flex items-center justify-center space-x-2 px-3 py-2 border border-dashed border-stone-300 rounded-lg text-xs font-semibold text-stone-700 hover:bg-stone-50 cursor-pointer transition">
+                        <UploadCloud className="w-4 h-4 text-[#0963cb]" />
                         <span>Upload Ficha Assinada Digitalizada</span>
                         <input
                           type="file"
@@ -1742,11 +1728,11 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
               </div>
 
               {/* Modal Footer */}
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-stone-100 dark:border-stone-800">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-black/15">
                 <button
                   type="button"
                   onClick={handlePrintCurrentModalEmployee}
-                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 py-2 rounded-lg border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-xs font-bold transition cursor-pointer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 py-2 rounded-lg border border-amber-400 text-amber-900 bg-amber-100 hover:bg-amber-200 text-xs font-bold transition cursor-pointer"
                 >
                   <Printer className="w-4 h-4" />
                   <span>Imprimir cadastro do funcionário para assinatura</span>
@@ -1756,13 +1742,13 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-5 py-2 rounded-lg border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs sm:text-sm font-semibold hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+                    className="px-5 py-2 rounded-lg border border-stone-300 text-stone-700 bg-white hover:bg-stone-50 text-xs sm:text-sm font-semibold transition cursor-pointer"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 rounded-lg bg-[#00897b] hover:bg-[#00796b] text-white text-xs sm:text-sm font-bold shadow-xs transition active:scale-95 cursor-pointer"
+                    className="px-6 py-2 rounded-lg bg-[#0963cb] hover:bg-[#0852a8] text-white text-xs sm:text-sm font-bold shadow-xs transition active:scale-95 cursor-pointer"
                   >
                     {editingEmployee ? 'Salvar Alterações' : 'Cadastrar Colaborador'}
                   </button>
