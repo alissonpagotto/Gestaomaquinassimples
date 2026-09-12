@@ -55,6 +55,7 @@ import {
   generateVehicleHistoryPrintHtml 
 } from './vehiclePrintTemplates';
 import { IpvaInstallmentsModal, IpvaInstallmentRow } from './IpvaInstallmentsModal';
+import { LicensingLaunchModal, LicensingLaunchData } from './LicensingLaunchModal';
 
 interface VehicleModalProps {
   isOpen: boolean;
@@ -181,6 +182,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
   const [isLaunchingIpva, setIsLaunchingIpva] = useState(false);
   const [isLaunchingLicensing, setIsLaunchingLicensing] = useState(false);
   const [isIpvaInstallmentsModalOpen, setIsIpvaInstallmentsModalOpen] = useState(false);
+  const [isLicensingLaunchModalOpen, setIsLicensingLaunchModalOpen] = useState(false);
 
   // Computed IPVA Total
   const computedIpvaTotal = useMemo(() => {
@@ -713,15 +715,15 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     setTimeout(() => setIsLaunchingIpva(false), 3000);
   };
 
-  // Launch Licensing directly into Contas a Pagar
+  // Abrir modal de confirmação para Lançamento do Licenciamento (CRLV)
   const handleLaunchLicensing = () => {
+    setIsLicensingLaunchModalOpen(true);
+  };
+
+  // Gravar Lançamento do Licenciamento diretamente no Contas a Pagar
+  const handleConfirmLicensing = (data: LicensingLaunchData) => {
     if (!onAddExpense) {
       alert('Módulo financeiro indisponível para lançamento direto.');
-      return;
-    }
-    const val = desformatarMoeda(licensingValue);
-    if (val <= 0) {
-      alert('Informe o valor da Taxa de Licenciamento Anual antes de lançar.');
       return;
     }
 
@@ -731,28 +733,31 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     const currentYear = year ? parseInt(year, 10) : today.getFullYear();
     const vehicleId = editingVehicle?.id || `veh_${Date.now()}`;
 
-    // Due date in 30 days
-    const targetDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
-    const yyyy = targetDate.getFullYear();
-    const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
-    const dd = String(targetDate.getDate()).padStart(2, '0');
-    const dueDate = `${yyyy}-${mm}-${dd}`;
+    let notesText = data.observations?.trim() || `Taxa anual de licenciamento CRLV exercício ${currentYear} para o veículo ${vName} (${vIdentifier}).`;
+    if (data.interestAmount > 0) {
+      notesText += ` (Valor Base: R$ ${data.baseAmount.toFixed(2)} + Juros/Encargos: R$ ${data.interestAmount.toFixed(2)} = Total: R$ ${data.totalAmount.toFixed(2)})`;
+    }
 
     onAddExpense({
       description: `Taxa de Licenciamento Anual ${currentYear} - ${vName} (${vIdentifier})`,
-      amount: val,
+      amount: data.totalAmount,
       category: 'Licenciamento / Taxas Detran',
-      dueDate,
+      dueDate: data.dueDate,
       status: 'pendente',
       paymentMethod: 'boleto',
       supplier: 'Detran - Departamento Estadual de Trânsito',
       machineryId: vehicleId,
       machineryName: vName,
-      notes: `Taxa anual de licenciamento CRLV exercício ${currentYear} para o veículo ${vName} (Placa/Identificador: ${vIdentifier}).`,
+      notes: notesText,
     });
 
+    // Atualiza estado instantâneo para verde de sucesso
     setLicensingFinancialStatus('lancado');
-    setLicensingLastLaunchDate(today.toISOString().split('T')[0]);
+    const todayStr = today.toISOString().split('T')[0];
+    setLicensingLastLaunchDate(todayStr);
+    if (data.baseAmount > 0) {
+      setLicensingValue(formatarMoeda(Math.round(data.baseAmount * 100)));
+    }
     setIsLaunchingLicensing(true);
     setTimeout(() => setIsLaunchingLicensing(false), 3000);
   };
@@ -1857,16 +1862,25 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                     Taxa Anual CRLV
                   </span>
                   {licensingFinancialStatus === 'lancado' ? (
-                    <div className="h-[38px] px-3 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center justify-center space-x-1.5 text-emerald-800 text-xs font-black">
-                      <CheckCircle className="w-4 h-4 text-emerald-600" />
-                      <span>Licenciamento Lançado</span>
+                    <div className="h-[38px] px-2.5 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center justify-between gap-1 text-emerald-800 text-xs font-black">
+                      <div className="flex items-center space-x-1 truncate">
+                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="truncate">✓ Licenciamento Lançado</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleLaunchLicensing}
+                        className="px-2 py-1 bg-white hover:bg-emerald-100 border border-emerald-300 rounded-lg text-[10px] font-bold text-emerald-900 transition cursor-pointer shrink-0 shadow-2xs"
+                        title="Ver dados do licenciamento ou lançar novamente"
+                      >
+                        Ver / Gerar
+                      </button>
                     </div>
                   ) : (
                     <button
                       type="button"
                       onClick={handleLaunchLicensing}
-                      disabled={!licensingValue || parseFloat(licensingValue) <= 0}
-                      className="h-[38px] px-3 rounded-xl border border-stone-300 bg-white hover:bg-[#b0d2ed] text-[#000000] text-xs font-bold transition flex items-center justify-center space-x-1.5 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="h-[38px] px-3 rounded-xl border border-stone-300 bg-white hover:bg-[#b0d2ed] text-[#000000] text-xs font-bold transition flex items-center justify-center space-x-1.5 shadow-xs cursor-pointer"
                     >
                       <DollarSign className="w-4 h-4 text-[#000000]" />
                       <span>💰 Lançar Licenciamento</span>
@@ -2130,6 +2144,17 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
         initialInstallmentsCount={Math.max(1, parseInt(ipvaInstallmentsCount, 10) || 1)}
         year={year || new Date().getFullYear()}
         onConfirmAndSave={handleConfirmIpvaInstallments}
+      />
+
+      {/* Modal de Confirmação e Lançamento do Licenciamento CRLV */}
+      <LicensingLaunchModal
+        isOpen={isLicensingLaunchModalOpen}
+        onClose={() => setIsLicensingLaunchModalOpen(false)}
+        vehicleName={`${brand.trim() || 'Veículo'} ${model.trim() || plate.trim() || 'Frota'}`.trim()}
+        vehicleIdentifier={(plate.trim() || serialNumber.trim() || fleetNumber.trim() || 'S/N').toUpperCase()}
+        baseValue={licensingValue ? desformatarMoeda(licensingValue) : 0}
+        year={year || new Date().getFullYear()}
+        onConfirmAndSave={handleConfirmLicensing}
       />
     </div>
   );
