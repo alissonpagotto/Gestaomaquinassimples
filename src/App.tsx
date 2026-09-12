@@ -103,6 +103,7 @@ import { QuickMemoModal } from './components/quick/QuickMemoModal';
 import { TrialInfoModal } from './components/quick/TrialInfoModal';
 import { LovableIntegrationModal } from './components/integration/LovableIntegrationModal';
 import { CustomizeShortcutsModal, DEFAULT_SHORTCUT_IDS } from './components/layout/CustomizeShortcutsModal';
+import { ReorderMenuModal, ALL_MENU_ITEMS, DEFAULT_MENU_ORDER } from './components/layout/ReorderMenuModal';
 import { PublicClientForm } from './components/crm/PublicClientForm';
 import { PublicSupplierForm } from './components/suppliers/PublicSupplierForm';
 import { useAuth } from './context/AuthContext';
@@ -153,6 +154,51 @@ export default function App() {
     setSelectedShortcuts(newShortcuts);
     try {
       localStorage.setItem('silagem_facil_shortcuts', JSON.stringify(newShortcuts));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Sidebar menu order state
+  const [menuOrder, setMenuOrder] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('silagem_facil_sidebar_order');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const valid = parsed.filter(id => ALL_MENU_ITEMS.some(m => m.id === id));
+          if (!valid.includes('venda')) {
+            const servIndex = valid.indexOf('servicos');
+            if (servIndex !== -1) {
+              valid.splice(servIndex + 1, 0, 'venda');
+            } else {
+              valid.push('venda');
+            }
+          }
+          if (!valid.includes('fiscal')) {
+            const finIndex = valid.indexOf('financeiro');
+            if (finIndex !== -1) {
+              valid.splice(finIndex + 1, 0, 'fiscal');
+            } else {
+              valid.push('fiscal');
+            }
+          }
+          const missing = ALL_MENU_ITEMS.filter(m => !valid.includes(m.id)).map(m => m.id);
+          return [...valid, ...missing];
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return DEFAULT_MENU_ORDER;
+  });
+  const [isReorderMenuOpen, setIsReorderMenuOpen] = useState(false);
+
+  const handleSaveMenuOrder = (newOrder: string[]) => {
+    setMenuOrder(newOrder);
+    try {
+      localStorage.setItem('silagem_facil_sidebar_order', JSON.stringify(newOrder));
+      window.dispatchEvent(new CustomEvent('silagem_sidebar_order_changed', { detail: newOrder }));
     } catch (e) {
       console.error(e);
     }
@@ -569,7 +615,7 @@ export default function App() {
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
         companyProfile={companyProfile}
-        onOpenCustomizeShortcuts={() => setIsCustomizeShortcutsOpen(true)}
+        menuOrder={menuOrder}
       />
 
       {/* Backdrop for mobile sidebar */}
@@ -868,6 +914,8 @@ export default function App() {
               onOpenIntegrationModal={() => setIsIntegrationModalOpen(true)}
               onResetAllData={handleResetAllData}
               onSyncSupabase={handleSyncSupabase}
+              onOpenCustomizeShortcuts={() => setIsCustomizeShortcutsOpen(true)}
+              onOpenReorderMenu={() => setIsReorderMenuOpen(true)}
             />
           )}
 
@@ -969,6 +1017,14 @@ export default function App() {
         onClose={() => setIsCustomizeShortcutsOpen(false)}
         selectedShortcuts={selectedShortcuts}
         onSave={handleSaveShortcuts}
+      />
+
+      {/* Modal de Organizar Ordem do Menu Lateral */}
+      <ReorderMenuModal
+        isOpen={isReorderMenuOpen}
+        onClose={() => setIsReorderMenuOpen(false)}
+        currentOrder={menuOrder}
+        onSaveOrder={handleSaveMenuOrder}
       />
 
     </div>

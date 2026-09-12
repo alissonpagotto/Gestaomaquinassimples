@@ -2,13 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { 
   LogOut,
   ChevronRight,
-  Sprout,
-  SlidersHorizontal,
-  ArrowUpDown
+  Sprout
 } from 'lucide-react';
 import { CompanyProfile } from '../../types';
 import { 
-  ReorderMenuModal, 
   ALL_MENU_ITEMS, 
   DEFAULT_MENU_ORDER, 
   MenuItemDef 
@@ -20,6 +17,7 @@ export interface SidebarProps {
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
   companyProfile?: CompanyProfile;
+  menuOrder?: string[];
   onOpenCustomizeShortcuts?: () => void;
 }
 
@@ -29,10 +27,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile,
   onCloseMobile,
   companyProfile,
-  onOpenCustomizeShortcuts,
+  menuOrder: propMenuOrder,
 }) => {
-  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
   const [menuOrder, setMenuOrder] = useState<string[]>(() => {
+    if (propMenuOrder && propMenuOrder.length > 0) {
+      return propMenuOrder;
+    }
     try {
       const saved = localStorage.getItem('silagem_facil_sidebar_order');
       if (saved) {
@@ -66,14 +66,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return DEFAULT_MENU_ORDER;
   });
 
-  const handleSaveOrder = (newOrder: string[]) => {
-    setMenuOrder(newOrder);
-    try {
-      localStorage.setItem('silagem_facil_sidebar_order', JSON.stringify(newOrder));
-    } catch (e) {
-      console.error(e);
+  useEffect(() => {
+    if (propMenuOrder && propMenuOrder.length > 0) {
+      setMenuOrder(propMenuOrder);
     }
-  };
+  }, [propMenuOrder]);
+
+  useEffect(() => {
+    const handleOrderSync = (e: any) => {
+      if (e.detail && Array.isArray(e.detail)) {
+        setMenuOrder(e.detail);
+      } else {
+        try {
+          const saved = localStorage.getItem('silagem_facil_sidebar_order');
+          if (saved) setMenuOrder(JSON.parse(saved));
+        } catch (err) {}
+      }
+    };
+    window.addEventListener('silagem_sidebar_order_changed', handleOrderSync);
+    window.addEventListener('storage', handleOrderSync);
+    return () => {
+      window.removeEventListener('silagem_sidebar_order_changed', handleOrderSync);
+      window.removeEventListener('storage', handleOrderSync);
+    };
+  }, []);
 
   const handleSelect = (tabId: string) => {
     setActiveTab(tabId);
@@ -81,7 +97,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   // Build sorted navigation list
-  const navItems: MenuItemDef[] = menuOrder
+  const currentOrder = propMenuOrder || menuOrder;
+  const navItems: MenuItemDef[] = currentOrder
     .map(id => ALL_MENU_ITEMS.find(m => m.id === id))
     .filter((item): item is MenuItemDef => Boolean(item));
 
@@ -123,19 +140,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
 
-          {/* Navigation Section Header with Organize Button */}
-          <div className="px-4 pt-3 pb-1 flex items-center justify-between text-[11px] font-black text-black dark:text-stone-400 uppercase tracking-wider">
+          {/* Navigation Section Header */}
+          <div className="px-4 pt-3 pb-1 text-[11px] font-black text-black dark:text-stone-400 uppercase tracking-wider">
             <span style={{ color: '#000000' }} className="text-black">MENU PRINCIPAL</span>
-            <button
-              type="button"
-              id="btn-sidebar-organize-menu"
-              onClick={() => setIsReorderModalOpen(true)}
-              className="inline-flex items-center space-x-1 text-[10px] font-bold text-black dark:text-stone-300 hover:text-white hover:bg-blue-600/30 px-1.5 py-0.5 rounded-md transition cursor-pointer"
-              title="Personalizar ordem do menu"
-            >
-              <ArrowUpDown style={{ color: '#000000' }} className="w-3 h-3 text-black dark:text-stone-300" />
-              <span style={{ color: '#000000' }} className="text-black">Organizar</span>
-            </button>
           </div>
 
           {/* Navigation List */}
@@ -191,29 +198,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         </div>
 
-        {/* Bottom Section: Organize Shortcut, Customize Topbar & Logout */}
-        <div className="p-3 border-t border-blue-600/40 dark:border-stone-800 space-y-1 bg-blue-700 dark:bg-stone-900">
-          {onOpenCustomizeShortcuts && (
-            <button
-              type="button"
-              id="btn-sidebar-customize-shortcuts"
-              onClick={onOpenCustomizeShortcuts}
-              className="w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-semibold text-black dark:text-stone-300 hover:bg-blue-600/30 hover:text-white dark:hover:bg-stone-800 dark:hover:text-white transition cursor-pointer"
-            >
-              <SlidersHorizontal style={{ color: '#000000' }} className="w-4 h-4 text-black dark:text-stone-300" />
-              <span style={{ color: '#000000' }} className="text-black">Personalizar Atalhos do Topo</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setIsReorderModalOpen(true)}
-            className="w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-semibold text-black dark:text-stone-300 hover:bg-blue-600/30 hover:text-white dark:hover:bg-stone-800 dark:hover:text-white transition cursor-pointer"
-          >
-            <SlidersHorizontal style={{ color: '#000000' }} className="w-4 h-4 text-black dark:text-stone-300" />
-            <span style={{ color: '#000000' }} className="text-black">Organizar Ordem do Menu</span>
-          </button>
-
+        {/* Bottom Section: Logout */}
+        <div className="p-3 border-t border-blue-600/40 dark:border-stone-800 bg-blue-700 dark:bg-stone-900">
           <button
             id="btn-sidebar-logout"
             onClick={() => {
@@ -230,14 +216,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
       </aside>
-
-      {/* Modal de Reorganização do Menu */}
-      <ReorderMenuModal
-        isOpen={isReorderModalOpen}
-        onClose={() => setIsReorderModalOpen(false)}
-        currentOrder={menuOrder}
-        onSaveOrder={handleSaveOrder}
-      />
     </>
   );
 };

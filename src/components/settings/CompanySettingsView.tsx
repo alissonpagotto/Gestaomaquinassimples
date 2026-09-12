@@ -15,6 +15,7 @@ import {
   Loader2,
   Sparkles,
   SlidersHorizontal,
+  ArrowUpDown,
   Database,
   Trash2,
   Cloud,
@@ -50,6 +51,8 @@ interface CompanySettingsViewProps {
   onOpenIntegrationModal?: () => void;
   onResetAllData?: () => void;
   onSyncSupabase?: () => Promise<void>;
+  onOpenCustomizeShortcuts?: () => void;
+  onOpenReorderMenu?: () => void;
 }
 
 export const CompanySettingsView: React.FC<CompanySettingsViewProps> = ({
@@ -61,6 +64,8 @@ export const CompanySettingsView: React.FC<CompanySettingsViewProps> = ({
   onOpenIntegrationModal,
   onResetAllData,
   onSyncSupabase,
+  onOpenCustomizeShortcuts,
+  onOpenReorderMenu,
 }) => {
   const { currentUser, isConnectedToSupabase, isConfigured, isSyncing, lastSyncedAt, signIn } = useAuth();
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
@@ -289,7 +294,33 @@ export const CompanySettingsView: React.FC<CompanySettingsViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {onOpenCustomizeShortcuts && (
+            <button
+              type="button"
+              id="btn-settings-customize-shortcuts"
+              onClick={onOpenCustomizeShortcuts}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-[#b0d2ed] hover:bg-[#9cc4e4] text-black rounded-xl text-xs font-bold border border-[#0963cb]/30 shadow-xs transition cursor-pointer"
+              title="Personalizar Atalhos Rápidos da Barra Superior"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-black" />
+              <span className="text-black font-bold">Personalizar Atalhos</span>
+            </button>
+          )}
+
+          {onOpenReorderMenu && (
+            <button
+              type="button"
+              id="btn-settings-organize-menu"
+              onClick={onOpenReorderMenu}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-[#b0d2ed] hover:bg-[#9cc4e4] text-black rounded-xl text-xs font-bold border border-[#0963cb]/30 shadow-xs transition cursor-pointer"
+              title="Personalizar Ordem do Menu Lateral"
+            >
+              <ArrowUpDown className="w-3.5 h-3.5 text-black" />
+              <span className="text-black font-bold">Organizar Menu</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setIsTestPrintOpen(true)}
@@ -745,6 +776,71 @@ export const CompanySettingsView: React.FC<CompanySettingsViewProps> = ({
                 placeholder="Ex: 57.872.222/0001-22"
                 className="w-full px-3 py-1.5 bg-white/90 dark:bg-stone-800/80 border border-slate-300 dark:border-stone-700 rounded-xl text-xs text-black dark:text-stone-100 font-bold focus:ring-2 focus:ring-cyan-500 focus:outline-hidden transition"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* BLOCO 5: Personalização da Interface & Navegação */}
+        <div className="crm-card bg-[#87AFE3] dark:bg-stone-900 rounded-2xl border border-slate-400 dark:border-stone-800 p-4 shadow-xs text-black dark:text-white">
+          <div className="flex items-center justify-between mb-3 border-b border-slate-400/60 dark:border-stone-800 pb-2">
+            <div className="flex items-center space-x-2 text-black dark:text-cyan-400">
+              <SlidersHorizontal className="w-4 h-4 text-black dark:text-cyan-400" />
+              <h2 className="text-xs font-black uppercase tracking-wider">
+                5. PERSONALIZAÇÃO DA INTERFACE &amp; NAVEGAÇÃO
+              </h2>
+            </div>
+            <span className="text-[10px] font-black text-black dark:text-cyan-300 bg-white/80 dark:bg-cyan-950/60 px-2.5 py-0.5 rounded-full border border-slate-300 dark:border-cyan-800">
+              Ajustes de Navegação
+            </span>
+          </div>
+
+          <p className="text-xs text-black font-semibold mb-3">
+            Configure a disposição dos módulos e atalhos rápidos do sistema para acelerar a sua rotina operacional:
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Card Atalhos Rápidos */}
+            <div className="p-3.5 bg-white rounded-xl border border-slate-300 shadow-xs flex flex-col justify-between space-y-3">
+              <div>
+                <div className="flex items-center space-x-2 mb-1">
+                  <SlidersHorizontal className="w-4 h-4 text-[#0963cb]" />
+                  <h3 className="text-xs font-bold text-black">Atalhos da Barra Superior</h3>
+                </div>
+                <p className="text-[11px] text-stone-600">
+                  Defina quais botões rápidos aparecem no topo da aplicação (ex: Nova Venda, Cadastro de Cliente, Despesas) e a ordem de prioridade.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={onOpenCustomizeShortcuts}
+                className="w-full inline-flex items-center justify-center space-x-2 px-3.5 py-2 bg-[#b0d2ed] hover:bg-[#9cc4e4] text-black font-bold text-xs rounded-xl border border-[#0963cb]/30 shadow-xs transition cursor-pointer"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-black" />
+                <span className="text-black font-bold">Personalizar Atalhos</span>
+              </button>
+            </div>
+
+            {/* Card Ordem do Menu Lateral */}
+            <div className="p-3.5 bg-white rounded-xl border border-slate-300 shadow-xs flex flex-col justify-between space-y-3">
+              <div>
+                <div className="flex items-center space-x-2 mb-1">
+                  <ArrowUpDown className="w-4 h-4 text-[#0963cb]" />
+                  <h3 className="text-xs font-bold text-black">Ordem do Menu Lateral</h3>
+                </div>
+                <p className="text-[11px] text-stone-600">
+                  Reorganize a sequência dos módulos no menu lateral esquerdo conforme sua preferência de acesso e fluxo de trabalho operacional.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={onOpenReorderMenu}
+                className="w-full inline-flex items-center justify-center space-x-2 px-3.5 py-2 bg-[#b0d2ed] hover:bg-[#9cc4e4] text-black font-bold text-xs rounded-xl border border-[#0963cb]/30 shadow-xs transition cursor-pointer"
+              >
+                <ArrowUpDown className="w-3.5 h-3.5 text-black" />
+                <span className="text-black font-bold">Organizar Menu</span>
+              </button>
             </div>
           </div>
         </div>
