@@ -651,24 +651,9 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                 </h4>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
-                {/* NOVO CAMPO: Nº da Frota */}
-                <div>
-                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
-                    Nº da Frota
-                  </label>
-                  <input
-                    type="text"
-                    value={fleetNumber}
-                    onChange={(e) => setFleetNumber(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
-                    style={{ backgroundColor: '#ffffff', color: '#000000' }}
-                  />
-                  <p className="text-[10px] text-stone-600 mt-1">Prefixo / Código Interno</p>
-                </div>
-
-                {/* Placa do Veículo */}
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5">
+                {/* 1º: Placa do Veículo */}
+                <div className="sm:col-span-3">
                   <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Placa do Veículo
                   </label>
@@ -679,14 +664,26 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                     className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                     style={{ backgroundColor: '#ffffff', color: '#000000' }}
                   />
-                  <p className="text-[10px] text-stone-600 mt-1">Opcional para máquinas agrícolas</p>
                 </div>
 
-                {/* Nº DE SÉRIE - Totalmente Editável (especial para tratores e ensiladeiras) */}
-                <div>
-                  <label className="block text-xs font-bold mb-1 flex items-center justify-between text-[#000000]" style={{ color: '#000000' }}>
-                    <span>Nº de Série (Chassi / Fabricante)</span>
-                    <span className="text-[10px] font-semibold text-[#0963cb]">Editável</span>
+                {/* 2º: Nº da Frota */}
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                    Nº da Frota
+                  </label>
+                  <input
+                    type="text"
+                    value={fleetNumber}
+                    onChange={(e) => setFleetNumber(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                    style={{ backgroundColor: '#ffffff', color: '#000000' }}
+                  />
+                </div>
+
+                {/* 3º: Nº de Série (Chassi / Fabricante) */}
+                <div className="sm:col-span-4">
+                  <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                    Nº de Série (Chassi / Fabricante)
                   </label>
                   <input
                     type="text"
@@ -695,11 +692,10 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                     className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                     style={{ backgroundColor: '#ffffff', color: '#000000' }}
                   />
-                  <p className="text-[10px] text-stone-600 mt-1">Para tratores e implementos s/ RENAVAM</p>
                 </div>
 
-                {/* Código RENAVAM */}
-                <div>
+                {/* 4º: Código RENAVAM */}
+                <div className="sm:col-span-3">
                   <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                     Código RENAVAM
                   </label>
@@ -710,7 +706,6 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                     className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                     style={{ backgroundColor: '#ffffff', color: '#000000' }}
                   />
-                  <p className="text-[10px] text-stone-600 mt-1">Documento veicular oficial</p>
                 </div>
               </div>
 
