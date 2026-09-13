@@ -32,7 +32,7 @@ import {
   CheckCircle,
   HelpCircle
 } from 'lucide-react';
-import { Machinery, Employee, FuelLog, MaintenanceLog, Expense, ServiceOrder, SilageOrder } from '../../types';
+import { Machinery, Employee, FuelLog, MaintenanceLog, Expense, ServiceOrder, SilageOrder, PaymentMethod } from '../../types';
 import { 
   formatCurrencyBRL, 
   formatDateBR, 
@@ -56,6 +56,7 @@ import {
 } from './vehiclePrintTemplates';
 import { IpvaInstallmentsModal, IpvaInstallmentRow } from './IpvaInstallmentsModal';
 import { LicensingLaunchModal, LicensingLaunchData } from './LicensingLaunchModal';
+import { VehiclePurchaseInstallmentsModal, VehiclePurchaseInstallmentRow } from './VehiclePurchaseInstallmentsModal';
 
 interface VehicleModalProps {
   isOpen: boolean;
@@ -234,6 +235,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
   const [isLaunchingLicensing, setIsLaunchingLicensing] = useState(false);
   const [isIpvaInstallmentsModalOpen, setIsIpvaInstallmentsModalOpen] = useState(false);
   const [isLicensingLaunchModalOpen, setIsLicensingLaunchModalOpen] = useState(false);
+  const [isPurchaseInstallmentsModalOpen, setIsPurchaseInstallmentsModalOpen] = useState(false);
+  const [savedPurchaseInstallmentRows, setSavedPurchaseInstallmentRows] = useState<VehiclePurchaseInstallmentRow[]>([]);
 
   // Computed IPVA Total
   const computedIpvaTotal = useMemo(() => {
@@ -857,6 +860,78 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     }
     setIsLaunchingLicensing(true);
     setTimeout(() => setIsLaunchingLicensing(false), 3000);
+  };
+
+  // Abrir Modal de Parcelas Geradas para Compra / Financiamento
+  const handleOpenPurchaseInstallmentsModal = () => {
+    const numVal = purchaseValue ? desformatarMoeda(purchaseValue) : 0;
+    if (numVal <= 0) {
+      alert('Por favor, preencha o "Valor de Compra (R$)" na seção Aquisição antes de abrir as parcelas.');
+      return;
+    }
+    setIsPurchaseInstallmentsModalOpen(true);
+  };
+
+  // Gravar Lançamentos das Parcelas de Compra / Financiamento diretamente no Contas a Pagar
+  const handleConfirmPurchaseInstallments = (instList: VehiclePurchaseInstallmentRow[]) => {
+    if (!onAddExpense) {
+      alert('Módulo financeiro indisponível para lançamento direto.');
+      return;
+    }
+
+    const vName = `${brand.trim() || 'Veículo'} ${model.trim() || plate.trim() || 'Frota'}`.trim();
+    const vIdentifier = (plate.trim() || serialNumber.trim() || fleetNumber.trim() || 'S/N').toUpperCase();
+    const vehicleId = editingVehicle?.id || `veh_${Date.now()}`;
+    const totalLines = instList.length;
+
+    instList.forEach((inst) => {
+      const desc = totalLines > 1
+        ? `Parcela ${inst.number}/${String(totalLines).padStart(2, '0')} - Compra/Financiamento ${vName} (${vIdentifier})`
+        : `Compra/Financiamento (Quitação) - ${vName} (${vIdentifier})`;
+
+      let notesText = inst.observations.trim();
+      notesText += ` [Contábil - Crédito: ${inst.creditAccount || 'N/A'} | Débito: ${inst.debitAccount || 'N/A'}]`;
+      if (inst.daysInterval > 0) {
+        notesText += ` • Prazo: ${inst.daysInterval} dias`;
+      }
+      notesText += ` • Veículo: ${vName} (${vIdentifier})`;
+      if (purchaseInvoiceNumber.trim()) {
+        notesText += ` • NF: ${purchaseInvoiceNumber.trim()}`;
+      }
+
+      let payMethod: PaymentMethod = 'boleto';
+      if (inst.paymentMethodCode === '02') payMethod = 'pix';
+      else if (inst.paymentMethodCode === '03') payMethod = 'transferencia';
+      else if (inst.paymentMethodCode === '06') payMethod = 'cartao_credito';
+      else if (inst.paymentMethodCode === '07') payMethod = 'safra_prazo';
+
+      onAddExpense({
+        description: desc,
+        amount: inst.amount,
+        category: 'Financiamento de Veículos / Frotas',
+        dueDate: inst.dueDate,
+        status: 'pendente',
+        paymentMethod: payMethod,
+        supplier: financialInstitution.trim() || purchaseSupplier.trim() || ownerName.trim() || 'Banco / Concessionária',
+        invoiceNumber: purchaseInvoiceNumber.trim() || undefined,
+        machineryId: vehicleId,
+        machineryName: vName,
+        notes: notesText,
+        receiptUrl: inst.documentFileUrl || undefined,
+      });
+    });
+
+    setSavedPurchaseInstallmentRows(instList);
+    setInstallmentsCount(String(totalLines));
+    if (instList[0]) {
+      setInstallmentValue(formatarMoeda(Math.round(instList[0].amount * 100)));
+      setFirstInstallmentDueDate(instList[0].dueDate);
+    }
+    setGeneratePayables(false); // Já lançou individualmente pelo modal
+    setIsFinanced(true);
+    setInstallmentsCreatedFeedback(true);
+    setTimeout(() => setInstallmentsCreatedFeedback(false), 4000);
+    setIsPurchaseInstallmentsModalOpen(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -2053,17 +2128,37 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               {/* SE FINANCIADO / PARCELADO */}
               {isFinanced && (
                 <div className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-200 space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <span className="text-xs font-bold text-[#000000] flex items-center space-x-1.5" style={{ color: '#000000' }}>
                       <CreditCard className="w-4 h-4 text-[#0963cb]" />
                       <span>Condições do Financiamento / Parcelamento</span>
                     </span>
-                    {editingVehicle?.installmentsGenerated && (
-                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-100 text-[#0963cb]">
-                        Parcelas já lançadas no Contas a Pagar
-                      </span>
-                    )}
+                    <div className="flex items-center space-x-2">
+                      {editingVehicle?.installmentsGenerated && (
+                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-100 text-[#0963cb]">
+                          Parcelas já lançadas no Contas a Pagar
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        id="btn-abrir-modal-parcelas-compra-financiamento"
+                        onClick={handleOpenPurchaseInstallmentsModal}
+                        className="px-3 py-1.5 bg-[#0963cb] hover:bg-[#0752a8] text-white text-xs font-black rounded-lg transition flex items-center space-x-1.5 shadow-2xs cursor-pointer active:scale-98"
+                        title="Abrir a grade de Parcelas Geradas para Compra / Financiamento"
+                      >
+                        <CreditCard className="w-3.5 h-3.5" />
+                        <span>Parcelas da Compra / Financiamento</span>
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Feedback se as parcelas foram recém geradas */}
+                  {installmentsCreatedFeedback && (
+                    <div className="p-2 bg-emerald-50 border border-emerald-300 rounded-lg flex items-center space-x-2 text-emerald-800 text-xs font-bold animate-in fade-in">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Parcelas de compra/financiamento gravadas com sucesso no módulo financeiro (Contas a Pagar)!</span>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                     {/* Quantidade de parcelas */}
@@ -2588,6 +2683,22 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
         baseValue={licensingValue ? desformatarMoeda(licensingValue) : 0}
         year={year || new Date().getFullYear()}
         onConfirmAndSave={handleConfirmLicensing}
+      />
+
+      {/* Modal de Parcelas Geradas para Compra / Financiamento */}
+      <VehiclePurchaseInstallmentsModal
+        isOpen={isPurchaseInstallmentsModalOpen}
+        onClose={() => setIsPurchaseInstallmentsModalOpen(false)}
+        vehicleName={`${brand.trim() || 'Veículo'} ${model.trim() || plate.trim() || 'Frota'}`.trim()}
+        vehicleIdentifier={(plate.trim() || serialNumber.trim() || fleetNumber.trim() || 'S/N').toUpperCase()}
+        purchaseValue={purchaseValue ? desformatarMoeda(purchaseValue) : 0}
+        baseDate={purchaseDate || new Date().toISOString().split('T')[0]}
+        initialInstallmentsCount={Math.max(1, parseInt(installmentsCount, 10) || 1)}
+        existingInstallments={savedPurchaseInstallmentRows.length > 0 ? savedPurchaseInstallmentRows : undefined}
+        supplierName={purchaseSupplier.trim() || ownerName.trim()}
+        invoiceNumber={purchaseInvoiceNumber.trim()}
+        financialInstitution={financialInstitution.trim()}
+        onConfirmAndSave={handleConfirmPurchaseInstallments}
       />
     </div>
   );
