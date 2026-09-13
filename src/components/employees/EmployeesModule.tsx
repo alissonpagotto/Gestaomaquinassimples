@@ -42,7 +42,7 @@ import { generateEmployeeSheetHtml, generateEmployeeWhatsAppText } from './emplo
 
 const STORAGE_KEYS = {
   REG_TYPES: 'silagem_facil_custom_reg_types_v3',
-  ROLES: 'silagem_facil_custom_roles_v2',
+  ROLES: 'silagem_facil_custom_roles_v3',
   CONTRACT_TYPES: 'silagem_facil_custom_contract_types_v1',
 };
 
@@ -71,6 +71,7 @@ const EXCLUDED_FROM_REG_TYPES = [
 // Opções estritas de Cargo / Função em ordem alfabética exata
 const DEFAULT_ROLES = [
   'Administrador',
+  'Agenciador',
   'Auxiliar de produção',
   'Escritorio',
   'Financeiro',
@@ -154,23 +155,34 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
 
   const [roleOptions, setRoleOptions] = useState<string[]>(() => {
     try {
-      // 1. Checar armazenamento v2 atualizado
-      const savedV2 = localStorage.getItem(STORAGE_KEYS.ROLES);
-      if (savedV2) {
-        const parsed = JSON.parse(savedV2);
+      // 1. Checar armazenamento v3 atualizado
+      const savedV3 = localStorage.getItem(STORAGE_KEYS.ROLES);
+      if (savedV3) {
+        const parsed = JSON.parse(savedV3);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return Array.from(new Set(parsed)).sort((a, b) => a.localeCompare('pt-BR'));
+          return Array.from(new Set([...DEFAULT_ROLES, ...parsed])).sort((a, b) => a.localeCompare(b, 'pt-BR'));
         }
       }
 
-      // 2. Migrar se o usuário tiver adicionado cargos customizados em v1
+      // 2. Migrar se o usuário tiver salvo em v2
+      const savedV2 = localStorage.getItem('silagem_facil_custom_roles_v2');
+      if (savedV2) {
+        const parsed = JSON.parse(savedV2);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const merged = Array.from(new Set([...DEFAULT_ROLES, ...parsed])).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+          localStorage.setItem(STORAGE_KEYS.ROLES, JSON.stringify(merged));
+          return merged;
+        }
+      }
+
+      // 3. Migrar se o usuário tiver adicionado cargos customizados em v1
       const savedV1 = localStorage.getItem('silagem_facil_custom_roles_v1');
       if (savedV1) {
         const parsed = JSON.parse(savedV1);
         if (Array.isArray(parsed) && parsed.length > 0) {
           const oldDefaults = ['Motorista', 'Operador de forrageira', 'Operador de trator', 'Auxiliar', 'Administrador', 'Mecanico Especialista'];
           const customOnly = parsed.filter(item => !oldDefaults.includes(item) && !DEFAULT_ROLES.includes(item));
-          const merged = [...DEFAULT_ROLES, ...customOnly].sort((a, b) => a.localeCompare('pt-BR'));
+          const merged = [...DEFAULT_ROLES, ...customOnly].sort((a, b) => a.localeCompare(b, 'pt-BR'));
           localStorage.setItem(STORAGE_KEYS.ROLES, JSON.stringify(merged));
           return merged;
         }
@@ -223,6 +235,14 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
   const [role2, setRole2] = useState<string>('');
   const [isRoleManagerOpen, setIsRoleManagerOpen] = useState<boolean>(false);
   const [roleManagerTarget, setRoleManagerTarget] = useState<'role1' | 'role2' | null>(null);
+
+  // Broker Commission State (Agenciador)
+  const [brokerCommissionType, setBrokerCommissionType] = useState<string>('Porcentagem (%) sobre o valor do pedido');
+  const [brokerCommissionValue, setBrokerCommissionValue] = useState<string>('5,00');
+
+  const isBroker = useMemo(() => {
+    return role1.trim().toLowerCase() === 'agenciador' || role2.trim().toLowerCase() === 'agenciador';
+  }, [role1, role2]);
 
   const sortedRoleOptions = useMemo(() => {
     return [...roleOptions].sort((a, b) => a.localeCompare(b, 'pt-BR'));
@@ -299,6 +319,8 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     setName('');
     setRole1('Operador de Forrageira');
     setRole2('');
+    setBrokerCommissionType('Porcentagem (%) sobre o valor do pedido');
+    setBrokerCommissionValue('5,00');
     setCpf('');
     setRg('');
     setBirthDate('');
@@ -371,6 +393,12 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     setName(emp.name || '');
     setRole1(r1);
     setRole2(r2);
+    setBrokerCommissionType(emp.brokerCommissionType || 'Porcentagem (%) sobre o valor do pedido');
+    setBrokerCommissionValue(
+      emp.brokerCommissionValue !== undefined
+        ? formatCurrencyInputDisplay(emp.brokerCommissionValue)
+        : '5,00'
+    );
     setCpf(emp.cpf || '');
     setRg(emp.rg || '');
     setBirthDate(emp.birthDate || '');
@@ -457,6 +485,8 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
       registrationType: finalRegType,
       role: finalRole,
       roles: finalRoles,
+      brokerCommissionType: isBroker ? brokerCommissionType : undefined,
+      brokerCommissionValue: isBroker ? parseCurrencyInput(brokerCommissionValue) : undefined,
       cpf: cpf.trim() || undefined,
       rg: rg.trim() || undefined,
       birthDate: birthDate || undefined,
@@ -581,12 +611,15 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     const parsedPerHour = parseCurrencyInput(commissionPerHour);
     const parsedPerAlq = parseCurrencyInput(commissionPerAlqueire);
     const parsedPerHa = parseCurrencyInput(commissionPerHectare);
+    const parsedBrokerCommission = isBroker ? parseCurrencyInput(brokerCommissionValue) : undefined;
 
     const employeeData: Partial<Employee> = {
       name: name.trim(),
       registrationType: finalRegType,
       role: finalRole,
       roles: finalRoles,
+      brokerCommissionType: isBroker ? brokerCommissionType : undefined,
+      brokerCommissionValue: parsedBrokerCommission,
       cpf: cpf.trim() || undefined,
       rg: rg.trim() || undefined,
       birthDate: birthDate || undefined,
@@ -979,7 +1012,18 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                   </td>
 
                   <td className="py-3.5 px-4">
-                    {emp.receivesCommission ? (
+                    {emp.brokerCommissionValue !== undefined && emp.brokerCommissionValue > 0 ? (
+                      <div className="space-y-0.5 text-[11px]">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-sky-50 border border-sky-200 text-sky-800 font-bold text-[10px]">
+                          Comissão Agenciador
+                        </span>
+                        <div className="text-black/80 font-bold font-['Outfit'] text-[10px]">
+                          {emp.brokerCommissionType === 'Valor Fixo por contrato/pedido'
+                            ? `${formatCurrencyBRL(emp.brokerCommissionValue)} /pedido`
+                            : `${emp.brokerCommissionValue}% ${emp.brokerCommissionType?.includes('produção') ? 'produção' : 'pedido'}`}
+                        </div>
+                      </div>
+                    ) : emp.receivesCommission ? (
                       <div className="space-y-0.5 text-[11px]">
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-800 font-bold text-[10px]">
                           Comissão Ativa
@@ -1258,6 +1302,125 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                       placeholder="Selecione (se houver acúmulo)..."
                     />
                   </div>
+
+                  {/* BLOCO CONDICIONAL: CONFIGURAÇÃO DE COMISSÃO DO AGENCIADOR */}
+                  {isBroker && (
+                    <div className="sm:col-span-2 p-3.5 bg-gradient-to-r from-sky-50/75 to-blue-50/60 border border-sky-200 rounded-xl space-y-2.5 transition-all duration-200 shadow-2xs">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-sky-200/80">
+                        <div className="flex items-center space-x-2">
+                          <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#0963cb] text-white text-[11px] font-black">
+                            %
+                          </span>
+                          <h5 className="text-xs font-black uppercase tracking-wider text-[#0963cb]">
+                            Configuração de Comissão do Agenciador
+                          </h5>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-200">
+                          Agenciador Ativo
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
+                        {/* Tipo de Comissão */}
+                        <div>
+                          <label className="block text-xs font-bold text-black mb-1">
+                            Tipo de Comissão <span className="text-rose-600">*</span>
+                          </label>
+                          <select
+                            value={brokerCommissionType}
+                            onChange={(e) => {
+                              const newType = e.target.value;
+                              setBrokerCommissionType(newType);
+                              if (newType === 'Valor Fixo por contrato/pedido' && (!brokerCommissionValue || brokerCommissionValue === '5,00')) {
+                                setBrokerCommissionValue('100,00');
+                              } else if (newType !== 'Valor Fixo por contrato/pedido' && (!brokerCommissionValue || parseCurrencyInput(brokerCommissionValue) > 100)) {
+                                setBrokerCommissionValue('5,00');
+                              }
+                            }}
+                            className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb] shadow-2xs"
+                          >
+                            <option value="Porcentagem (%) sobre o valor do pedido">
+                              Porcentagem (%) sobre o valor do pedido
+                            </option>
+                            <option value="Porcentagem (%) sobre a produção">
+                              Porcentagem (%) sobre a produção
+                            </option>
+                            <option value="Valor Fixo por contrato/pedido">
+                              Valor Fixo por contrato/pedido
+                            </option>
+                          </select>
+                        </div>
+
+                        {/* Input Numérico Correspondente com Máscara */}
+                        <div>
+                          {brokerCommissionType === 'Valor Fixo por contrato/pedido' ? (
+                            <div>
+                              <label className="block text-xs font-bold text-black mb-1">
+                                Valor Fixo da Comissão (R$) <span className="text-rose-600">*</span>
+                              </label>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs sm:text-sm font-bold text-stone-500">
+                                  R$
+                                </span>
+                                <input
+                                  type="text"
+                                  value={brokerCommissionValue}
+                                  onChange={(e) => setBrokerCommissionValue(e.target.value)}
+                                  onBlur={() => {
+                                    if (brokerCommissionValue) {
+                                      const parsed = parseCurrencyInput(brokerCommissionValue);
+                                      setBrokerCommissionValue(formatCurrencyInputDisplay(parsed));
+                                    }
+                                  }}
+                                  placeholder="0,00"
+                                  className="w-full pl-9 pr-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb] shadow-2xs"
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <div>
+                              <label className="block text-xs font-bold text-black mb-1">
+                                {brokerCommissionType === 'Porcentagem (%) sobre a produção'
+                                  ? 'Comissão sobre a Produção (%)'
+                                  : 'Comissão sobre o Valor do Pedido (%)'}{' '}
+                                <span className="text-rose-600">*</span>
+                              </label>
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={brokerCommissionValue}
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/[^0-9.,]/g, '');
+                                    setBrokerCommissionValue(val);
+                                  }}
+                                  onBlur={() => {
+                                    if (brokerCommissionValue) {
+                                      const parsed = parseCurrencyInput(brokerCommissionValue);
+                                      setBrokerCommissionValue(formatCurrencyInputDisplay(parsed));
+                                    }
+                                  }}
+                                  placeholder="5,00"
+                                  className="w-full pl-3 pr-8 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb] shadow-2xs"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs sm:text-sm font-bold text-stone-500">
+                                  %
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-sky-800 font-medium">
+                        {brokerCommissionType === 'Porcentagem (%) sobre o valor do pedido' &&
+                          '💡 A comissão será calculada automaticamente aplicando este percentual sobre o valor total faturado dos pedidos agenciados.'}
+                        {brokerCommissionType === 'Porcentagem (%) sobre a produção' &&
+                          '💡 A comissão será calculada aplicando este percentual sobre o volume/valor de produção nos pedidos agenciados.'}
+                        {brokerCommissionType === 'Valor Fixo por contrato/pedido' &&
+                          '💡 Será computado este valor monetário fixo para cada contrato ou pedido fechado pelo agenciador.'}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Linha 2: Telefone / WhatsApp & Salário Base */}
                   <div>

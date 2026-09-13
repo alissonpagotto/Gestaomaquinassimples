@@ -278,7 +278,13 @@ export const PrintableEmployeeSheet: React.FC<PrintableEmployeeSheetProps> = ({
             </td>
             <td className="label-cell">Comissões:</td>
             <td className="value-cell">
-              {employee.receivesCommission ? (
+              {employee.brokerCommissionValue !== undefined && employee.brokerCommissionValue > 0 ? (
+                <span style={{ fontWeight: 'bold', color: '#0369a1' }}>
+                  Agenciador: {employee.brokerCommissionType === 'Valor Fixo por contrato/pedido'
+                    ? `${formatCurrencyBRL(employee.brokerCommissionValue)} (Fixo por pedido)`
+                    : `${employee.brokerCommissionValue}% (${employee.brokerCommissionType?.includes('produção') ? 's/ Produção' : 's/ Pedido'})`}
+                </span>
+              ) : employee.receivesCommission ? (
                 <span>
                   {employee.commissionPerHour ? `${formatCurrencyBRL(employee.commissionPerHour)}/h ` : ''}
                   {employee.commissionPerAlqueire ? `${formatCurrencyBRL(employee.commissionPerAlqueire)}/alq ` : ''}

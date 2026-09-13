@@ -39,7 +39,13 @@ export function generateEmployeeSheetHtml(
       </div>`;
 
   const commissionParts: string[] = [];
-  if (employee.receivesCommission) {
+  if (employee.brokerCommissionValue !== undefined && employee.brokerCommissionValue > 0) {
+    if (employee.brokerCommissionType === 'Valor Fixo por contrato/pedido') {
+      commissionParts.push(`Agenciador: ${formatCurrencyBRL(employee.brokerCommissionValue)} (Fixo por pedido)`);
+    } else {
+      commissionParts.push(`Agenciador: ${employee.brokerCommissionValue}% (${employee.brokerCommissionType?.includes('produção') ? 's/ Produção' : 's/ Pedido'})`);
+    }
+  } else if (employee.receivesCommission) {
     if (employee.commissionPerHour && employee.commissionPerHour > 0) {
       commissionParts.push(`${formatCurrencyBRL(employee.commissionPerHour)}/hora`);
     }
@@ -306,6 +312,17 @@ export function generateEmployeeWhatsAppText(
 
   text += `\n*FINANCEIRO & PAGAMENTO:*\n`;
   text += `• Salário Base: ${formatCurrencyBRL(salary)}\n`;
+  if (employee.brokerCommissionValue !== undefined && employee.brokerCommissionValue > 0) {
+    if (employee.brokerCommissionType === 'Valor Fixo por contrato/pedido') {
+      text += `• Comissão Agenciador: ${formatCurrencyBRL(employee.brokerCommissionValue)} (Fixo por pedido)\n`;
+    } else {
+      text += `• Comissão Agenciador: ${employee.brokerCommissionValue}% (${employee.brokerCommissionType?.includes('produção') ? 's/ Produção' : 's/ Pedido'})\n`;
+    }
+  } else if (employee.receivesCommission) {
+    if (employee.commissionPerHour) text += `• Comissão/Hora: ${formatCurrencyBRL(employee.commissionPerHour)}/h\n`;
+    if (employee.commissionPerAlqueire) text += `• Comissão/Alqueire: ${formatCurrencyBRL(employee.commissionPerAlqueire)}/alq\n`;
+    if (employee.commissionPerHectare) text += `• Comissão/Hectare: ${formatCurrencyBRL(employee.commissionPerHectare)}/ha\n`;
+  }
   if (employee.paymentLocation) text += `• Local: ${employee.paymentLocation}\n`;
   if (employee.bankPixKey) text += `• Chave PIX/Banco: ${employee.bankPixKey}\n`;
   if (employee.bankAgency || employee.bankAccount) {

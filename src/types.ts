@@ -267,6 +267,7 @@ export interface EmployeeAttachment {
 
 export type EmployeeRole = 
   | 'Administrador'
+  | 'Agenciador'
   | 'Auxiliar de produção'
   | 'Escritorio'
   | 'Financeiro'
@@ -323,6 +324,8 @@ export interface Employee {
   commissionPerHour?: number; // Por hora (R$/h)
   commissionPerAlqueire?: number; // Por alqueire (R$/alq)
   commissionPerHectare?: number; // Por hectare (R$/ha)
+  brokerCommissionType?: 'Porcentagem (%) sobre o valor do pedido' | 'Porcentagem (%) sobre a produção' | 'Valor Fixo por contrato/pedido' | string; // Tipo de comissão do agenciador
+  brokerCommissionValue?: number; // Valor/Percentual da comissão do agenciador
   cnhNumber?: string;
   cnhCategory?: string; // 'A', 'B', 'C', 'D', 'E', 'AB', 'AC', 'AD', 'AE'
   cnhExpiration?: string; // YYYY-MM-DD
