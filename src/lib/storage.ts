@@ -17,6 +17,7 @@ import {
   BankAccount,
   BankTransaction,
   ThirdPartySettlement,
+  BrokerSettlement,
   PayrollRecord,
   VacationRecord,
   LeaveRecord,
@@ -82,6 +83,7 @@ const STORAGE_KEYS = {
   BANK_ACCOUNTS: 'silagem_facil_clean_v1_bank_accounts',
   BANK_TRANSACTIONS: 'silagem_facil_clean_v1_bank_transactions',
   SETTLEMENTS: 'silagem_facil_clean_v1_settlements',
+  BROKER_SETTLEMENTS: 'silagem_facil_clean_v1_broker_settlements',
   PAYROLLS: 'silagem_facil_clean_v1_payrolls',
   VACATIONS: 'silagem_facil_clean_v1_vacations',
   LEAVES: 'silagem_facil_clean_v1_leaves',
@@ -755,6 +757,24 @@ export function saveStoredSettlements(settlements: ThirdPartySettlement[]): void
     localStorage.setItem(STORAGE_KEYS.SETTLEMENTS, JSON.stringify(settlements));
   } catch (e) {
     console.error('Failed to save settlements', e);
+  }
+}
+
+export function getStoredBrokerSettlements(): BrokerSettlement[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.BROKER_SETTLEMENTS);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch (e) {
+    return [];
+  }
+}
+
+export function saveStoredBrokerSettlements(settlements: BrokerSettlement[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.BROKER_SETTLEMENTS, JSON.stringify(settlements));
+  } catch (e) {
+    console.error('Failed to save broker settlements', e);
   }
 }
 

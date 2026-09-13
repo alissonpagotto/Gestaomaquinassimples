@@ -10,6 +10,7 @@ import {
   LayoutGrid,
   BarChart2,
   Truck,
+  Handshake,
   FileSpreadsheet,
   Layers,
   Sprout,
@@ -27,6 +28,7 @@ import {
   CropSeason, 
   BankAccount, 
   ThirdPartySettlement, 
+  BrokerSettlement,
   ServiceOrder,
   ExpenseCategory,
   CostCenter,
@@ -37,11 +39,12 @@ import {
   BankTransaction,
   PaymentMethod
 } from '../../types';
-import { formatCurrencyBRL, getStoredBankTransactions, saveStoredBankTransactions, saveStoredExpenses } from '../../lib/storage';
+import { formatCurrencyBRL, getStoredBankTransactions, saveStoredBankTransactions, saveStoredExpenses, getStoredBrokerSettlements, saveStoredBrokerSettlements } from '../../lib/storage';
 import { BankAccountsTab } from './BankAccountsTab';
 import { PayablesTab } from './PayablesTab';
 import { ReceivablesTab } from './ReceivablesTab';
 import { ThirdPartySettlementsTab } from './ThirdPartySettlementsTab';
+import { BrokerSettlementsTab } from './BrokerSettlementsTab';
 import { FinancialExportTab } from './FinancialExportTab';
 import { ExpenseStats } from '../expenses/ExpenseStats';
 import { ExpenseCharts } from '../expenses/ExpenseCharts';
@@ -54,6 +57,7 @@ export type FinancialTabType =
   | 'a_pagar' 
   | 'a_receber' 
   | 'acertos' 
+  | 'acertos_agenciadores'
   | 'exportar';
 
 interface FinancialSummaryProps {
@@ -151,6 +155,16 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
     if (onSaveBankTransactions) {
       onSaveBankTransactions(txs);
     }
+  };
+
+  // State para Acertos de Agenciadores com persistência
+  const [internalBrokerSettlements, setInternalBrokerSettlements] = useState<BrokerSettlement[]>(
+    () => getStoredBrokerSettlements()
+  );
+
+  const handleSaveBrokerSettlements = (items: BrokerSettlement[]) => {
+    setInternalBrokerSettlements(items);
+    saveStoredBrokerSettlements(items);
   };
 
   // Liquidação de Despesa com identificação de funcionário e débito bancário
@@ -579,6 +593,20 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
         >
           <Truck className="w-3.5 h-3.5" />
           <span>Acertos Terceiros</span>
+        </button>
+
+        {/* Aba Acertos Agenciadores (Posicionada exatamente após Acertos Terceiros e antes de Exportar) */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('acertos_agenciadores')}
+          className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition whitespace-nowrap cursor-pointer ${
+            activeTab === 'acertos_agenciadores'
+              ? 'bg-sky-600 text-white shadow-xs'
+              : 'text-black dark:text-stone-300 hover:bg-black/10 dark:hover:bg-slate-700 hover:text-black dark:hover:text-white'
+          }`}
+        >
+          <Handshake className="w-3.5 h-3.5" />
+          <span>Acertos Agenciadores</span>
         </button>
 
         {/* Aba Exportar */}
@@ -1018,6 +1046,17 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
         <ThirdPartySettlementsTab
           settlements={settlements}
           onSaveSettlements={onSaveSettlements}
+        />
+      )}
+
+      {/* ABA: Acertos Agenciadores (Nova Aba de Controle de Comissões e Repasses) */}
+      {activeTab === 'acertos_agenciadores' && (
+        <BrokerSettlementsTab
+          settlements={internalBrokerSettlements}
+          onSaveSettlements={handleSaveBrokerSettlements}
+          employees={employees}
+          orders={orders}
+          bankAccounts={bankAccounts}
         />
       )}
 

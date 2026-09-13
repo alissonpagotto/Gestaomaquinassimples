@@ -55,6 +55,14 @@ export const isThirdPartyDriver = (emp?: Partial<Employee>): boolean => {
   return false;
 };
 
+// 1.2 Identificação de Agenciador (Comissões e repasses geridos exclusivamente pelo Financeiro)
+export const isBrokerEmployee = (emp?: Partial<Employee>): boolean => {
+  if (!emp) return false;
+  const roleStr = (emp.role || '').toLowerCase();
+  const rolesList = Array.isArray(emp.roles) ? emp.roles.map(r => r.toLowerCase()) : [];
+  return roleStr.includes('agenciador') || rolesList.some(r => r.includes('agenciador'));
+};
+
 // 2. Identificação de Regime Registrado (CLT)
 // (Regra: Desconto automático de INSS aplicado unicamente para quem tem registro CLT)
 export const isCltContract = (emp?: Partial<Employee>): boolean => {
@@ -289,9 +297,10 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
   // Gerar folha em lote para todos os ativos que ainda não têm folha neste mês
   // REGRA DE NEGÓCIO:
   // 1. Motoristas com vínculo "Terceirizado" NÃO entram na folha (acerto gerido pelo Financeiro)
-  // 2. Desconto de INSS calculado UNICAMENTE para funcionários "Registrado" (CLT)
+  // 2. Colaboradores com função "Agenciador" NÃO entram na folha (comissões e repasses geridos exclusivamente pelo Financeiro > Acertos Agenciadores)
+  // 3. Desconto de INSS calculado UNICAMENTE para funcionários "Registrado" (CLT)
   const handleBatchGenerate = () => {
-    const activeEmployees = employees.filter(e => e.status === 'ativo' && !isThirdPartyDriver(e));
+    const activeEmployees = employees.filter(e => e.status === 'ativo' && !isThirdPartyDriver(e) && !isBrokerEmployee(e));
     const existingEmpIds = new Set(monthPayrolls.map(p => p.employeeId));
     const missing = activeEmployees.filter(e => !existingEmpIds.has(e.id));
 
@@ -635,7 +644,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                 >
                   <option value="">Selecione um funcionário...</option>
                   {employees
-                    .filter(emp => !isThirdPartyDriver(emp))
+                    .filter(emp => !isThirdPartyDriver(emp) && !isBrokerEmployee(emp))
                     .map(emp => (
                       <option key={emp.id} value={emp.id}>
                         {emp.name} ({emp.role}) - {emp.contractType || 'CLT'} - Salário: {formatCurrencyBRL(emp.salary || emp.baseSalary || 3500)}

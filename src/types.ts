@@ -796,6 +796,37 @@ export interface ThirdPartySettlement {
   notes?: string;
 }
 
+export interface BrokerSettlement {
+  id: string;
+  brokerId: string; // ID do colaborador Agenciador
+  brokerName: string; // Nome do Agenciador (UPPERCASE)
+  actingRegion?: string; // Região de Atuação (ex: SUDOESTE DO PARANÁ)
+  date: string; // Data do lançamento / acerto (YYYY-MM-DD)
+  referenceMonth?: string; // MM/YYYY (ex: 09/2026)
+  orderId?: string; // Pedido de silagem vinculado (opcional)
+  orderClientName?: string; // Nome do cliente/produtor
+  description: string; // Descrição do contrato / pedido agenciado
+  
+  // Regra de comissão e cálculo
+  commissionType: 'Porcentagem (%) sobre o valor do pedido' | 'Porcentagem (%) sobre a produção' | 'Valor Fixo por contrato/pedido' | string;
+  commissionRate: number; // Taxa percentual (%) ou valor fixo (R$)
+  baseValue: number; // Base de cálculo (R$)
+  grossAmount: number; // Valor Bruto da Comissão (R$)
+  deductions?: number; // Vales, adiantamentos ou descontos (R$)
+  netAmount: number; // Valor Líquido a Repassar (R$)
+  
+  // Controle de Baixa / Pagamento
+  status: 'pendente' | 'pago' | 'parcial';
+  paymentDate?: string; // Data da baixa / repasse
+  bankAccountId?: string; // Conta bancária de saída
+  bankAccountName?: string;
+  paymentMethod?: PaymentMethod | string;
+  pixKey?: string;
+  receiptNumber?: string;
+  notes?: string;
+  createdAt: string;
+}
+
 export interface PayrollRecord {
   id: string;
   employeeId: string;
