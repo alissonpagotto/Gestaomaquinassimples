@@ -82,6 +82,12 @@ export interface Expense {
   accessKey?: string;
   installmentsCount?: number;
   expenseIds?: string[];
+  paidByEmployeeId?: string; // ID do funcionário que realizou o pagamento
+  paidByEmployeeName?: string; // Nome do funcionário que realizou o pagamento
+  bankAccountId?: string; // ID da conta bancária de onde o saldo foi debitado
+  bankAccountName?: string; // Nome da conta bancária debitada
+  paymentAuthenticationCode?: string; // Código de autenticação / comprovante
+  date?: string; // YYYY-MM-DD (compatibilidade)
   createdAt: string;
 }
 
@@ -708,6 +714,26 @@ export interface BankAccount {
   pixKey?: string;
   pixKeyType?: 'cpf' | 'cnpj' | 'phone' | 'email' | 'random';
   color?: string;
+}
+
+export interface BankTransaction {
+  id: string;
+  bankAccountId: string;
+  bankAccountName?: string;
+  date: string; // YYYY-MM-DD
+  description: string;
+  type: 'entrada' | 'saida'; // entrada (crédito) ou saída (débito)
+  amount: number;
+  category?: string;
+  sourceType?: 'despesa' | 'receita' | 'transferencia' | 'manual' | 'ofx' | 'ajuste' | 'baixa_pagamento';
+  sourceId?: string;
+  expenseId?: string;
+  paidByEmployeeId?: string;
+  paidByEmployeeName?: string;
+  documentNumber?: string;
+  notes?: string;
+  balanceAfter?: number;
+  createdAt?: string;
 }
 
 export interface ThirdPartySettlement {

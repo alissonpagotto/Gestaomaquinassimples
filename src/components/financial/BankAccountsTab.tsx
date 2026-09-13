@@ -12,26 +12,48 @@ import {
   Edit2,
   DollarSign,
   QrCode,
-  Sparkles
+  Sparkles,
+  FileText,
+  Link2
 } from 'lucide-react';
-import { BankAccount } from '../../types';
+import { BankAccount, Expense, BankTransaction, Employee, ExpenseCategory } from '../../types';
 import { formatCurrencyBRL } from '../../lib/storage';
 import { useConfirm } from '../../context/ConfirmContext';
 import { BankAccountModal } from './BankAccountModal';
 import { BankLogoIcon } from './BankLogoIcon';
+import { BankAccountStatementModal } from './BankAccountStatementModal';
+import { BankIntegrationCard } from './BankIntegrationCard';
 
 interface BankAccountsTabProps {
   accounts: BankAccount[];
   onSaveAccounts: (accounts: BankAccount[]) => void;
+  expenses?: Expense[];
+  employees?: Employee[];
+  transactions?: BankTransaction[];
+  onSaveTransactions?: (transactions: BankTransaction[]) => void;
+  onAddExpenseFromBankBill?: (expense: Partial<Expense>) => void;
+  onLinkExpensesToAccount?: (expenseIds: string[], accountId: string) => void;
+  categories?: ExpenseCategory[];
 }
 
 export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
   accounts,
   onSaveAccounts,
+  expenses = [],
+  employees = [],
+  transactions = [],
+  onSaveTransactions,
+  onAddExpenseFromBankBill,
+  onLinkExpensesToAccount,
+  categories = [],
 }) => {
   const { confirm } = useConfirm();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
+
+  // Extrato Modal State
+  const [isStatementOpen, setIsStatementOpen] = useState(false);
+  const [statementAccountId, setStatementAccountId] = useState<string>('todas');
 
   // Totais consolidados
   const totalBalance = accounts.reduce((acc, a) => acc + (a.balance || 0), 0);
@@ -41,6 +63,11 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
   const handleOpenModal = (acc?: BankAccount) => {
     setEditingAccount(acc || null);
     setIsModalOpen(true);
+  };
+
+  const handleOpenStatement = (accountId?: string) => {
+    setStatementAccountId(accountId || (accounts[0]?.id || 'todas'));
+    setIsStatementOpen(true);
   };
 
   const handleSaveAccount = (accountData: Omit<BankAccount, 'id'> & { id?: string }) => {
@@ -74,6 +101,67 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
     }
   };
 
+  // Manipulador de novos lançamentos manuais no extrato
+  const handleAddTransaction = (newTxData: Omit<BankTransaction, 'id' | 'createdAt'>) => {
+    const newTx: BankTransaction = {
+      ...newTxData,
+      id: `tx_${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedTransactions = [newTx, ...transactions];
+    if (onSaveTransactions) {
+      onSaveTransactions(updatedTransactions);
+    }
+
+    // Se for lançamento manual, atualiza também o saldo da conta
+    if (newTx.bankAccountId) {
+      const updatedAccounts = accounts.map((acc) => {
+        if (acc.id === newTx.bankAccountId) {
+          const delta = newTx.type === 'entrada' ? newTx.amount : -newTx.amount;
+          return {
+            ...acc,
+            balance: acc.balance + delta,
+          };
+        }
+        return acc;
+      });
+      onSaveAccounts(updatedAccounts);
+    }
+  };
+
+  // Manipulador de importação de transações bancárias (OFX / CSV)
+  const handleImportBankTransactions = (newTxs: Omit<BankTransaction, 'id' | 'createdAt'>[]) => {
+    const formatted: BankTransaction[] = newTxs.map((t, idx) => ({
+      ...t,
+      id: `tx_imp_${Date.now()}_${idx}`,
+      createdAt: new Date().toISOString(),
+    }));
+
+    const updatedTransactions = [...formatted, ...transactions];
+    if (onSaveTransactions) {
+      onSaveTransactions(updatedTransactions);
+    }
+
+    // Atualiza os saldos das contas impactadas
+    if (newTxs.length > 0) {
+      const updatedAccounts = accounts.map((acc) => {
+        const matchingTxs = newTxs.filter((tx) => tx.bankAccountId === acc.id);
+        if (matchingTxs.length > 0) {
+          const netDelta = matchingTxs.reduce((sum, tx) => {
+            return sum + (tx.type === 'entrada' ? tx.amount : -tx.amount);
+          }, 0);
+          return {
+            ...acc,
+            balance: acc.balance + netDelta,
+          };
+        }
+        return acc;
+      });
+      onSaveAccounts(updatedAccounts);
+    }
+  };
+
   const getAccountTypeLabel = (type: BankAccount['accountType']) => {
     switch (type) {
       case 'corrente':
@@ -90,7 +178,7 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header & Total Balance */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-5 text-black">
         <div className="space-y-1.5">
@@ -121,16 +209,43 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
           </p>
         </div>
 
-        <button
-          type="button"
-          id="btn-abrir-nova-conta"
-          onClick={() => handleOpenModal()}
-          className="inline-flex items-center justify-center space-x-2 px-5 py-3 bg-[#0963cb] hover:bg-[#0852a8] text-white font-black text-xs sm:text-sm rounded-xl transition shadow-md cursor-pointer active:scale-95 shrink-0"
-        >
-          <Plus className="w-4 h-4 stroke-[3]" />
-          <span>Cadastrar Nova Conta</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Botão de Ver Extrato Bancário */}
+          <button
+            type="button"
+            id="btn-abrir-extrato-geral"
+            onClick={() => handleOpenStatement()}
+            className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-white hover:bg-stone-50 text-stone-800 font-bold text-xs sm:text-sm rounded-xl border border-stone-300 transition shadow-2xs cursor-pointer active:scale-95"
+            title="Abrir Extrato de Contas Bancárias"
+          >
+            <FileText className="w-4 h-4 text-[#0963cb]" />
+            <span>Extrato de Contas Bancárias</span>
+          </button>
+
+          {/* Botão de Cadastrar Nova Conta */}
+          <button
+            type="button"
+            id="btn-abrir-nova-conta"
+            onClick={() => handleOpenModal()}
+            className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 bg-[#0963cb] hover:bg-[#0852a8] text-white font-black text-xs sm:text-sm rounded-xl transition shadow-md cursor-pointer active:scale-95 shrink-0"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>Cadastrar Nova Conta</span>
+          </button>
+        </div>
       </div>
+
+      {/* NOVO CARD DE INTEGRAÇÃO: "Inserir as contas do Banco" com vinculação direta */}
+      <BankIntegrationCard
+        accounts={accounts}
+        selectedAccountId={statementAccountId !== 'todas' ? statementAccountId : undefined}
+        onSelectAccount={(id) => setStatementAccountId(id)}
+        expenses={expenses}
+        categories={categories}
+        onAddExpenseFromBankBill={onAddExpenseFromBankBill}
+        onImportBankTransactions={handleImportBankTransactions}
+        onLinkExpensesToAccount={onLinkExpensesToAccount}
+      />
 
       {/* Accounts Grid */}
       {accounts.length === 0 ? (
@@ -140,7 +255,7 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
           </div>
           <h3 className="text-base font-black text-black">Nenhuma conta bancária cadastrada</h3>
           <p className="text-xs text-stone-600 max-w-md mx-auto">
-            Cadastre as contas correntes bancárias, cooperativas de crédito (Sicredi, Sicoob, Banco do Brasil) ou o caixa físico da fazenda para controlar saldos e conciliações.
+            Cadastre as contas correntes bancárias, cooperativas de crédito (Sicredi, Sicoob, Banco do Brasil, Caixa, Itaú, Bradesco, Santander, Cresol) ou o caixa físico da fazenda para controlar saldos e conciliações.
           </p>
           <button
             type="button"
@@ -247,23 +362,36 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-200">
+                {/* Rodapé do Card com Ações */}
+                <div className="flex items-center justify-between pt-3 border-t border-slate-200">
                   <button
                     type="button"
-                    onClick={() => handleOpenModal(acc)}
-                    className="p-2 text-stone-700 hover:text-[#0963cb] hover:bg-sky-50 rounded-xl transition cursor-pointer"
-                    title="Editar Conta"
+                    onClick={() => handleOpenStatement(acc.id)}
+                    className="inline-flex items-center space-x-1.5 text-xs font-bold text-[#0963cb] hover:text-blue-800 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition cursor-pointer"
+                    title="Ver Extrato da Conta"
                   >
-                    <Edit2 className="w-4 h-4" />
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Ver Extrato</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(acc.id)}
-                    className="p-2 text-stone-700 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"
-                    title="Excluir Conta"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+
+                  <div className="flex items-center space-x-1">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenModal(acc)}
+                      className="p-1.5 text-stone-700 hover:text-[#0963cb] hover:bg-sky-50 rounded-lg transition cursor-pointer"
+                      title="Editar Conta"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(acc.id)}
+                      className="p-1.5 text-stone-700 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                      title="Excluir Conta"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -277,6 +405,18 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
         onClose={() => setIsModalOpen(false)}
         editingAccount={editingAccount}
         onSave={handleSaveAccount}
+      />
+
+      {/* Modal Extrato de Contas Bancárias (com busca obrigatória por intervalo de datas) */}
+      <BankAccountStatementModal
+        isOpen={isStatementOpen}
+        onClose={() => setIsStatementOpen(false)}
+        accounts={accounts}
+        selectedAccountId={statementAccountId}
+        expenses={expenses}
+        transactions={transactions}
+        employees={employees}
+        onAddTransaction={handleAddTransaction}
       />
     </div>
   );

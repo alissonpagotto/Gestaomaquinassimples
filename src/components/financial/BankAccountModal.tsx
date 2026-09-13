@@ -196,7 +196,7 @@ export const BankAccountModal: React.FC<BankAccountModalProps> = ({
   const handleBankChange = (newBankName: string, newBankCode?: string, suggestedColor?: string) => {
     setBankName(newBankName);
     setBankCode(newBankCode);
-    if (suggestedColor && !editingAccount) {
+    if (suggestedColor) {
       setColor(suggestedColor);
     }
   };

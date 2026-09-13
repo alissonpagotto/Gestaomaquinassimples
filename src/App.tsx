@@ -471,18 +471,20 @@ export default function App() {
     }
   };
 
-  const handleToggleExpenseStatus = (id: string, newStatus: ExpenseStatus) => {
+  const handleToggleExpenseStatus = (id: string, newStatus?: ExpenseStatus) => {
     const today = new Date().toISOString().split('T')[0];
     setExpenses((prev) =>
-      prev.map((e) =>
-        e.id === id
-          ? {
-              ...e,
-              status: newStatus,
-              paymentDate: newStatus === 'pago' ? (e.paymentDate || today) : undefined,
-            }
-          : e
-      )
+      prev.map((e) => {
+        if (e.id === id) {
+          const nextStatus = newStatus || (e.status === 'pago' ? 'pendente' : 'pago');
+          return {
+            ...e,
+            status: nextStatus,
+            paymentDate: nextStatus === 'pago' ? (e.paymentDate || today) : undefined,
+          };
+        }
+        return e;
+      })
     );
   };
 
@@ -723,6 +725,7 @@ export default function App() {
               companyProfile={companyProfile}
               initialSubTab={activeTab === 'despesas' ? 'despesas' : undefined}
               onSaveBankAccounts={handleSaveBankAccounts}
+              onSaveExpenses={setExpenses}
               onSaveSettlements={handleSaveSettlements}
               onToggleExpenseStatus={handleToggleExpenseStatus}
               onEditExpense={(exp) => {

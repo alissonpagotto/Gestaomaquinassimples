@@ -15,6 +15,7 @@ import {
   FuelLog,
   MaintenanceLog,
   BankAccount,
+  BankTransaction,
   ThirdPartySettlement,
   PayrollRecord,
   VacationRecord,
@@ -77,6 +78,7 @@ const STORAGE_KEYS = {
   EMPLOYEE_ROLES: 'silagem_facil_clean_v1_employee_roles',
   MACHINERY_TYPES: 'silagem_facil_clean_v1_machinery_types',
   BANK_ACCOUNTS: 'silagem_facil_clean_v1_bank_accounts',
+  BANK_TRANSACTIONS: 'silagem_facil_clean_v1_bank_transactions',
   SETTLEMENTS: 'silagem_facil_clean_v1_settlements',
   PAYROLLS: 'silagem_facil_clean_v1_payrolls',
   VACATIONS: 'silagem_facil_clean_v1_vacations',
@@ -664,6 +666,24 @@ export function saveStoredBankAccounts(accounts: BankAccount[]): void {
     localStorage.setItem(STORAGE_KEYS.BANK_ACCOUNTS, JSON.stringify(accounts));
   } catch (e) {
     console.error('Failed to save bank accounts', e);
+  }
+}
+
+export function getStoredBankTransactions(): BankTransaction[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.BANK_TRANSACTIONS);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch (e) {
+    return [];
+  }
+}
+
+export function saveStoredBankTransactions(transactions: BankTransaction[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.BANK_TRANSACTIONS, JSON.stringify(transactions));
+  } catch (e) {
+    console.error('Failed to save bank transactions', e);
   }
 }
 

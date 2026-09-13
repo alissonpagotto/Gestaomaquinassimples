@@ -45,7 +45,7 @@ export const BankCombobox: React.FC<BankComboboxProps> = ({
         if (searchTerm.trim() && searchTerm !== value) {
           const matched = findBankByQuery(searchTerm);
           if (matched) {
-            onChange(matched.shortName, matched.code, matched.color);
+            onChange(matched.displayName, matched.code, matched.color);
             setSearchTerm(matched.displayName);
           } else {
             onChange(searchTerm.trim(), undefined);
@@ -66,7 +66,7 @@ export const BankCombobox: React.FC<BankComboboxProps> = ({
   }, [searchTerm]);
 
   const handleSelectBank = (bank: BrazilianBank) => {
-    onChange(bank.shortName, bank.code, bank.color);
+    onChange(bank.displayName, bank.code, bank.color);
     setSearchTerm(bank.displayName);
     setIsOpen(false);
     inputRef.current?.blur();

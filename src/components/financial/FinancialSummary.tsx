@@ -33,9 +33,11 @@ import {
   Employee,
   FleetTeam,
   Machinery,
-  CompanyProfile
+  CompanyProfile,
+  BankTransaction,
+  PaymentMethod
 } from '../../types';
-import { formatCurrencyBRL } from '../../lib/storage';
+import { formatCurrencyBRL, getStoredBankTransactions, saveStoredBankTransactions, saveStoredExpenses } from '../../lib/storage';
 import { BankAccountsTab } from './BankAccountsTab';
 import { PayablesTab } from './PayablesTab';
 import { ReceivablesTab } from './ReceivablesTab';
@@ -60,6 +62,7 @@ interface FinancialSummaryProps {
   seasons: CropSeason[];
   services?: ServiceOrder[];
   bankAccounts?: BankAccount[];
+  bankTransactions?: BankTransaction[];
   settlements?: ThirdPartySettlement[];
   categories?: ExpenseCategory[];
   costCenters?: CostCenter[];
@@ -69,6 +72,22 @@ interface FinancialSummaryProps {
   companyProfile?: CompanyProfile;
   initialSubTab?: FinancialTabType;
   onSaveBankAccounts?: (accounts: BankAccount[]) => void;
+  onSaveBankTransactions?: (transactions: BankTransaction[]) => void;
+  onSaveExpenses?: (expenses: Expense[]) => void;
+  onSettleExpense?: (params: {
+    expenseId: string;
+    paymentDate: string;
+    paidByEmployeeId: string;
+    paidByEmployeeName: string;
+    bankAccountId: string;
+    bankAccountName: string;
+    paymentMethod: PaymentMethod;
+    authenticationCode?: string;
+    notes?: string;
+  }) => void;
+  onReverseExpense?: (id: string) => void;
+  onAddExpenseFromBankBill?: (expense: Partial<Expense>) => void;
+  onLinkExpensesToAccount?: (expenseIds: string[], accountId: string) => void;
   onSaveSettlements?: (settlements: ThirdPartySettlement[]) => void;
   onToggleExpenseStatus?: (id: string) => void;
   onEditExpense?: (exp: Expense) => void;
@@ -86,6 +105,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
   seasons = [],
   services = [],
   bankAccounts = [],
+  bankTransactions: bankTransactionsProp,
   settlements = [],
   categories = [],
   costCenters = [],
@@ -94,19 +114,243 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
   machineries = [],
   companyProfile,
   initialSubTab,
-  onSaveBankAccounts = () => {},
-  onSaveSettlements = () => {},
-  onToggleExpenseStatus = () => {},
+  onSaveBankAccounts = (_accounts: BankAccount[]) => {},
+  onSaveBankTransactions,
+  onSaveExpenses,
+  onSettleExpense,
+  onReverseExpense,
+  onAddExpenseFromBankBill,
+  onLinkExpensesToAccount,
+  onSaveSettlements = (_settlements: ThirdPartySettlement[]) => {},
+  onToggleExpenseStatus = (_id: string) => {},
   onEditExpense,
   onNewExpense,
-  onDeleteExpense = () => {},
-  onViewReceipt = () => {},
-  onDuplicateExpense = () => {},
+  onDeleteExpense = (_id: string) => {},
+  onViewReceipt = (_exp: Expense) => {},
+  onDuplicateExpense = (_exp: Expense) => {},
   onOpenAiParser,
-  onAddExpenseFromNfe = () => {},
+  onAddExpenseFromNfe = (_expense: Partial<Expense>) => {},
 }) => {
   // Navigation Tabs
   const [activeTab, setActiveTab] = useState<FinancialTabType>(initialSubTab || 'consolidado');
+
+  // Internal bank transactions state if not controlled
+  const [internalBankTransactions, setInternalBankTransactions] = useState<BankTransaction[]>(
+    () => bankTransactionsProp || getStoredBankTransactions()
+  );
+
+  useEffect(() => {
+    if (bankTransactionsProp) {
+      setInternalBankTransactions(bankTransactionsProp);
+    }
+  }, [bankTransactionsProp]);
+
+  const handleSaveTransactions = (txs: BankTransaction[]) => {
+    setInternalBankTransactions(txs);
+    saveStoredBankTransactions(txs);
+    if (onSaveBankTransactions) {
+      onSaveBankTransactions(txs);
+    }
+  };
+
+  // Liquidação de Despesa com identificação de funcionário e débito bancário
+  const handleSettleExpenseInternal = (params: {
+    expenseId: string;
+    paymentDate: string;
+    paidByEmployeeId: string;
+    paidByEmployeeName: string;
+    bankAccountId: string;
+    bankAccountName: string;
+    paymentMethod: PaymentMethod;
+    authenticationCode?: string;
+    notes?: string;
+  }) => {
+    if (onSettleExpense) {
+      onSettleExpense(params);
+      return;
+    }
+
+    const exp = expenses.find((e) => e.id === params.expenseId);
+    if (!exp) return;
+
+    // Atualiza a despesa
+    const updatedExpenses = expenses.map((e) => {
+      if (e.id === params.expenseId) {
+        return {
+          ...e,
+          status: 'pago' as const,
+          paymentDate: params.paymentDate,
+          paidByEmployeeId: params.paidByEmployeeId,
+          paidByEmployeeName: params.paidByEmployeeName,
+          bankAccountId: params.bankAccountId,
+          bankAccountName: params.bankAccountName,
+          paymentMethod: params.paymentMethod,
+          notes: params.notes ? (e.notes ? `${e.notes} | ${params.notes}` : params.notes) : e.notes,
+        };
+      }
+      return e;
+    });
+
+    if (onSaveExpenses) {
+      onSaveExpenses(updatedExpenses);
+    } else {
+      saveStoredExpenses(updatedExpenses);
+      onToggleExpenseStatus(params.expenseId);
+    }
+
+    // Debita o saldo da conta bancária
+    const updatedAccounts = bankAccounts.map((acc) => {
+      if (acc.id === params.bankAccountId) {
+        return {
+          ...acc,
+          balance: acc.balance - exp.amount,
+        };
+      }
+      return acc;
+    });
+    onSaveBankAccounts(updatedAccounts);
+
+    // Registra a transação bancária no extrato da conta
+    const newTx: BankTransaction = {
+      id: `tx_pay_${Date.now()}`,
+      bankAccountId: params.bankAccountId,
+      bankAccountName: params.bankAccountName,
+      date: params.paymentDate,
+      description: `Pagamento Despesa: ${exp.supplier || exp.description}`,
+      type: 'saida',
+      amount: exp.amount,
+      category: exp.categoryName || 'Despesas',
+      expenseId: exp.id,
+      paidByEmployeeId: params.paidByEmployeeId,
+      paidByEmployeeName: params.paidByEmployeeName,
+      sourceType: 'baixa_pagamento',
+      notes: params.notes,
+      createdAt: new Date().toISOString(),
+    };
+
+    handleSaveTransactions([newTx, ...internalBankTransactions]);
+  };
+
+  // Estorno de Despesa com estorno do saldo bancário
+  const handleReverseExpenseInternal = (expenseId: string) => {
+    if (onReverseExpense) {
+      onReverseExpense(expenseId);
+      return;
+    }
+
+    const exp = expenses.find((e) => e.id === expenseId);
+    if (!exp) return;
+
+    const updatedExpenses = expenses.map((e) => {
+      if (e.id === expenseId) {
+        return {
+          ...e,
+          status: 'pendente' as const,
+        };
+      }
+      return e;
+    });
+
+    if (onSaveExpenses) {
+      onSaveExpenses(updatedExpenses);
+    } else {
+      saveStoredExpenses(updatedExpenses);
+      onToggleExpenseStatus(expenseId);
+    }
+
+    // Devolve o saldo à conta se tiver sido debitado
+    if (exp.bankAccountId) {
+      const updatedAccounts = bankAccounts.map((acc) => {
+        if (acc.id === exp.bankAccountId) {
+          return {
+            ...acc,
+            balance: acc.balance + exp.amount,
+          };
+        }
+        return acc;
+      });
+      onSaveBankAccounts(updatedAccounts);
+
+      // Registra estorno no extrato
+      const refundTx: BankTransaction = {
+        id: `tx_rev_${Date.now()}`,
+        bankAccountId: exp.bankAccountId,
+        bankAccountName: exp.bankAccountName || 'Conta Bancária',
+        date: new Date().toISOString().split('T')[0],
+        description: `Estorno Pagamento: ${exp.supplier || exp.description}`,
+        type: 'entrada',
+        amount: exp.amount,
+        category: 'Estorno de Pagamento',
+        expenseId: exp.id,
+        sourceType: 'manual',
+        createdAt: new Date().toISOString(),
+      };
+      handleSaveTransactions([refundTx, ...internalBankTransactions]);
+    }
+  };
+
+  // Inserir boleto / conta bancária
+  const handleAddExpenseFromBankBillInternal = (newExpData: Partial<Expense>) => {
+    if (onAddExpenseFromBankBill) {
+      onAddExpenseFromBankBill(newExpData);
+      return;
+    }
+
+    const cat = categories.find((c) => c.name === newExpData.categoryName);
+    const newExp: Expense = {
+      id: `exp_bank_${Date.now()}`,
+      description: newExpData.description || 'Despesa Bancária',
+      amount: newExpData.amount || 0,
+      categoryId: newExpData.categoryId || cat?.id || 'cat_default',
+      categoryName: newExpData.categoryName || cat?.name || 'Geral',
+      categoryColor: cat?.color || '#0963cb',
+      dueDate: newExpData.dueDate || new Date().toISOString().split('T')[0],
+      date: newExpData.dueDate || new Date().toISOString().split('T')[0],
+      status: 'pendente',
+      paymentMethod: 'boleto',
+      supplier: newExpData.supplier || 'Fornecedor Bancário',
+      bankAccountId: newExpData.bankAccountId,
+      bankAccountName: newExpData.bankAccountName,
+      invoiceNumber: newExpData.invoiceNumber,
+      notes: newExpData.notes,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updated = [newExp, ...expenses];
+    if (onSaveExpenses) {
+      onSaveExpenses(updated);
+    } else {
+      saveStoredExpenses(updated);
+    }
+  };
+
+  // Vincular contas a pagar em lote à conta bancária
+  const handleLinkExpensesToAccountInternal = (expenseIds: string[], accountId: string) => {
+    if (onLinkExpensesToAccount) {
+      onLinkExpensesToAccount(expenseIds, accountId);
+      return;
+    }
+
+    const acc = bankAccounts.find((a) => a.id === accountId);
+    if (!acc) return;
+
+    const updated = expenses.map((e) => {
+      if (expenseIds.includes(e.id)) {
+        return {
+          ...e,
+          bankAccountId: acc.id,
+          bankAccountName: acc.name,
+        };
+      }
+      return e;
+    });
+
+    if (onSaveExpenses) {
+      onSaveExpenses(updated);
+    } else {
+      saveStoredExpenses(updated);
+    }
+  };
 
   useEffect(() => {
     if (initialSubTab) {
@@ -737,6 +981,13 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
         <BankAccountsTab
           accounts={bankAccounts}
           onSaveAccounts={onSaveBankAccounts}
+          expenses={expenses}
+          employees={employees}
+          transactions={internalBankTransactions}
+          onSaveTransactions={handleSaveTransactions}
+          onAddExpenseFromBankBill={handleAddExpenseFromBankBillInternal}
+          onLinkExpensesToAccount={handleLinkExpensesToAccountInternal}
+          categories={categories}
         />
       )}
 
@@ -744,7 +995,11 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
       {activeTab === 'a_pagar' && (
         <PayablesTab
           expenses={expenses}
+          bankAccounts={bankAccounts}
+          employees={employees}
           onToggleStatus={onToggleExpenseStatus}
+          onSettleExpense={handleSettleExpenseInternal}
+          onReverseExpense={handleReverseExpenseInternal}
           onEditExpense={onEditExpense}
           onNewExpense={onNewExpense}
         />
