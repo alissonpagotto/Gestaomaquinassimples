@@ -110,6 +110,14 @@ export function generateEmployeeSheetHtml(
                   ${employee.phone || 'Não informado'}
                 </td>
               </tr>
+              ${employee.actingRegion ? `
+              <tr>
+                <td style="background: #f8fafc; font-weight: bold; color: #475569; padding: 6px 8px; border: 1px solid #cbd5e1;">Região de Atuação:</td>
+                <td colspan="3" style="padding: 6px 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #c2410c; text-transform: uppercase;">
+                  📍 ${employee.actingRegion}
+                </td>
+              </tr>
+              ` : ''}
             </tbody>
           </table>
         </div>
@@ -292,6 +300,7 @@ export function generateEmployeeWhatsAppText(
 
   text += `👤 *Nome:* ${employee.name || 'Não informado'}\n`;
   text += `💼 *Cargo:* ${employee.role || 'Não informado'}\n`;
+  if (employee.actingRegion) text += `📍 *Região de Atuação:* ${employee.actingRegion}\n`;
   text += `📄 *Tipo Cadastro:* ${employee.registrationType || 'Funcionário'}\n`;
   text += `📝 *Regime:* ${employee.contractType || 'CLT'}\n`;
   if (employee.admissionDate) text += `📅 *Admissão:* ${formatDateBR(employee.admissionDate)}\n`;

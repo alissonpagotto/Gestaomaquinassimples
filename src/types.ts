@@ -326,6 +326,7 @@ export interface Employee {
   commissionPerHectare?: number; // Por hectare (R$/ha)
   brokerCommissionType?: 'Porcentagem (%) sobre o valor do pedido' | 'Porcentagem (%) sobre a produção' | 'Valor Fixo por contrato/pedido' | string; // Tipo de comissão do agenciador
   brokerCommissionValue?: number; // Valor/Percentual da comissão do agenciador
+  actingRegion?: string; // Região de Atuação (específico para Agenciador)
   cnhNumber?: string;
   cnhCategory?: string; // 'A', 'B', 'C', 'D', 'E', 'AB', 'AC', 'AD', 'AE'
   cnhExpiration?: string; // YYYY-MM-DD

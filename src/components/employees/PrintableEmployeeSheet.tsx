@@ -184,6 +184,14 @@ export const PrintableEmployeeSheet: React.FC<PrintableEmployeeSheetProps> = ({
                   {employee.admissionDate ? formatDateBR(employee.admissionDate) : '—'}
                 </td>
               </tr>
+              {employee.actingRegion && (
+                <tr>
+                  <td className="label-cell">Região de Atuação:</td>
+                  <td className="value-cell" colSpan={3} style={{ fontWeight: 'bold', color: '#c2410c', textTransform: 'uppercase' }}>
+                    📍 {employee.actingRegion}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

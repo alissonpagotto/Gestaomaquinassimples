@@ -25,7 +25,8 @@ import {
   Building2,
   Download,
   FileCheck,
-  Paperclip
+  Paperclip,
+  MapPin
 } from 'lucide-react';
 import { Employee, CompanyProfile, EmployeeAttachment, Cargo, EmployeeRole, EmployeeRegistrationType } from '../../types';
 import { formatDateBR, checkCnhStatus, formatCurrencyBRL, getStoredCompanyProfile } from '../../lib/storage';
@@ -239,6 +240,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
   // Broker Commission State (Agenciador)
   const [brokerCommissionType, setBrokerCommissionType] = useState<string>('Porcentagem (%) sobre o valor do pedido');
   const [brokerCommissionValue, setBrokerCommissionValue] = useState<string>('5,00');
+  const [actingRegion, setActingRegion] = useState<string>('');
 
   const isBroker = useMemo(() => {
     return role1.trim().toLowerCase() === 'agenciador' || role2.trim().toLowerCase() === 'agenciador';
@@ -328,6 +330,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     setRole2('');
     setBrokerCommissionType('Porcentagem (%) sobre o valor do pedido');
     setBrokerCommissionValue('5,00');
+    setActingRegion('');
     setCpf('');
     setRg('');
     setBirthDate('');
@@ -406,6 +409,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
         ? formatCurrencyInputDisplay(emp.brokerCommissionValue)
         : '5,00'
     );
+    setActingRegion((emp.actingRegion || '').toUpperCase());
     setCpf(emp.cpf || '');
     setRg((emp.rg || '').toUpperCase());
     setBirthDate(emp.birthDate || '');
@@ -496,6 +500,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
       roles: finalRoles,
       brokerCommissionType: isBroker ? brokerCommissionType : undefined,
       brokerCommissionValue: isBroker ? parseCurrencyInput(brokerCommissionValue) : undefined,
+      actingRegion: isBroker && actingRegion.trim() ? actingRegion.trim().toUpperCase() : undefined,
       cpf: cpf.trim() || undefined,
       rg: rg.trim() ? rg.trim().toUpperCase() : undefined,
       birthDate: birthDate || undefined,
@@ -630,6 +635,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
       roles: finalRoles,
       brokerCommissionType: isBroker ? brokerCommissionType : undefined,
       brokerCommissionValue: parsedBrokerCommission,
+      actingRegion: isBroker && actingRegion.trim() ? actingRegion.trim().toUpperCase() : undefined,
       cpf: cpf.trim() || undefined,
       rg: rg.trim() ? rg.trim().toUpperCase() : undefined,
       birthDate: birthDate || undefined,
@@ -1015,6 +1021,12 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                       {emp.contractType || 'Registrado (CLT)'}
                       {emp.admissionDate && ` • Adm: ${formatDateBR(emp.admissionDate)}`}
                     </div>
+                    {emp.actingRegion && (
+                      <div className="flex items-center space-x-1 text-[11px] text-orange-950 font-bold mt-1">
+                        <MapPin className="w-3 h-3 text-orange-600 shrink-0" />
+                        <span className="uppercase">{emp.actingRegion}</span>
+                      </div>
+                    )}
                   </td>
 
                   <td className="py-3.5 px-4 font-black text-black font-['Outfit']">
@@ -1268,6 +1280,38 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* CAMPO CONDICIONAL: REGIÃO DE ATUAÇÃO (ESPECÍFICO DO AGENCIADOR) */}
+              {isBroker && (
+                <div className="p-3 bg-gradient-to-r from-orange-50/90 via-amber-50/80 to-orange-50/90 border-2 border-orange-400 rounded-xl space-y-1.5 transition-all duration-200 shadow-2xs">
+                  <div className="flex flex-wrap items-center justify-between gap-1.5">
+                    <label 
+                      htmlFor="employee-acting-region"
+                      className="flex items-center space-x-1.5 text-xs font-black text-orange-950 uppercase tracking-wide"
+                    >
+                      <MapPin className="w-4 h-4 text-orange-600 shrink-0" />
+                      <span>Região de Atuação</span>
+                      <span className="text-rose-600 font-bold">*</span>
+                    </label>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 border border-orange-300">
+                      <MapPin className="w-2.5 h-2.5 text-orange-600" />
+                      Específico do Agenciador
+                    </span>
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      id="employee-acting-region"
+                      type="text"
+                      required={isBroker}
+                      value={actingRegion}
+                      onChange={(e) => setActingRegion(e.target.value.toUpperCase())}
+                      placeholder="EX: SUDOESTE DO PARANÁ, NORTE PIONEIRO, VALE DO PARANAPANEMA..."
+                      className="w-full px-3 py-1.5 bg-white border-2 border-orange-400 focus:border-orange-600 rounded-lg text-black text-xs sm:text-sm font-bold uppercase placeholder:normal-case placeholder:font-normal placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-orange-500/30 transition shadow-2xs"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* SECTION 2: DADOS PROFISSIONAIS & CONTRATUAIS */}
               <div className="space-y-3">
