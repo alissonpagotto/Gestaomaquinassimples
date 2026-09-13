@@ -39,6 +39,7 @@ export interface VehiclePurchaseInstallmentsModalProps {
   vehicleIdentifier: string; // Placa ou Chassi/Série
   purchaseValue: number; // Valor de Compra (R$) informado na tela anterior
   baseDate?: string; // Data de Compra (YYYY-MM-DD) ou data base
+  firstDueDate?: string; // Data do 1º Vencimento vinda da tela anterior
   initialInstallmentsCount?: number;
   existingInstallments?: VehiclePurchaseInstallmentRow[];
   supplierName?: string;
@@ -158,6 +159,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
   vehicleIdentifier,
   purchaseValue,
   baseDate,
+  firstDueDate,
   initialInstallmentsCount = 1,
   existingInstallments,
   supplierName,
@@ -168,6 +170,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
   const [installments, setInstallments] = useState<VehiclePurchaseInstallmentRow[]>([]);
   const [installmentsCountInput, setInstallmentsCountInput] = useState<number>(initialInstallmentsCount || 1);
   const [selectedInterval, setSelectedInterval] = useState<number | null>(30);
+  const [firstDueDateInput, setFirstDueDateInput] = useState<string>('');
   const [activeFileRowId, setActiveFileRowId] = useState<string | null>(null);
   const [previewFile, setPreviewFile] = useState<{ name: string; url: string } | null>(null);
   const [validationError, setValidationError] = useState<string>('');
@@ -183,18 +186,23 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
       setInstallments(existingInstallments);
       setInstallmentsCountInput(existingInstallments.length);
       setSelectedInterval(null);
+      setFirstDueDateInput(existingInstallments[0].dueDate || '');
       setValidationError('');
       return;
     }
 
     const count = Math.max(1, initialInstallmentsCount || 1);
     setInstallmentsCountInput(count);
-    generateInitialInstallments(count);
+
+    // Herda inicialmente o 1º Vencimento informado na tela anterior ou calcula +30 dias
+    const initialFirst = firstDueDate || addDaysToDate(effectiveBaseDate, 30);
+    setFirstDueDateInput(initialFirst);
+    generateInitialInstallments(count, initialFirst);
     setValidationError('');
-  }, [isOpen, purchaseValue, initialInstallmentsCount]);
+  }, [isOpen, purchaseValue, initialInstallmentsCount, firstDueDate]);
 
   // Gerador inicial das parcelas
-  const generateInitialInstallments = (count: number) => {
+  const generateInitialInstallments = (count: number, customFirstDate?: string) => {
     const total = Math.max(0, purchaseValue || 0);
     const safeCount = Math.max(1, count);
     
@@ -207,12 +215,14 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
       : PAYMENT_METHODS_OPTIONS[0];
 
     const generated: VehiclePurchaseInstallmentRow[] = [];
+    const firstDate = customFirstDate || firstDueDateInput || addDaysToDate(effectiveBaseDate, 30);
 
     for (let i = 1; i <= safeCount; i++) {
       const isLast = i === safeCount;
       const amount = isLast ? Math.round((baseAmount + diff) * 100) / 100 : baseAmount;
-      const days = i * 30; // 30, 60, 90, 120...
-      const dueDate = addDaysToDate(effectiveBaseDate, days);
+      const daysFromFirst = (i - 1) * 30; // 0, 30, 60, 90...
+      const dueDate = i === 1 ? firstDate : addDaysToDate(firstDate, daysFromFirst);
+      const days = calculateDaysBetween(effectiveBaseDate, dueDate);
       const numberStr = String(i).padStart(2, '0');
 
       generated.push({
@@ -235,6 +245,51 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
     setSelectedInterval(30);
   };
 
+  // Recálculo inteligente em cascata a partir do 1º Vencimento (Topo -> Tabela)
+  const handleApplyFirstDueDate = (newFirstDueDate: string) => {
+    setFirstDueDateInput(newFirstDueDate);
+    if (!newFirstDueDate) return;
+
+    setInstallments(prev => {
+      if (prev.length === 0) return prev;
+
+      const intervalUnit = selectedInterval || 30;
+      const oldFirstDays = prev[0]?.daysInterval ?? 0;
+
+      return prev.map((inst, index) => {
+        if (index === 0) {
+          const days = calculateDaysBetween(effectiveBaseDate, newFirstDueDate);
+          return {
+            ...inst,
+            dueDate: newFirstDueDate,
+            daysInterval: days,
+          };
+        }
+
+        // Para as parcelas subsequentes (02, 03, etc.):
+        // Somar progressivamente o intervalo de dias a partir desta nova data base (ex: +30, +60, +90...)
+        let offsetDays: number;
+        if (selectedInterval) {
+          offsetDays = index * selectedInterval;
+        } else if (inst.daysInterval > oldFirstDays) {
+          offsetDays = inst.daysInterval - oldFirstDays;
+        } else {
+          offsetDays = index * intervalUnit;
+        }
+
+        const dueDate = addDaysToDate(newFirstDueDate, offsetDays);
+        const daysInterval = calculateDaysBetween(effectiveBaseDate, dueDate);
+
+        return {
+          ...inst,
+          dueDate,
+          daysInterval,
+        };
+      });
+    });
+    setValidationError('');
+  };
+
   // Aplicar Divisão Igualitária baseada no número de parcelas
   const handleApplyEqualDivision = (customCount?: number) => {
     const count = customCount || installmentsCountInput || installments.length || 1;
@@ -246,14 +301,17 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
     const diff = total > 0 ? Math.round((total - baseAmount * safeCount) * 100) / 100 : 0;
 
     const intervalUnit = selectedInterval || 30;
+    const currentFirstDate = firstDueDateInput || installments[0]?.dueDate || addDaysToDate(effectiveBaseDate, intervalUnit);
+    setFirstDueDateInput(currentFirstDate);
+
     const updated: VehiclePurchaseInstallmentRow[] = [];
 
     for (let i = 1; i <= safeCount; i++) {
       const existing = installments[i - 1];
       const isLast = i === safeCount;
       const amount = isLast ? Math.round((baseAmount + diff) * 100) / 100 : baseAmount;
-      const days = existing ? existing.daysInterval : i * intervalUnit;
-      const dueDate = existing ? existing.dueDate : addDaysToDate(effectiveBaseDate, days);
+      const dueDate = existing ? existing.dueDate : (i === 1 ? currentFirstDate : addDaysToDate(currentFirstDate, (i - 1) * intervalUnit));
+      const days = existing ? existing.daysInterval : calculateDaysBetween(effectiveBaseDate, dueDate);
       const numberStr = String(i).padStart(2, '0');
 
       updated.push({
@@ -282,6 +340,9 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
     const targetCount = installmentsCountInput || installments.length || 1;
     const safeCount = Math.max(1, Math.min(120, targetCount));
 
+    const currentFirstDate = firstDueDateInput || installments[0]?.dueDate || addDaysToDate(effectiveBaseDate, daysPerPeriod);
+    setFirstDueDateInput(currentFirstDate);
+
     // Se o número de parcelas na tela for diferente do input selecionado, equaliza a quantidade
     if (installments.length !== safeCount) {
       setInstallmentsCountInput(safeCount);
@@ -294,8 +355,8 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
         const existing = installments[i - 1];
         const isLast = i === safeCount;
         const amount = isLast ? Math.round((baseAmount + diff) * 100) / 100 : baseAmount;
-        const days = i * daysPerPeriod;
-        const dueDate = addDaysToDate(effectiveBaseDate, days);
+        const dueDate = i === 1 ? currentFirstDate : addDaysToDate(currentFirstDate, (i - 1) * daysPerPeriod);
+        const days = calculateDaysBetween(effectiveBaseDate, dueDate);
         const numberStr = String(i).padStart(2, '0');
 
         updated.push({
@@ -318,10 +379,10 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
       return;
     }
 
-    // Recalcula PRAZO (DIAS) e VENCIMENTO de todas as parcelas da lista
+    // Recalcula PRAZO (DIAS) e VENCIMENTO de todas as parcelas da lista respeitando o 1º Vencimento
     setInstallments(prev => prev.map((inst, index) => {
-      const days = (index + 1) * daysPerPeriod;
-      const dueDate = addDaysToDate(effectiveBaseDate, days);
+      const dueDate = index === 0 ? currentFirstDate : addDaysToDate(currentFirstDate, index * daysPerPeriod);
+      const days = calculateDaysBetween(effectiveBaseDate, dueDate);
       return {
         ...inst,
         daysInterval: days,
@@ -347,6 +408,9 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
 
     setInstallments(renumbered);
     setInstallmentsCountInput(renumbered.length);
+    if (renumbered[0]) {
+      setFirstDueDateInput(renumbered[0].dueDate);
+    }
     setValidationError('');
   };
 
@@ -356,6 +420,16 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
     field: keyof VehiclePurchaseInstallmentRow, 
     value: any
   ) => {
+    const isFirstRow = installments.length > 0 && (installments[0].id === id || installments[0].number === '01');
+
+    // Sincronização Inversa (Linha da Tabela -> Topo & Restante da Lista):
+    // Se o usuário alterar a data de vencimento digitando diretamente no campo 'VENCIMENTO' da linha '01',
+    // atualiza o campo do topo de forma síncrona e dispara o recálculo em cascata para as demais
+    if (field === 'dueDate' && isFirstRow) {
+      handleApplyFirstDueDate(value);
+      return;
+    }
+
     setInstallments(prev => prev.map(inst => {
       if (inst.id !== id) return inst;
 
@@ -368,9 +442,12 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
         updated.daysInterval = days;
         updated.dueDate = addDaysToDate(effectiveBaseDate, days);
         setSelectedInterval(null);
+        if (inst.id === prev[0]?.id || inst.number === '01') {
+          setFirstDueDateInput(updated.dueDate);
+        }
       }
 
-      // Se alterou Vencimento (data), recalcula o Prazo em Dias automaticamente
+      // Se alterou Vencimento (data) de linha intermediária (não a primeira)
       if (field === 'dueDate') {
         updated.dueDate = value;
         updated.daysInterval = calculateDaysBetween(effectiveBaseDate, value);
@@ -718,6 +795,28 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
                   <Calendar className="w-3.5 h-3.5" />
                   <span>Anual (1 ano)</span>
                 </button>
+              </div>
+
+              {/* Divisor sutil */}
+              <div className="h-5 w-px bg-[#96c1e5] hidden sm:block" />
+
+              {/* Campo 1º Vencimento (Demarcado pelo Retângulo Rosa ao lado dos botões de intervalo) */}
+              <div className="flex items-center space-x-2">
+                <label 
+                  htmlFor="input-primeiro-vencimento-topo"
+                  className="text-xs font-black uppercase text-black flex items-center space-x-1.5 whitespace-nowrap"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-[#0963cb]" />
+                  <span>1º Vencimento:</span>
+                </label>
+                <input
+                  id="input-primeiro-vencimento-topo"
+                  type="date"
+                  value={firstDueDateInput}
+                  onChange={(e) => handleApplyFirstDueDate(e.target.value)}
+                  className="px-2.5 py-1.5 text-xs font-black bg-white text-black border border-[#96c1e5] rounded-lg focus:ring-2 focus:ring-[#0963cb]/30 focus:outline-hidden shadow-2xs cursor-pointer"
+                  title="Data do 1º Vencimento (atualiza a parcela 01 e projeta as subsequentes em cascata)"
+                />
               </div>
             </div>
 

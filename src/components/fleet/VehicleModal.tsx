@@ -2693,6 +2693,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
         vehicleIdentifier={(plate.trim() || serialNumber.trim() || fleetNumber.trim() || 'S/N').toUpperCase()}
         purchaseValue={purchaseValue ? desformatarMoeda(purchaseValue) : 0}
         baseDate={purchaseDate || new Date().toISOString().split('T')[0]}
+        firstDueDate={firstInstallmentDueDate || undefined}
         initialInstallmentsCount={Math.max(1, parseInt(installmentsCount, 10) || 1)}
         existingInstallments={savedPurchaseInstallmentRows.length > 0 ? savedPurchaseInstallmentRows : undefined}
         supplierName={purchaseSupplier.trim() || ownerName.trim()}
