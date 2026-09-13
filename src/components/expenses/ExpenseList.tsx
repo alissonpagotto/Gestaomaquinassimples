@@ -59,7 +59,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
   const [selectedStatus, setSelectedStatus] = useState<string>('todos');
   const [selectedCategory, setSelectedCategory] = useState<string>('todas');
   const [selectedCostCenter, setSelectedCostCenter] = useState<string>('todos');
-  const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
+  const [sortBy, setSortBy] = useState<'date_asc' | 'date_desc' | 'amount_desc' | 'amount_asc'>('date_asc');
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   const activeCompany = useMemo(() => {
@@ -98,8 +98,17 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
 
       return true;
     }).sort((a, b) => {
-      if (sortBy === 'date_desc') return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
-      if (sortBy === 'date_asc') return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      const dateA = (a.dueDate || '').trim();
+      const dateB = (b.dueDate || '').trim();
+
+      if (sortBy === 'date_asc') {
+        if (dateA !== dateB) return dateA.localeCompare(dateB);
+        return (a.description || '').localeCompare(b.description || '');
+      }
+      if (sortBy === 'date_desc') {
+        if (dateA !== dateB) return dateB.localeCompare(dateA);
+        return (b.description || '').localeCompare(a.description || '');
+      }
       if (sortBy === 'amount_desc') return b.amount - a.amount;
       if (sortBy === 'amount_asc') return a.amount - b.amount;
       return 0;
@@ -404,8 +413,8 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
               onChange={(e) => setSortBy(e.target.value as any)}
               className="w-full px-2 py-1 text-xs bg-blue-100/60 dark:bg-stone-800 rounded-lg border border-blue-300 dark:border-stone-700 font-bold text-black dark:text-white"
             >
-              <option value="date_desc">Data (Mais Recente)</option>
-              <option value="date_asc">Data (Mais Antiga)</option>
+              <option value="date_asc">Vencimento (Mais Próximo / Evolução)</option>
+              <option value="date_desc">Vencimento (Mais Distante)</option>
               <option value="amount_desc">Maior Valor (R$)</option>
               <option value="amount_asc">Menor Valor (R$)</option>
             </select>

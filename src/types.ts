@@ -241,6 +241,7 @@ export interface Machinery {
   firstInstallmentDueDate?: string; // Data de vencimento da 1ª parcela
   financialInstitution?: string; // Banco ou Instituição Financeira
   installmentsGenerated?: boolean; // Indicador se as parcelas já foram incluídas no Contas a Pagar
+  purchaseInstallmentRows?: any[]; // Linhas detalhadas de parcelas confirmadas no modal de compra/financiamento
 
   // 4. Controle Patrimonial, Impostos & Taxas (FIPE, IPVA & Licenciamento)
   fipeValue?: number; // Valor Comercial Tabela FIPE (R$)

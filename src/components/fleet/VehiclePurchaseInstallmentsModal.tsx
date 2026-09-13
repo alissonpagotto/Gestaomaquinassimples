@@ -101,6 +101,59 @@ function addDaysToDate(baseDate: string, days: number): string {
   return date.toISOString().split('T')[0];
 }
 
+function addCalendarInterval(baseDateStr: string, index: number, intervalDays: number): string {
+  if (index === 0) return baseDateStr;
+  try {
+    const parts = baseDateStr.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+
+      // Anual (1 ano / 365 dias) -> mantém dia e mês exatos nos anos subsequentes
+      if (intervalDays === 365) {
+        const targetYear = year + index;
+        const maxDays = new Date(targetYear, month + 1, 0).getDate();
+        const targetDay = Math.min(day, maxDays);
+        return `${targetYear}-${String(month + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+      }
+
+      // Semestral (6 meses / 180 dias) -> adiciona 6 meses por parcela
+      if (intervalDays === 180) {
+        const totalMonths = month + (index * 6);
+        const targetYear = year + Math.floor(totalMonths / 12);
+        const targetMonth = ((totalMonths % 12) + 12) % 12;
+        const maxDays = new Date(targetYear, targetMonth + 1, 0).getDate();
+        const targetDay = Math.min(day, maxDays);
+        return `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+      }
+
+      // Trimestral (3 meses / 90 dias) -> adiciona 3 meses por parcela
+      if (intervalDays === 90) {
+        const totalMonths = month + (index * 3);
+        const targetYear = year + Math.floor(totalMonths / 12);
+        const targetMonth = ((totalMonths % 12) + 12) % 12;
+        const maxDays = new Date(targetYear, targetMonth + 1, 0).getDate();
+        const targetDay = Math.min(day, maxDays);
+        return `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+      }
+
+      // Mensal (1 mês / 30 dias) -> adiciona 1 mês por parcela mantendo o dia
+      if (intervalDays === 30) {
+        const totalMonths = month + index;
+        const targetYear = year + Math.floor(totalMonths / 12);
+        const targetMonth = ((totalMonths % 12) + 12) % 12;
+        const maxDays = new Date(targetYear, targetMonth + 1, 0).getDate();
+        const targetDay = Math.min(day, maxDays);
+        return `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+      }
+    }
+  } catch (e) {
+    console.error('Erro ao calcular intervalo do calendário:', e);
+  }
+  return addDaysToDate(baseDateStr, index * intervalDays);
+}
+
 function calculateDaysBetween(startDateStr: string, endDateStr: string): number {
   try {
     const p1 = startDateStr.split('-');
@@ -220,8 +273,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
     for (let i = 1; i <= safeCount; i++) {
       const isLast = i === safeCount;
       const amount = isLast ? Math.round((baseAmount + diff) * 100) / 100 : baseAmount;
-      const daysFromFirst = (i - 1) * 30; // 0, 30, 60, 90...
-      const dueDate = i === 1 ? firstDate : addDaysToDate(firstDate, daysFromFirst);
+      const dueDate = addCalendarInterval(firstDate, i - 1, 30);
       const days = calculateDaysBetween(effectiveBaseDate, dueDate);
       const numberStr = String(i).padStart(2, '0');
 
@@ -254,7 +306,6 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
       if (prev.length === 0) return prev;
 
       const intervalUnit = selectedInterval || 30;
-      const oldFirstDays = prev[0]?.daysInterval ?? 0;
 
       return prev.map((inst, index) => {
         if (index === 0) {
@@ -267,17 +318,8 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
         }
 
         // Para as parcelas subsequentes (02, 03, etc.):
-        // Somar progressivamente o intervalo de dias a partir desta nova data base (ex: +30, +60, +90...)
-        let offsetDays: number;
-        if (selectedInterval) {
-          offsetDays = index * selectedInterval;
-        } else if (inst.daysInterval > oldFirstDays) {
-          offsetDays = inst.daysInterval - oldFirstDays;
-        } else {
-          offsetDays = index * intervalUnit;
-        }
-
-        const dueDate = addDaysToDate(newFirstDueDate, offsetDays);
+        // Recalcula o vencimento aplicando o intervalo de calendário (anual, semestral, trimestral ou mensal)
+        const dueDate = addCalendarInterval(newFirstDueDate, index, intervalUnit);
         const daysInterval = calculateDaysBetween(effectiveBaseDate, dueDate);
 
         return {
@@ -301,7 +343,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
     const diff = total > 0 ? Math.round((total - baseAmount * safeCount) * 100) / 100 : 0;
 
     const intervalUnit = selectedInterval || 30;
-    const currentFirstDate = firstDueDateInput || installments[0]?.dueDate || addDaysToDate(effectiveBaseDate, intervalUnit);
+    const currentFirstDate = firstDueDateInput || installments[0]?.dueDate || addCalendarInterval(effectiveBaseDate, 1, intervalUnit);
     setFirstDueDateInput(currentFirstDate);
 
     const updated: VehiclePurchaseInstallmentRow[] = [];
@@ -310,7 +352,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
       const existing = installments[i - 1];
       const isLast = i === safeCount;
       const amount = isLast ? Math.round((baseAmount + diff) * 100) / 100 : baseAmount;
-      const dueDate = existing ? existing.dueDate : (i === 1 ? currentFirstDate : addDaysToDate(currentFirstDate, (i - 1) * intervalUnit));
+      const dueDate = existing ? existing.dueDate : addCalendarInterval(currentFirstDate, i - 1, intervalUnit);
       const days = existing ? existing.daysInterval : calculateDaysBetween(effectiveBaseDate, dueDate);
       const numberStr = String(i).padStart(2, '0');
 
@@ -340,7 +382,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
     const targetCount = installmentsCountInput || installments.length || 1;
     const safeCount = Math.max(1, Math.min(120, targetCount));
 
-    const currentFirstDate = firstDueDateInput || installments[0]?.dueDate || addDaysToDate(effectiveBaseDate, daysPerPeriod);
+    const currentFirstDate = firstDueDateInput || installments[0]?.dueDate || addCalendarInterval(effectiveBaseDate, 1, daysPerPeriod);
     setFirstDueDateInput(currentFirstDate);
 
     // Se o número de parcelas na tela for diferente do input selecionado, equaliza a quantidade
@@ -355,7 +397,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
         const existing = installments[i - 1];
         const isLast = i === safeCount;
         const amount = isLast ? Math.round((baseAmount + diff) * 100) / 100 : baseAmount;
-        const dueDate = i === 1 ? currentFirstDate : addDaysToDate(currentFirstDate, (i - 1) * daysPerPeriod);
+        const dueDate = addCalendarInterval(currentFirstDate, i - 1, daysPerPeriod);
         const days = calculateDaysBetween(effectiveBaseDate, dueDate);
         const numberStr = String(i).padStart(2, '0');
 
@@ -381,7 +423,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
 
     // Recalcula PRAZO (DIAS) e VENCIMENTO de todas as parcelas da lista respeitando o 1º Vencimento
     setInstallments(prev => prev.map((inst, index) => {
-      const dueDate = index === 0 ? currentFirstDate : addDaysToDate(currentFirstDate, index * daysPerPeriod);
+      const dueDate = index === 0 ? currentFirstDate : addCalendarInterval(currentFirstDate, index, daysPerPeriod);
       const days = calculateDaysBetween(effectiveBaseDate, dueDate);
       return {
         ...inst,
