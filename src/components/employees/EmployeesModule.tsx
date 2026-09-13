@@ -39,19 +39,20 @@ import { generateEmployeeSheetHtml, generateEmployeeWhatsAppText } from './emplo
 
 
 const STORAGE_KEYS = {
-  REG_TYPES: 'silagem_facil_custom_reg_types_v1',
+  REG_TYPES: 'silagem_facil_custom_reg_types_v2',
   ROLES: 'silagem_facil_custom_roles_v1',
   CONTRACT_TYPES: 'silagem_facil_custom_contract_types_v1',
 };
 
 const DEFAULT_REG_TYPES = [
-  'Funcionário',
-  'Motorista Terceirizado',
+  'Agenciador',
   'Auxiliar',
-  'Operador de Máquinas',
   'Diarista / Safrista',
-  'Prestador de Serviço',
-  'Mecanico Especialista'
+  'Funcionário',
+  'Mecanico Especialista',
+  'Motorista Terceirizado',
+  'Operador de Maquinas',
+  'Prestador de Serviço'
 ];
 
 const DEFAULT_ROLES = [
@@ -99,12 +100,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
       const saved = localStorage.getItem(STORAGE_KEYS.REG_TYPES);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          if (!parsed.includes('Mecanico Especialista')) {
-            const updated = [...parsed, 'Mecanico Especialista'];
-            localStorage.setItem(STORAGE_KEYS.REG_TYPES, JSON.stringify(updated));
-            return updated;
-          }
+        if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed;
         }
       }

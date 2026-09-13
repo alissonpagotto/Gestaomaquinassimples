@@ -282,12 +282,16 @@ export type EmployeeRole =
 export type Cargo = EmployeeRole;
 
 export type EmployeeRegistrationType = 
+  | 'Agenciador'
+  | 'Auxiliar'
+  | 'Diarista / Safrista'
   | 'Funcionário' 
+  | 'Mecanico Especialista'
+  | 'Motorista Terceirizado'
+  | 'Operador de Maquinas'
+  | 'Operador de Máquinas'
   | 'Prestador de Serviço' 
-  | 'Operador de Máquinas' 
   | 'Motorista' 
-  | 'Diarista / Safrista' 
-  | 'Mecanico Especialista' 
   | 'mecanico_especialista' 
   | string;
 
