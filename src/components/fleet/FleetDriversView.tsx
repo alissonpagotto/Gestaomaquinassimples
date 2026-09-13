@@ -41,7 +41,7 @@ export const FleetDriversView: React.FC<FleetDriversViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
 
   const [filterCnh, setFilterCnh] = useState<'todos' | 'em_dia' | 'vencendo' | 'vencidas'>('todos');
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid');
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -59,21 +59,73 @@ export const FleetDriversView: React.FC<FleetDriversViewProps> = ({
 
   const cnhReport = checkCnhStatus(employees);
 
-  // Filter drivers only
+  // Helper to find any machinery/vehicle linked to a driver/operator
+  const findAssignedMachinery = (driver: Employee) => {
+    const driverNameLower = driver.name.trim().toLowerCase();
+    return machineries.find(m => {
+      // Check direct single or comma-separated operatorOrDriver string
+      if (m.operatorOrDriver) {
+        const parts = m.operatorOrDriver.split(',').map(s => s.trim().toLowerCase());
+        if (parts.includes(driverNameLower)) return true;
+      }
+      // Check structured assignedDrivers array if available
+      if (m.assignedDrivers && Array.isArray(m.assignedDrivers)) {
+        if (m.assignedDrivers.some(d => d.id === driver.id || d.name?.trim().toLowerCase() === driverNameLower)) {
+          return true;
+        }
+      }
+      return false;
+    });
+  };
+
+  // Filter drivers and machinery/tractor/harvester operators
   const driversList = useMemo(() => {
+    // Set of IDs of employees that are currently linked to any machinery/vehicle
+    const linkedEmployeeIds = new Set<string>();
+    const linkedEmployeeNames = new Set<string>();
+
+    machineries.forEach(m => {
+      if (m.operatorOrDriver) {
+        m.operatorOrDriver.split(',').forEach(namePart => {
+          const trimmed = namePart.trim().toLowerCase();
+          if (trimmed) linkedEmployeeNames.add(trimmed);
+        });
+      }
+      if (m.assignedDrivers && Array.isArray(m.assignedDrivers)) {
+        m.assignedDrivers.forEach(d => {
+          if (d.id) linkedEmployeeIds.add(d.id);
+          if (d.name) linkedEmployeeNames.add(d.name.trim().toLowerCase());
+        });
+      }
+    });
+
     return employees.filter(e => {
-      const isDriverRole = 
-        e.role.toLowerCase().includes('motorista') || 
-        e.role.toLowerCase().includes('transporte') ||
-        e.role.toLowerCase().includes('caminhão') ||
+      const roleLower = (e.role || '').toLowerCase();
+      const isLinkedToVehicle = 
+        linkedEmployeeIds.has(e.id) || 
+        linkedEmployeeNames.has(e.name.trim().toLowerCase());
+
+      const isDriverOrOperatorRole = 
+        roleLower.includes('motorista') || 
+        roleLower.includes('transporte') ||
+        roleLower.includes('caminhão') ||
+        roleLower.includes('operador') ||
+        roleLower.includes('trator') ||
+        roleLower.includes('ensiladeira') ||
+        roleLower.includes('forrageira') ||
+        roleLower.includes('máquina') ||
+        roleLower.includes('maquina') ||
         Boolean(e.cnhNumber);
+
+      const isConductorOrOperator = isDriverOrOperatorRole || isLinkedToVehicle;
 
       const matchSearch =
         e.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (e.role && e.role.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (e.cnhNumber && e.cnhNumber.includes(searchTerm)) ||
         e.phone.includes(searchTerm);
 
-      if (!isDriverRole || !matchSearch) return false;
+      if (!isConductorOrOperator || !matchSearch) return false;
 
       const isExpired = cnhReport.expired.some(exp => exp.id === e.id);
       const isExpiring = cnhReport.expiringSoon.some(exp => exp.id === e.id);
@@ -84,7 +136,7 @@ export const FleetDriversView: React.FC<FleetDriversViewProps> = ({
 
       return true;
     });
-  }, [employees, searchTerm, filterCnh, cnhReport]);
+  }, [employees, machineries, searchTerm, filterCnh, cnhReport]);
 
   const openNewDriverModal = () => {
     setEditingDriver(null);
