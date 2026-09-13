@@ -13,8 +13,9 @@ import {
   Calculator,
   ChevronDown,
   Edit2,
+  CheckCircle2,
 } from 'lucide-react';
-import { Expense, ExpenseCategory, CostCenter, Machinery, ExpenseStatus, PaymentMethod, Employee, FleetTeam, Supplier } from '../../types';
+import { Expense, ExpenseCategory, CostCenter, Machinery, ExpenseStatus, PaymentMethod, Employee, FleetTeam, Supplier, BankAccount } from '../../types';
 import { ExpenseCategoriesModal } from './ExpenseCategoriesModal';
 import { SupplierModal } from '../suppliers/SupplierModal';
 
@@ -29,6 +30,7 @@ interface ExpenseModalProps {
   employees?: Employee[];
   teams?: FleetTeam[];
   suppliers?: Supplier[];
+  bankAccounts?: BankAccount[];
   onOpenCategoryManager: () => void;
   onSaveCategories?: (categories: ExpenseCategory[]) => void;
   onSaveCostCenters?: (costCenters: CostCenter[]) => void;
@@ -48,6 +50,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   employees = [],
   teams = [],
   suppliers = [],
+  bankAccounts = [],
   onOpenCategoryManager,
   onSaveCategories,
   onSaveCostCenters,
@@ -64,6 +67,8 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   const [paymentDate, setPaymentDate] = useState('');
   const [status, setStatus] = useState<ExpenseStatus>('pago');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
+  const [bankAccountId, setBankAccountId] = useState<string>('');
+  const [paidByEmployeeId, setPaidByEmployeeId] = useState<string>('');
   const [supplier, setSupplier] = useState('');
   const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
@@ -105,6 +110,8 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       setPaymentDate(editingExpense.paymentDate || '');
       setStatus(editingExpense.status);
       setPaymentMethod(editingExpense.paymentMethod);
+      setBankAccountId(editingExpense.bankAccountId || '');
+      setPaidByEmployeeId(editingExpense.paidByEmployeeId || '');
       setSupplier(editingExpense.supplier || '');
       setCostCenterId(editingExpense.costCenterId || '');
       setMachineryId(editingExpense.machineryId || '');
@@ -144,6 +151,8 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       setPaymentDate(today);
       setStatus('pago');
       setPaymentMethod('pix');
+      setBankAccountId(bankAccounts[0]?.id || '');
+      setPaidByEmployeeId(employees[0]?.id || '');
       setSupplier('');
       setCostCenterId('');
       setMachineryId('');
@@ -407,6 +416,9 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       ? activeEmployees.find((e) => e.id === selectedTargets[0])
       : undefined;
 
+    const selectedBankAccountObj = bankAccounts.find((b) => b.id === bankAccountId);
+    const selectedPaidByEmpObj = employees.find((e) => e.id === paidByEmployeeId);
+
     if (isInstallment && installmentCount > 1 && !editingExpense) {
       const installmentAmount = +(numAmount / installmentCount).toFixed(2);
       const installments: Expense[] = [];
@@ -428,6 +440,10 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
           paymentDate: i === 0 && status === 'pago' ? (paymentDate || dateStr) : undefined,
           status: i === 0 ? status : 'pendente',
           paymentMethod,
+          bankAccountId: i === 0 && status === 'pago' ? selectedBankAccountObj?.id : undefined,
+          bankAccountName: i === 0 && status === 'pago' ? selectedBankAccountObj?.name : undefined,
+          paidByEmployeeId: i === 0 && status === 'pago' ? selectedPaidByEmpObj?.id : undefined,
+          paidByEmployeeName: i === 0 && status === 'pago' ? selectedPaidByEmpObj?.name : undefined,
           supplier: supplier.trim(),
           costCenterId: defaultCostCenter?.id || undefined,
           costCenterName: defaultCostCenter?.name || undefined,
@@ -461,6 +477,10 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
         paymentDate: status === 'pago' ? (paymentDate || dueDate) : undefined,
         status,
         paymentMethod,
+        bankAccountId: status === 'pago' ? selectedBankAccountObj?.id : undefined,
+        bankAccountName: status === 'pago' ? selectedBankAccountObj?.name : undefined,
+        paidByEmployeeId: status === 'pago' ? selectedPaidByEmpObj?.id : undefined,
+        paidByEmployeeName: status === 'pago' ? selectedPaidByEmpObj?.name : undefined,
         supplier: supplier.trim(),
         costCenterId: defaultCostCenter?.id || undefined,
         costCenterName: defaultCostCenter?.name || undefined,
@@ -981,28 +1001,115 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
             )}
           </div>
 
-          {/* Forma de Pagamento */}
-          <div>
-            <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
-              FORMA DE PAGAMENTO
-            </label>
-            <div className="relative">
-              <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-black text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] appearance-none pr-9"
-              >
-                <option value="pix">PIX</option>
-                <option value="dinheiro">Dinheiro em Espécie</option>
-                <option value="boleto">Boleto Bancário</option>
-                <option value="cartao_credito">Cartão de Crédito</option>
-                <option value="cartao_debito">Cartão de Débito</option>
-                <option value="transferencia">Transferência Bancária (TED/DOC)</option>
-                <option value="cheque">Cheque</option>
-              </select>
-              <ChevronDown className="w-4 h-4 text-stone-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          {/* Status e Forma de Pagamento */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
+                STATUS DO PAGAMENTO
+              </label>
+              <div className="relative">
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as ExpenseStatus)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-black text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] appearance-none pr-9"
+                >
+                  <option value="pago">Pago (Liquidado)</option>
+                  <option value="pendente">A Pagar (Pendente)</option>
+                </select>
+                <ChevronDown className="w-4 h-4 text-stone-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
+                FORMA DE PAGAMENTO
+              </label>
+              <div className="relative">
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-black text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] appearance-none pr-9"
+                >
+                  <option value="pix">PIX</option>
+                  <option value="dinheiro">Dinheiro em Espécie</option>
+                  <option value="boleto">Boleto Bancário</option>
+                  <option value="cartao_credito">Cartão de Crédito</option>
+                  <option value="cartao_debito">Cartão de Débito</option>
+                  <option value="transferencia">Transferência Bancária (TED/DOC)</option>
+                  <option value="cheque">Cheque</option>
+                </select>
+                <ChevronDown className="w-4 h-4 text-stone-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
           </div>
+
+          {/* Se o status for Pago: Identificar Responsável e Conta de Débito */}
+          {status === 'pago' && (
+            <div className="p-3.5 bg-sky-50/80 border border-sky-200 rounded-xl space-y-3">
+              <div className="flex items-center space-x-2 text-[#0963cb] font-bold text-xs">
+                <CheckCircle2 className="w-4 h-4 text-[#0963cb]" />
+                <span>Dados da Baixa / Liquidação do Pagamento</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Quem realizou o pagamento */}
+                <div>
+                  <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-1">
+                    Quem Realizou o Pagamento (Responsável) <span className="text-rose-600">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={paidByEmployeeId}
+                      onChange={(e) => setPaidByEmployeeId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-black text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] appearance-none pr-8"
+                    >
+                      <option value="">-- Selecione o colaborador responsável --</option>
+                      {activeEmployees.map((emp) => (
+                        <option key={emp.id} value={emp.id}>
+                          {emp.name} {emp.role ? `(${emp.role})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-stone-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* De qual banco debitar */}
+                <div>
+                  <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-1">
+                    Conta Bancária de Débito (Origem) <span className="text-rose-600">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={bankAccountId}
+                      onChange={(e) => setBankAccountId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-black text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] appearance-none pr-8"
+                    >
+                      <option value="">-- Selecione o Banco / Conta --</option>
+                      {bankAccounts.map((acc) => (
+                        <option key={acc.id} value={acc.id}>
+                          {acc.name} · {acc.bankName} (Saldo: R$ {acc.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-stone-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-1">
+                  Data Efetiva da Baixa
+                </label>
+                <input
+                  type="date"
+                  value={paymentDate || dueDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  className="w-full sm:w-1/2 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-black text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb]"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Foto / Comprovante Upload Box */}
           <div>

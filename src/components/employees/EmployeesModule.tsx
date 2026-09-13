@@ -1199,7 +1199,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
+                  <div className="sm:col-span-3">
                     <ManageableMultiSelect
                       id="employee-role-dropdown"
                       label="Cargo / Função"
@@ -1207,6 +1207,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                       onChange={setRoles}
                       options={roleOptions}
                       onOptionsChange={handleUpdateRoleOptions}
+                      defaultOptions={DEFAULT_ROLES}
                       placeholder="Selecione os cargos..."
                       newItemPlaceholder="Novo cargo..."
                     />

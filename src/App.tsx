@@ -88,6 +88,7 @@ import { OrderModal } from './components/crm/OrderModal';
 import { OrdersList } from './components/crm/OrdersList';
 
 import { FinancialSummary } from './components/financial/FinancialSummary';
+import { PaymentSettlementData } from './components/financial/PaymentSettlementModal';
 import { NfeModule } from './components/nfe/NfeModule';
 import { FleetModule } from './components/fleet/FleetModule';
 import { EmployeesModule } from './components/employees/EmployeesModule';
@@ -488,6 +489,39 @@ export default function App() {
     );
   };
 
+  const handleSettlePayment = (expenseId: string, settlementData: PaymentSettlementData) => {
+    setExpenses((prev) =>
+      prev.map((e) =>
+        e.id === expenseId
+          ? {
+              ...e,
+              status: 'pago',
+              paymentDate: settlementData.paymentDate,
+              paidByEmployeeId: settlementData.paidByEmployeeId,
+              paidByEmployeeName: settlementData.paidByEmployeeName,
+              bankAccountId: settlementData.bankAccountId,
+              bankAccountName: settlementData.bankAccountName,
+            }
+          : e
+      )
+    );
+
+    // Atualiza saldo da conta bancária debitando o valor da despesa
+    const exp = expenses.find((e) => e.id === expenseId);
+    if (exp && settlementData.bankAccountId) {
+      setBankAccounts((prev) =>
+        prev.map((acc) =>
+          acc.id === settlementData.bankAccountId
+            ? {
+                ...acc,
+                balance: (acc.balance || 0) - exp.amount,
+              }
+            : acc
+        )
+      );
+    }
+  };
+
   const handleDuplicateExpense = (expense: Expense) => {
     const duplicated: Expense = {
       ...expense,
@@ -728,6 +762,7 @@ export default function App() {
               onSaveExpenses={setExpenses}
               onSaveSettlements={handleSaveSettlements}
               onToggleExpenseStatus={handleToggleExpenseStatus}
+              onSettlePayment={handleSettlePayment}
               onEditExpense={(exp) => {
                 setEditingExpense(exp);
                 setIsExpenseModalOpen(true);
@@ -942,6 +977,7 @@ export default function App() {
         employees={employees}
         teams={fleetTeams}
         suppliers={suppliers}
+        bankAccounts={bankAccounts}
         onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}
         onSaveCategories={setCategories}
         onSaveCostCenters={setCostCenters}

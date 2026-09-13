@@ -19,6 +19,17 @@ import { Expense, BankAccount, Employee, PaymentMethod } from '../../types';
 import { formatCurrencyBRL, formatDateBR } from '../../lib/storage';
 import { BankLogoIcon } from './BankLogoIcon';
 
+export interface PaymentSettlementData {
+  paymentDate: string;
+  paidByEmployeeId: string;
+  paidByEmployeeName: string;
+  bankAccountId: string;
+  bankAccountName: string;
+  paymentMethod: PaymentMethod;
+  authenticationCode?: string;
+  notes?: string;
+}
+
 interface PaymentSettlementModalProps {
   isOpen: boolean;
   onClose: () => void;

@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Check, X, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { Check, X, Plus, Tag } from 'lucide-react';
 
 interface ManageableMultiSelectProps {
   id?: string;
@@ -8,6 +8,7 @@ interface ManageableMultiSelectProps {
   onChange: (newValues: string[]) => void;
   options: string[];
   onOptionsChange: (newOptions: string[]) => void;
+  defaultOptions?: string[];
   placeholder?: string;
   newItemPlaceholder?: string;
   className?: string;
@@ -18,31 +19,13 @@ export const ManageableMultiSelect: React.FC<ManageableMultiSelectProps> = ({
   label,
   values = [],
   onChange,
-  options,
+  options = [],
   onOptionsChange,
-  placeholder = 'Selecione um ou mais cargos...',
+  defaultOptions = [],
   newItemPlaceholder = 'Novo cargo...',
   className = '',
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
   const [newItemText, setNewItemText] = useState('');
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Fecha o dropdown ao clicar fora do componente
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen]);
 
   // Alterna a seleção de uma opção
   const handleToggleOption = (opt: string) => {
@@ -59,14 +42,7 @@ export const ManageableMultiSelect: React.FC<ManageableMultiSelectProps> = ({
     onChange(updated);
   };
 
-  // Remove tag específica
-  const handleRemoveTag = (e: React.MouseEvent, optToRemove: string) => {
-    e.stopPropagation();
-    const updated = values.filter(v => v.toLowerCase() !== optToRemove.toLowerCase());
-    onChange(updated);
-  };
-
-  // Cadastra novo item no rodapé do menu
+  // Cadastra novo item e já o seleciona
   const handleAddNew = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const trimmed = newItemText.trim();
@@ -86,129 +62,112 @@ export const ManageableMultiSelect: React.FC<ManageableMultiSelectProps> = ({
     setNewItemText('');
   };
 
-  // Exclui uma opção cadastrada da lista
+  // Exclui uma opção customizada da lista
   const handleDeleteOption = (e: React.MouseEvent, optToDelete: string) => {
     e.stopPropagation();
-    const updatedOpts = options.filter(opt => opt !== optToDelete);
+    const updatedOpts = options.filter(opt => opt.toLowerCase() !== optToDelete.toLowerCase());
     onOptionsChange(updatedOpts);
     if (values.some(v => v.toLowerCase() === optToDelete.toLowerCase())) {
       onChange(values.filter(v => v.toLowerCase() !== optToDelete.toLowerCase()));
     }
   };
 
-  return (
-    <div className={`relative ${className}`} ref={dropdownRef} id={id}>
-      {label && (
-        <label className="block text-xs font-bold text-black mb-1">
-          {label}
-        </label>
-      )}
+  // Limpa todas as seleções
+  const handleClearAll = (e: React.MouseEvent) => {
+    e.preventDefault();
+    onChange([]);
+  };
 
-      {/* Caixa de disparo do Dropdown com as Tags selecionadas */}
-      <div
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full min-h-[38px] flex items-center justify-between gap-1.5 px-2.5 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus-within:ring-1 focus-within:ring-[#0963cb] focus-within:border-[#0963cb] transition cursor-pointer"
-      >
-        <div className="flex-1 flex flex-wrap gap-1.5 items-center">
-          {values.length === 0 ? (
-            <span className="text-stone-400 text-xs sm:text-sm select-none">
-              {placeholder}
+  return (
+    <div className={`space-y-1.5 ${className}`} id={id}>
+      {/* Cabeçalho com Label e Contador de Seleção */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center space-x-1.5">
+          <Tag className="w-3.5 h-3.5 text-black" />
+          <span className="text-xs font-bold text-black">
+            {label || 'Cargo / Função'}
+          </span>
+          {values.length > 0 && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#0963cb] text-white shadow-2xs">
+              {values.length} selecionado{values.length > 1 ? 's' : ''}
             </span>
-          ) : (
-            values.map((val) => (
-              <span
-                key={val}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-sky-100 text-[#0963cb] border border-sky-200 select-none transition shadow-2xs"
-              >
-                <span>{val}</span>
-                <button
-                  type="button"
-                  onClick={(e) => handleRemoveTag(e, val)}
-                  className="p-0.5 hover:bg-sky-200/80 rounded transition cursor-pointer text-[#0963cb]"
-                  title={`Remover cargo ${val}`}
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            ))
           )}
         </div>
 
-        <ChevronDown
-          className={`w-4 h-4 text-stone-500 shrink-0 transition-transform duration-150 ${
-            isOpen ? 'rotate-180' : ''
-          }`}
-        />
+        {values.length > 0 && (
+          <button
+            type="button"
+            onClick={handleClearAll}
+            className="text-[11px] font-medium text-stone-600 hover:text-rose-600 underline transition cursor-pointer"
+          >
+            Limpar seleção
+          </button>
+        )}
       </div>
 
-      {/* Dropdown Menu com Opções e Rodapé de Adição */}
-      {isOpen && (
-        <div className="absolute left-0 top-full mt-1 w-full min-w-[260px] bg-white border border-stone-200 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-          
-          {/* Cabeçalho informativo curto */}
-          <div className="px-3 py-1.5 bg-stone-50 border-b border-stone-100 flex items-center justify-between text-[11px] text-stone-500 font-medium">
-            <span>Selecione múltiplos cargos</span>
-            {values.length > 0 && (
-              <span className="text-[#0963cb] font-bold">
-                {values.length} selecionado{values.length > 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
+      {/* Container de Chips / Pills */}
+      <div className="p-3 bg-white border border-stone-300 rounded-xl space-y-3 shadow-2xs">
+        
+        {/* Lista de tags clicáveis lado a lado */}
+        <div className="flex flex-wrap gap-2 items-center">
+          {options.map((opt) => {
+            const isSelected = values.some(
+              v => v.toLowerCase() === opt.toLowerCase()
+            );
+            const isDefault = defaultOptions.some(
+              d => d.toLowerCase() === opt.toLowerCase()
+            );
 
-          {/* Lista de Opções */}
-          <div className="max-h-52 overflow-y-auto divide-y divide-stone-100 no-scrollbar">
-            {options.map((opt) => {
-              const isSelected = values.some(
-                v => v.toLowerCase() === opt.toLowerCase()
-              );
-              return (
-                <div
-                  key={opt}
-                  onClick={() => handleToggleOption(opt)}
-                  className={`group flex items-center justify-between px-3 py-2 text-xs sm:text-sm cursor-pointer transition ${
-                    isSelected
-                      ? 'bg-sky-50/80 text-[#0963cb] font-semibold'
-                      : 'text-stone-800 hover:bg-stone-50'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2.5 min-w-0 pr-2">
-                    {/* Checkbox customizado */}
-                    <div
-                      className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border transition ${
-                        isSelected
-                          ? 'bg-[#0963cb] border-[#0963cb] text-white'
-                          : 'border-stone-300 bg-white group-hover:border-stone-400'
-                      }`}
-                    >
-                      {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                    </div>
-                    <span className="truncate">{opt}</span>
-                  </div>
+            return (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => handleToggleOption(opt)}
+                className={`group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 active:scale-95 cursor-pointer select-none border shadow-2xs ${
+                  isSelected
+                    ? 'bg-[#0963cb] hover:bg-[#0852a8] text-white border-[#0963cb]'
+                    : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-300 hover:border-stone-400'
+                }`}
+                title={`Clique para ${isSelected ? 'desmarcar' : 'selecionar'} ${opt}`}
+              >
+                {isSelected && (
+                  <Check className="w-3.5 h-3.5 text-white stroke-[2.5] shrink-0" />
+                )}
+                <span>{opt}</span>
 
-                  {/* Botão para excluir a opção customizada se necessário */}
-                  <button
-                    type="button"
+                {/* Botão de exclusão para opções customizadas */}
+                {!isDefault && defaultOptions.length > 0 && (
+                  <span
+                    role="button"
                     onClick={(e) => handleDeleteOption(e, opt)}
-                    className="opacity-0 group-hover:opacity-100 p-0.5 text-stone-400 hover:text-rose-500 rounded transition cursor-pointer shrink-0"
-                    title="Excluir opção"
+                    className={`p-0.5 rounded-full transition cursor-pointer shrink-0 ml-0.5 ${
+                      isSelected
+                        ? 'text-white/70 hover:text-white hover:bg-white/20'
+                        : 'text-stone-400 hover:text-rose-600 hover:bg-stone-200'
+                    }`}
+                    title={`Excluir cargo customizado "${opt}"`}
                   >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              );
-            })}
+                    <X className="w-3 h-3" />
+                  </span>
+                )}
+              </button>
+            );
+          })}
 
-            {options.length === 0 && (
-              <div className="px-3 py-2 text-xs text-stone-400 italic text-center">
-                Nenhum cargo cadastrado
-              </div>
-            )}
-          </div>
+          {options.length === 0 && (
+            <span className="text-xs text-stone-500 italic py-1">
+              Nenhum cargo disponível. Adicione um abaixo.
+            </span>
+          )}
+        </div>
 
-          {/* Rodapé: Input "Novo cargo..." e Botão "+ Adicionar" */}
-          <div className="p-2 border-t border-stone-200 bg-stone-50 flex items-center gap-1.5">
+        {/* Rodapé: Input para Adicionar Novo Cargo */}
+        <div className="flex flex-wrap items-center gap-2 pt-2.5 border-t border-stone-200">
+          <span className="text-[11px] font-bold text-stone-700">
+            Adicionar novo cargo:
+          </span>
+          <div className="flex items-center gap-1.5 flex-1 max-w-sm">
             <input
-              ref={inputRef}
               type="text"
               value={newItemText}
               onChange={(e) => setNewItemText(e.target.value)}
@@ -219,20 +178,22 @@ export const ManageableMultiSelect: React.FC<ManageableMultiSelectProps> = ({
                 }
               }}
               placeholder={newItemPlaceholder}
-              className="flex-1 px-2.5 py-1 text-xs bg-white border border-stone-300 rounded-lg text-black outline-none focus:ring-1 focus:ring-[#0963cb]"
+              className="flex-1 min-w-[140px] px-2.5 py-1 text-xs bg-stone-50 border border-stone-300 rounded-lg text-black focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
             />
             <button
               type="button"
               onClick={() => handleAddNew()}
               disabled={!newItemText.trim()}
-              className="shrink-0 inline-flex items-center space-x-0.5 px-2.5 py-1 text-xs font-semibold text-[#0963cb] hover:text-[#0852a8] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition rounded"
+              className="inline-flex items-center space-x-1 px-3 py-1 text-xs font-bold rounded-lg bg-[#0963cb] hover:bg-[#0852a8] text-white disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer shadow-2xs shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Adicionar</span>
             </button>
           </div>
         </div>
-      )}
+
+      </div>
     </div>
   );
 };
+
