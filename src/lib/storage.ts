@@ -513,17 +513,66 @@ export const getStoredMachineryTypes = () => getStoredList(STORAGE_KEYS.MACHINER
 export const saveStoredMachineryTypes = (list: string[]) => saveStoredList(STORAGE_KEYS.MACHINERY_TYPES, list);
 
 export const DEFAULT_VEHICLE_SYSTEM_CATEGORIES = [
-  'Forrageira / Ensiladeira',
   'Ensiladeira Autopropelida',
-  'Caminhão (Basculante / Silagem / Graneleiro)',
+  'Caminhão (Basculante / Graneleiro)',
   'Trator Agrícola',
-  'Transbordo / Reboque / Carreta',
+  'Reboque',
   'Veículo Utilitário / Apoio',
   'Ônibus / Van de Equipe',
-  'Outro Equipamento'
+  'Tração Caminhão Trator (Cavalo)',
+  'Implemento'
 ];
 
-export const getStoredVehicleSystemCategories = () => getStoredList(STORAGE_KEYS.VEHICLE_SYSTEM_CATEGORIES, DEFAULT_VEHICLE_SYSTEM_CATEGORIES);
+export const getStoredVehicleSystemCategories = (): string[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.VEHICLE_SYSTEM_CATEGORIES);
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEYS.VEHICLE_SYSTEM_CATEGORIES, JSON.stringify(DEFAULT_VEHICLE_SYSTEM_CATEGORIES));
+      return DEFAULT_VEHICLE_SYSTEM_CATEGORIES;
+    }
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      localStorage.setItem(STORAGE_KEYS.VEHICLE_SYSTEM_CATEGORIES, JSON.stringify(DEFAULT_VEHICLE_SYSTEM_CATEGORIES));
+      return DEFAULT_VEHICLE_SYSTEM_CATEGORIES;
+    }
+
+    // Se a lista gravada for a lista antiga padrão legada, atualiza para o novo padrão
+    const legacyOld = [
+      'Forrageira / Ensiladeira',
+      'Ensiladeira Autopropelida',
+      'Caminhão (Basculante / Silagem / Graneleiro)',
+      'Trator Agrícola',
+      'Transbordo / Reboque / Carreta',
+      'Veículo Utilitário / Apoio',
+      'Ônibus / Van de Equipe',
+      'Outro Equipamento'
+    ];
+    const isExactLegacy = parsed.length === legacyOld.length && parsed.every(p => legacyOld.includes(p));
+    if (isExactLegacy) {
+      localStorage.setItem(STORAGE_KEYS.VEHICLE_SYSTEM_CATEGORIES, JSON.stringify(DEFAULT_VEHICLE_SYSTEM_CATEGORIES));
+      return DEFAULT_VEHICLE_SYSTEM_CATEGORIES;
+    }
+
+    // Garante que todas as categorias padrão obrigatórias existam (seed), preservando categorias personalizadas do usuário
+    let updated = [...parsed];
+    let changed = false;
+    DEFAULT_VEHICLE_SYSTEM_CATEGORIES.forEach(defCat => {
+      const exists = updated.some(c => c.trim().toLowerCase() === defCat.trim().toLowerCase());
+      if (!exists) {
+        updated.push(defCat);
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      localStorage.setItem(STORAGE_KEYS.VEHICLE_SYSTEM_CATEGORIES, JSON.stringify(updated));
+    }
+    return updated;
+  } catch (e) {
+    console.error('Failed to load vehicle categories', e);
+    return DEFAULT_VEHICLE_SYSTEM_CATEGORIES;
+  }
+};
 export const saveStoredVehicleSystemCategories = (list: string[]) => saveStoredList(STORAGE_KEYS.VEHICLE_SYSTEM_CATEGORIES, list);
 
 export const DEFAULT_VEHICLE_OWNERSHIP_REGIMES = [

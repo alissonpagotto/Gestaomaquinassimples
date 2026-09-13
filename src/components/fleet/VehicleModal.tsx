@@ -97,7 +97,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
   const [year, setYear] = useState('');
   const [renavam, setRenavam] = useState('');
   const [color, setColor] = useState('');
-  const [categoryType, setCategoryType] = useState<string>('Forrageira / Ensiladeira');
+  const [categoryType, setCategoryType] = useState<string>('Ensiladeira Autopropelida');
   const [categoriesList, setCategoriesList] = useState<string[]>([]);
   const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
   const [status, setStatus] = useState<Machinery['status']>('disponivel');
@@ -108,7 +108,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
   useEffect(() => {
     const loadedCats = getStoredVehicleSystemCategories();
     setCategoriesList(loadedCats);
-    if (!editingVehicle && loadedCats.length > 0 && !categoryType) {
+    if (!editingVehicle && loadedCats.length > 0 && (!categoryType || categoryType === 'forrageira' || categoryType === 'Forrageira / Ensiladeira')) {
       setCategoryType(loadedCats[0]);
     }
 
@@ -491,19 +491,21 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setRenavam(editingVehicle.renavam || '');
       setColor(editingVehicle.color || '');
       const categoryMap: Record<string, string> = {
-        forrageira: 'Forrageira / Ensiladeira',
+        forrageira: 'Ensiladeira Autopropelida',
         ensiladeira: 'Ensiladeira Autopropelida',
-        caminhao: 'Caminhão (Basculante / Silagem / Graneleiro)',
+        caminhao: 'Caminhão (Basculante / Graneleiro)',
         trator: 'Trator Agrícola',
-        reboque: 'Transbordo / Reboque / Carreta',
+        reboque: 'Reboque',
         utilitario: 'Veículo Utilitário / Apoio',
         onibus: 'Ônibus / Van de Equipe',
+        cavalo: 'Tração Caminhão Trator (Cavalo)',
+        implemento: 'Implemento',
         outro: 'Outro Equipamento',
       };
       setCategoryType(
         editingVehicle.categoryType
           ? (categoryMap[editingVehicle.categoryType] || editingVehicle.categoryType)
-          : 'Forrageira / Ensiladeira'
+          : (categoriesList[0] || 'Ensiladeira Autopropelida')
       );
       setStatus(editingVehicle.status || 'disponivel');
       const ownershipMap: Record<string, string> = {
@@ -605,7 +607,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setYear(new Date().getFullYear().toString());
       setRenavam('');
       setColor('');
-      setCategoryType('forrageira');
+      setCategoryType(categoriesList[0] || 'Ensiladeira Autopropelida');
       setStatus('disponivel');
       setOwnership('proprio');
 
@@ -1233,13 +1235,13 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                 </div>
               </div>
 
-              {/* Categoria Geral e Status Operacional */}
+              {/* Categoria do Veículo e Status Operacional */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                {/* Categoria Geral do Sistema - Lista Editável */}
+                {/* Categoria do Veículo - Lista Editável */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-xs font-bold text-[#000000]" style={{ color: '#000000' }}>
-                      Categoria Geral do Sistema
+                      Categoria do Veículo
                     </label>
                     <button
                       type="button"
