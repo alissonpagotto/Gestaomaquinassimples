@@ -1519,16 +1519,16 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
 
               {/* 2. Bloco Dinâmico do Reboque */}
               {hasCoupledTrailer && (
-                <div className="p-3 bg-stone-50/80 rounded-xl border border-blue-200/80 space-y-2.5">
-                  <div className="flex items-center justify-between pb-1.5 border-b border-stone-200">
+                <div className="pt-3 border-t border-blue-100/90 space-y-3">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-stone-200/80">
                     <div className="flex items-center space-x-1.5">
                       <Layers className="w-3.5 h-3.5 text-[#0963cb]" />
-                      <h5 className="text-[11px] font-bold uppercase tracking-wider text-[#000000]" style={{ color: '#000000' }}>
+                      <h5 className="text-xs font-bold uppercase tracking-wider text-[#000000]" style={{ color: '#000000' }}>
                         Dados do Reboque
                       </h5>
                     </div>
                     {candidateTrailers.length > 0 && (
-                      <span className="text-[10px] text-stone-500 font-medium">
+                      <span className="text-[11px] text-stone-500 font-medium">
                         Preenchimento manual ou vínculo rápido
                       </span>
                     )}
@@ -1537,13 +1537,13 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                   {/* Seletor Opcional de Reboques Cadastrados */}
                   {candidateTrailers.length > 0 && (
                     <div>
-                      <label className="block text-[11px] font-bold mb-1 text-stone-700">
+                      <label className="block text-xs font-bold mb-1 text-stone-700">
                         Vincular a partir da Frota Existente (Opcional):
                       </label>
                       <select
                         value={coupledTrailerId}
                         onChange={(e) => handleSelectCandidateTrailer(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-2xs"
+                        className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                       >
                         <option value="">-- Preencher dados manualmente ou selecionar reboque da frota --</option>
                         {candidateTrailers.map((t) => (
@@ -1555,26 +1555,27 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                     </div>
                   )}
 
-                  {/* Grid Horizontal Compacta de Campos do Reboque (12 colunas) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
-                    {/* 1º: Placa do Reboque (sm:col-span-3) */}
-                    <div className="sm:col-span-3">
-                      <label className="block text-[11px] font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                  {/* Grid Proporcional de Campos do Reboque */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[130px_repeat(4,minmax(0,1fr))] gap-4">
+                    {/* 1º: Placa do Reboque (Compacto para 7 caracteres) */}
+                    <div>
+                      <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                         Placa do Reboque
                       </label>
                       <input
                         type="text"
-                        placeholder="Ex: ABC-1D23"
+                        placeholder="ABC-1D23"
+                        maxLength={8}
                         value={trailerPlate}
                         onChange={(e) => setTrailerPlate(e.target.value.toUpperCase())}
-                        className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs font-mono font-bold uppercase focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-mono font-bold uppercase focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                         style={{ backgroundColor: '#ffffff', color: '#000000' }}
                       />
                     </div>
 
-                    {/* 2º: Modelo do Reboque (sm:col-span-3) */}
-                    <div className="sm:col-span-3">
-                      <label className="block text-[11px] font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                    {/* 2º: Modelo do Reboque (Largura média idêntica aos demais) */}
+                    <div>
+                      <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                         Modelo do Reboque
                       </label>
                       <input
@@ -1582,14 +1583,14 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                         placeholder="Ex: Randon Basculante"
                         value={trailerModel}
                         onChange={(e) => setTrailerModel(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                         style={{ backgroundColor: '#ffffff', color: '#000000' }}
                       />
                     </div>
 
-                    {/* 3º: Tipo de Reboque (sm:col-span-2) */}
-                    <div className="sm:col-span-2">
-                      <label className="block text-[11px] font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                    {/* 3º: Tipo de Reboque (Largura média idêntica aos demais) */}
+                    <div>
+                      <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                         Tipo de Reboque
                       </label>
                       <input
@@ -1597,14 +1598,14 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                         placeholder="Ex: Graneleiro, Caçamba"
                         value={coupledTrailerType}
                         onChange={(e) => setCoupledTrailerType(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                         style={{ backgroundColor: '#ffffff', color: '#000000' }}
                       />
                     </div>
 
-                    {/* 4º: Capacidade de Carga (kg) (sm:col-span-2) */}
-                    <div className="sm:col-span-2">
-                      <label className="block text-[11px] font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                    {/* 4º: Capacidade Carga (kg) (Largura idêntica aos de Modelo e Tipo) */}
+                    <div>
+                      <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                         Capacidade Carga (kg)
                       </label>
                       <div className="relative">
@@ -1614,18 +1615,18 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                           placeholder="Ex: 25000"
                           value={trailerCapacityLoadKg}
                           onChange={(e) => setTrailerCapacityLoadKg(e.target.value)}
-                          className="w-full px-3 py-1.5 pr-7 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                          className="w-full px-3 py-2 pr-8 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                           style={{ backgroundColor: '#ffffff', color: '#000000' }}
                         />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-stone-500">
+                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-stone-500 pointer-events-none">
                           kg
                         </span>
                       </div>
                     </div>
 
-                    {/* 5º: Capacidade Volumétrica (m³) (sm:col-span-2) */}
-                    <div className="sm:col-span-2">
-                      <label className="block text-[11px] font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                    {/* 5º: Capacidade Volumétrica (m³) (Largura idêntica aos de Modelo e Tipo) */}
+                    <div>
+                      <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                         Capacidade (m³)
                       </label>
                       <div className="relative">
@@ -1635,10 +1636,10 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                           placeholder="Ex: 40"
                           value={trailerCapacityM3}
                           onChange={(e) => setTrailerCapacityM3(e.target.value)}
-                          className="w-full px-3 py-1.5 pr-7 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                          className="w-full px-3 py-2 pr-8 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                           style={{ backgroundColor: '#ffffff', color: '#000000' }}
                         />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-stone-500">
+                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-stone-500 pointer-events-none">
                           m³
                         </span>
                       </div>
