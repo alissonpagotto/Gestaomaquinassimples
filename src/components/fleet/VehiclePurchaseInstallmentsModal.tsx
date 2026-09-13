@@ -7,7 +7,7 @@ import {
   DollarSign, 
   FileText, 
   Paperclip, 
-  Plus, 
+  Calendar, 
   Trash2, 
   Divide, 
   FileCheck,
@@ -167,6 +167,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
 }) => {
   const [installments, setInstallments] = useState<VehiclePurchaseInstallmentRow[]>([]);
   const [installmentsCountInput, setInstallmentsCountInput] = useState<number>(initialInstallmentsCount || 1);
+  const [selectedInterval, setSelectedInterval] = useState<number | null>(30);
   const [activeFileRowId, setActiveFileRowId] = useState<string | null>(null);
   const [previewFile, setPreviewFile] = useState<{ name: string; url: string } | null>(null);
   const [validationError, setValidationError] = useState<string>('');
@@ -181,6 +182,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
     if (existingInstallments && existingInstallments.length > 0) {
       setInstallments(existingInstallments);
       setInstallmentsCountInput(existingInstallments.length);
+      setSelectedInterval(null);
       setValidationError('');
       return;
     }
@@ -230,6 +232,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
     }
 
     setInstallments(generated);
+    setSelectedInterval(30);
   };
 
   // Aplicar Divisão Igualitária baseada no número de parcelas
@@ -242,13 +245,14 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
     const baseAmount = total > 0 ? Math.floor((total / safeCount) * 100) / 100 : 0;
     const diff = total > 0 ? Math.round((total - baseAmount * safeCount) * 100) / 100 : 0;
 
+    const intervalUnit = selectedInterval || 30;
     const updated: VehiclePurchaseInstallmentRow[] = [];
 
     for (let i = 1; i <= safeCount; i++) {
       const existing = installments[i - 1];
       const isLast = i === safeCount;
       const amount = isLast ? Math.round((baseAmount + diff) * 100) / 100 : baseAmount;
-      const days = existing ? existing.daysInterval : i * 30;
+      const days = existing ? existing.daysInterval : i * intervalUnit;
       const dueDate = existing ? existing.dueDate : addDaysToDate(effectiveBaseDate, days);
       const numberStr = String(i).padStart(2, '0');
 
@@ -272,35 +276,58 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
     setValidationError('');
   };
 
-  // Adicionar uma nova linha de parcela avulsa
-  const handleAddInstallment = () => {
-    const nextIndex = installments.length + 1;
-    const numberStr = String(nextIndex).padStart(2, '0');
-    
-    // Calcula valor restante para fechar a soma
-    const currentSum = installments.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
-    const remaining = Math.max(0, Math.round(((purchaseValue || 0) - currentSum) * 100) / 100);
+  // Aplicar Intervalo Inteligente (Mensal = 30d, Trimestral = 90d, Semestral = 180d, Anual = 365d)
+  const handleApplyInterval = (daysPerPeriod: number) => {
+    setSelectedInterval(daysPerPeriod);
+    const targetCount = installmentsCountInput || installments.length || 1;
+    const safeCount = Math.max(1, Math.min(120, targetCount));
 
-    const lastInst = installments[installments.length - 1];
-    const days = lastInst ? lastInst.daysInterval + 30 : nextIndex * 30;
-    const dueDate = addDaysToDate(effectiveBaseDate, days);
+    // Se o número de parcelas na tela for diferente do input selecionado, equaliza a quantidade
+    if (installments.length !== safeCount) {
+      setInstallmentsCountInput(safeCount);
+      const total = Math.max(0, purchaseValue || 0);
+      const baseAmount = total > 0 ? Math.floor((total / safeCount) * 100) / 100 : 0;
+      const diff = total > 0 ? Math.round((total - baseAmount * safeCount) * 100) / 100 : 0;
 
-    const newRow: VehiclePurchaseInstallmentRow = {
-      id: `vinst_${Date.now()}_${nextIndex}_${Math.random().toString(36).substring(2, 5)}`,
-      number: numberStr,
-      amount: remaining,
-      daysInterval: days,
-      dueDate,
-      paymentMethodCode: lastInst?.paymentMethodCode || (financialInstitution ? '04' : '01'),
-      paymentMethodLabel: lastInst?.paymentMethodLabel || (financialInstitution ? '04 - Financiamento Bancário / CDC' : '01 - Boleto Bancário'),
-      creditAccount: lastInst?.creditAccount || '2.1.2.01 - Financiamentos Bancários a Pagar',
-      debitAccount: lastInst?.debitAccount || '1.2.3.01 - Ativo Imobilizado: Veículos da Frota',
-      observations: `Parcela ${numberStr}/${String(nextIndex).padStart(2, '0')} - Aquisição ${vehicleName || 'Veículo'}`,
-    };
+      const updated: VehiclePurchaseInstallmentRow[] = [];
+      for (let i = 1; i <= safeCount; i++) {
+        const existing = installments[i - 1];
+        const isLast = i === safeCount;
+        const amount = isLast ? Math.round((baseAmount + diff) * 100) / 100 : baseAmount;
+        const days = i * daysPerPeriod;
+        const dueDate = addDaysToDate(effectiveBaseDate, days);
+        const numberStr = String(i).padStart(2, '0');
 
-    const nextList = [...installments, newRow];
-    setInstallments(nextList);
-    setInstallmentsCountInput(nextList.length);
+        updated.push({
+          id: existing ? existing.id : `vinst_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 5)}`,
+          number: numberStr,
+          amount,
+          daysInterval: days,
+          dueDate,
+          paymentMethodCode: existing?.paymentMethodCode || (financialInstitution ? '04' : '01'),
+          paymentMethodLabel: existing?.paymentMethodLabel || (financialInstitution ? '04 - Financiamento Bancário / CDC' : '01 - Boleto Bancário'),
+          creditAccount: existing?.creditAccount || (financialInstitution ? '2.1.2.01 - Financiamentos Bancários a Pagar' : '2.1.1.01 - Fornecedores Nacionais / Concessionárias'),
+          debitAccount: existing?.debitAccount || '1.2.3.01 - Ativo Imobilizado: Veículos da Frota',
+          observations: existing?.observations || `Parcela ${numberStr}/${String(safeCount).padStart(2, '0')} - Aquisição ${vehicleName || 'Veículo'}`,
+          documentFileUrl: existing?.documentFileUrl,
+          documentFileName: existing?.documentFileName,
+        });
+      }
+      setInstallments(updated);
+      setValidationError('');
+      return;
+    }
+
+    // Recalcula PRAZO (DIAS) e VENCIMENTO de todas as parcelas da lista
+    setInstallments(prev => prev.map((inst, index) => {
+      const days = (index + 1) * daysPerPeriod;
+      const dueDate = addDaysToDate(effectiveBaseDate, days);
+      return {
+        ...inst,
+        daysInterval: days,
+        dueDate,
+      };
+    }));
     setValidationError('');
   };
 
@@ -340,12 +367,14 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
         const days = parseInt(value, 10) || 0;
         updated.daysInterval = days;
         updated.dueDate = addDaysToDate(effectiveBaseDate, days);
+        setSelectedInterval(null);
       }
 
       // Se alterou Vencimento (data), recalcula o Prazo em Dias automaticamente
       if (field === 'dueDate') {
         updated.dueDate = value;
         updated.daysInterval = calculateDaysBetween(effectiveBaseDate, value);
+        setSelectedInterval(null);
       }
 
       // Se alterou o código de Meio de Pagamento, atualiza também o rótulo
@@ -621,17 +650,75 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
                 <span>+ Dividir Igualmente</span>
               </button>
 
-              {/* Botão + Linha */}
-              <button
-                type="button"
-                id="btn-adicionar-linha-parcela-veiculo"
-                onClick={handleAddInstallment}
-                className="px-3 py-1.5 bg-white hover:bg-stone-100 text-black border border-[#96c1e5] rounded-lg text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs cursor-pointer"
-                title="Adicionar uma nova linha de parcela"
-              >
-                <Plus className="w-3.5 h-3.5 text-[#0963cb]" />
-                <span>+ Linha</span>
-              </button>
+              {/* Divisor sutil */}
+              <div className="h-5 w-px bg-[#96c1e5] hidden sm:block" />
+
+              {/* Botões de Intervalo Inteligente: Mensal, Trimestral, Semestral, Anual */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {/* Botão Mensal (30 dias) */}
+                <button
+                  type="button"
+                  id="btn-intervalo-mensal-30d"
+                  onClick={() => handleApplyInterval(30)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-2xs cursor-pointer ${
+                    selectedInterval === 30
+                      ? 'bg-[#0963cb] text-white border border-[#0963cb]'
+                      : 'bg-white hover:bg-sky-50 text-black hover:text-[#0963cb] border border-[#96c1e5]'
+                  }`}
+                  title="Recalcular prazos e vencimentos para intervalo Mensal (30 dias)"
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Mensal (30 dias)</span>
+                </button>
+
+                {/* Botão Trimestral (90 dias) */}
+                <button
+                  type="button"
+                  id="btn-intervalo-trimestral-90d"
+                  onClick={() => handleApplyInterval(90)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-2xs cursor-pointer ${
+                    selectedInterval === 90
+                      ? 'bg-[#0963cb] text-white border border-[#0963cb]'
+                      : 'bg-white hover:bg-sky-50 text-black hover:text-[#0963cb] border border-[#96c1e5]'
+                  }`}
+                  title="Recalcular prazos e vencimentos para intervalo Trimestral (90 dias)"
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Trimestral (90 dias)</span>
+                </button>
+
+                {/* Botão Semestral (6 meses) */}
+                <button
+                  type="button"
+                  id="btn-intervalo-semestral-6m"
+                  onClick={() => handleApplyInterval(180)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-2xs cursor-pointer ${
+                    selectedInterval === 180
+                      ? 'bg-[#0963cb] text-white border border-[#0963cb]'
+                      : 'bg-white hover:bg-sky-50 text-black hover:text-[#0963cb] border border-[#96c1e5]'
+                  }`}
+                  title="Recalcular prazos e vencimentos para intervalo Semestral (6 meses / 180 dias)"
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Semestral (6 meses)</span>
+                </button>
+
+                {/* Botão Anual (1 ano) */}
+                <button
+                  type="button"
+                  id="btn-intervalo-anual-1a"
+                  onClick={() => handleApplyInterval(365)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-2xs cursor-pointer ${
+                    selectedInterval === 365
+                      ? 'bg-[#0963cb] text-white border border-[#0963cb]'
+                      : 'bg-white hover:bg-sky-50 text-black hover:text-[#0963cb] border border-[#96c1e5]'
+                  }`}
+                  title="Recalcular prazos e vencimentos para intervalo Anual (1 ano / 365 dias)"
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Anual (1 ano)</span>
+                </button>
+              </div>
             </div>
 
             {/* Status da Conferência de Soma das Parcelas em Tempo Real */}
