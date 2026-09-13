@@ -18,6 +18,93 @@ import {
 import { Employee, PayrollRecord, SalaryAdvance } from '../../types';
 import { formatCurrencyBRL, formatDateBR } from '../../lib/storage';
 import { useConfirm } from '../../context/ConfirmContext';
+import { ShieldAlert, ShieldCheck } from 'lucide-react';
+
+// ==========================================
+// REGRAS DE NEGÓCIO DA FOLHA DE PAGAMENTO
+// ==========================================
+
+// 1. Identificação de Motoristas e Vínculos Terceirizados
+// (Regra: Terceirizados são geridos exclusivamente pelo módulo Financeiro - Acerto de Terceiros)
+export const isThirdPartyDriver = (emp?: Partial<Employee>): boolean => {
+  if (!emp) return false;
+  const contract = (emp.contractType || '').toLowerCase().trim();
+  const regType = (emp.registrationType || '').toLowerCase().trim();
+  const role = (emp.role || '').toLowerCase().trim();
+
+  // Vínculo explicitamente terceirizado
+  const isTerceirizado = 
+    contract.includes('terceiriz') || 
+    regType.includes('terceiriz') || 
+    role.includes('terceiriz') ||
+    role.includes('terceiro') ||
+    role.includes('freteiro');
+
+  const isDriverOrTransport = 
+    role.includes('motorista') || 
+    role.includes('caminhão') || 
+    role.includes('caminhao') ||
+    regType.includes('motorista');
+
+  // Motorista com vínculo terceirizado
+  if (isDriverOrTransport && isTerceirizado) return true;
+  // Qualquer registro cujo contrato seja Terceirizado
+  if (contract === 'terceirizado' || contract.startsWith('terceiriz')) return true;
+  if (role.includes('motorista terceirizado')) return true;
+
+  return false;
+};
+
+// 2. Identificação de Regime Registrado (CLT)
+// (Regra: Desconto automático de INSS aplicado unicamente para quem tem registro CLT)
+export const isCltContract = (emp?: Partial<Employee>): boolean => {
+  if (!emp) return false;
+  const contract = (emp.contractType || '').toLowerCase().trim();
+  const regType = (emp.registrationType || '').toLowerCase().trim();
+
+  // Regimes sem CLT: Prestador PJ, Diarista, Temporário, Terceirizado, Autônomo
+  if (
+    contract.includes('pj') || 
+    contract.includes('prestador') || 
+    contract.includes('diarista') || 
+    contract.includes('informal') || 
+    contract.includes('autônomo') || 
+    contract.includes('autonomo') ||
+    contract.includes('terceiriz') ||
+    regType.includes('prestador') ||
+    regType.includes('diarista')
+  ) {
+    return false;
+  }
+
+  // Registrado (CLT)
+  if (
+    contract.includes('registrado') || 
+    contract.includes('clt') || 
+    regType.includes('registrado') || 
+    regType.includes('clt')
+  ) {
+    return true;
+  }
+
+  // Padrão default da empresa caso seja "Funcionário" e não especificado regime PJ/Diarista
+  if (!contract && (regType === 'funcionário' || regType === 'funcionario')) {
+    return true;
+  }
+
+  return false;
+};
+
+// 3. Cálculo automático do INSS (unicamente para CLT)
+export const calculateAutomaticInss = (emp: Partial<Employee> | undefined, salary: number): number => {
+  if (!isCltContract(emp)) {
+    return 0; // SEM REGISTRO CLT: isento de cálculo automático de INSS no holerite
+  }
+  // Alíquota média rural/CLT ~8.5%, com teto da previdência de R$ 908,86
+  const rate = 0.085;
+  const inss = Math.round(salary * rate * 100) / 100;
+  return Math.min(inss, 908.86);
+};
 
 interface PayrollTabProps {
 
@@ -56,8 +143,15 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
   const [payrollStatus, setPayrollStatus] = useState<'pendente' | 'pago'>('pendente');
   const [notes, setNotes] = useState('');
 
-  // Filtered Payrolls
-  const monthPayrolls = payrolls.filter(p => p.referenceMonth === currentMonthRef);
+  // Filtered Payrolls - Exclusão estrita de Terceirizados (gerenciados pelo Financeiro)
+  const monthPayrolls = payrolls.filter(p => {
+    if (p.referenceMonth !== currentMonthRef) return false;
+    const emp = employees.find(e => e.id === p.employeeId);
+    if (emp && isThirdPartyDriver(emp)) return false;
+    if ((p.employeeRole || '').toLowerCase().includes('terceiriz')) return false;
+    return true;
+  });
+
   const filtered = monthPayrolls.filter(p => 
     p.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.employeeRole.toLowerCase().includes(searchTerm.toLowerCase())
@@ -100,8 +194,8 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
       const salary = emp.baseSalary || emp.salary || 3500;
       setBaseSalary(salary);
       
-      // Auto-calculate standard agricultural INSS estimate (~8.5%)
-      const estimatedInss = Math.round(salary * 0.085 * 100) / 100;
+      // REGRA DE NEGÓCIO: Desconto automático de INSS APENAS para regime Registrado (CLT)
+      const estimatedInss = calculateAutomaticInss(emp, salary);
       setInssDiscount(estimatedInss);
 
       // Auto-calculate pending advances for this employee in current month
@@ -125,7 +219,8 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
       setNotes(payroll.notes || '');
     } else {
       setEditingPayroll(null);
-      const firstActive = employees.find(e => e.status === 'ativo');
+      // Selecionar primeiro funcionário ativo NÃO terceirizado
+      const firstActive = employees.find(e => e.status === 'ativo' && !isThirdPartyDriver(e));
       if (firstActive) {
         handleSelectEmployee(firstActive.id);
       } else {
@@ -192,8 +287,11 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
   };
 
   // Gerar folha em lote para todos os ativos que ainda não têm folha neste mês
+  // REGRA DE NEGÓCIO:
+  // 1. Motoristas com vínculo "Terceirizado" NÃO entram na folha (acerto gerido pelo Financeiro)
+  // 2. Desconto de INSS calculado UNICAMENTE para funcionários "Registrado" (CLT)
   const handleBatchGenerate = () => {
-    const activeEmployees = employees.filter(e => e.status === 'ativo');
+    const activeEmployees = employees.filter(e => e.status === 'ativo' && !isThirdPartyDriver(e));
     const existingEmpIds = new Set(monthPayrolls.map(p => p.employeeId));
     const missing = activeEmployees.filter(e => !existingEmpIds.has(e.id));
 
@@ -202,8 +300,11 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
     }
 
     const newRecords: PayrollRecord[] = missing.map(emp => {
-      const salary = emp.salary || 3500;
-      const inss = Math.round(salary * 0.085 * 100) / 100;
+      const salary = emp.salary || emp.baseSalary || 3500;
+      
+      // REGRA: Apenas colaboradores Registrado (CLT) recebem cálculo automático de INSS
+      const inss = calculateAutomaticInss(emp, salary);
+      
       const empAdvances = advances.filter(a => a.employeeId === emp.id && a.referenceMonth === currentMonthRef);
       const advTotal = empAdvances.reduce((sum, a) => sum + a.amount, 0);
       const net = Math.max(0, salary - inss - advTotal);
@@ -342,6 +443,16 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
           <span className="text-[11px] font-black text-black dark:text-stone-300 block uppercase">Total Líquido Folha</span>
           <span className="text-sm sm:text-base font-black text-black dark:text-white font-['Outfit']">
             {formatCurrencyBRL(totalNet)}
+          </span>
+        </div>
+      </div>
+
+      {/* Banner Informativo de Regras de Negócio */}
+      <div className="crm-card bg-blue-100/80 dark:bg-stone-800/80 border border-blue-300 dark:border-stone-700 rounded-xl p-3 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+        <div className="flex items-center space-x-2 text-black dark:text-stone-200">
+          <ShieldCheck className="w-4 h-4 text-[#0963cb] shrink-0" />
+          <span>
+            <strong className="text-black dark:text-white">Filtro de Terceirizados & INSS CLT:</strong> Motoristas e vínculos <strong>Terceirizados</strong> são geridos exclusivamente pelo Financeiro. O cálculo automático de <strong>INSS</strong> aplica-se unicamente a funcionários <strong>Registrado (CLT)</strong>.
           </span>
         </div>
       </div>
@@ -506,11 +617,16 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
 
             <form onSubmit={handleSaveModal} className="p-5 space-y-4 text-xs bg-[#b0d2ed]">
               
-              {/* Colaborador */}
+              {/* Colaborador - Apenas Colaboradores Elegíveis (Excluindo Motoristas/Vínculos Terceirizados) */}
               <div>
-                <label className="block font-bold text-black mb-1">
-                  Colaborador / Funcionário <span className="text-rose-600">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-black">
+                    Colaborador / Funcionário <span className="text-rose-600">*</span>
+                  </label>
+                  <span className="text-[10px] text-stone-600 font-medium">
+                    (Motoristas Terceirizados são geridos no Financeiro)
+                  </span>
+                </div>
                 <select
                   value={selectedEmployeeId}
                   onChange={(e) => handleSelectEmployee(e.target.value)}
@@ -518,10 +634,12 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                   required
                 >
                   <option value="">Selecione um funcionário...</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.name} ({emp.role}) - Salário: {formatCurrencyBRL(emp.salary || 3500)}
-                    </option>
+                  {employees
+                    .filter(emp => !isThirdPartyDriver(emp))
+                    .map(emp => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.name} ({emp.role}) - {emp.contractType || 'CLT'} - Salário: {formatCurrencyBRL(emp.salary || emp.baseSalary || 3500)}
+                      </option>
                   ))}
                 </select>
               </div>
@@ -574,14 +692,29 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
 
               {/* Grid de Deduções com fundo branco */}
               <div className="p-3.5 bg-white border border-stone-300 rounded-xl space-y-3 shadow-xs">
-                <span className="text-[11px] font-black uppercase text-black block tracking-wider">
-                  Deduções (Descontos & Vales)
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black uppercase text-black tracking-wider">
+                    Deduções (Descontos & Vales)
+                  </span>
+                  {selectedEmployeeId && (() => {
+                    const emp = employees.find(e => e.id === selectedEmployeeId);
+                    const isClt = isCltContract(emp);
+                    return (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                        isClt ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {isClt ? 'Vínculo Registrado (CLT): INSS Automático' : 'Sem Registro CLT: Isento de INSS no Holerite'}
+                      </span>
+                    );
+                  })()}
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div>
-                    <label className="block text-[11px] font-bold text-black mb-1">
-                      INSS (R$)
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-bold text-black">
+                        INSS (R$)
+                      </label>
+                    </div>
                     <input
                       type="number"
                       step="0.01"
@@ -604,7 +737,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-black mb-1">
-                      Outros Descontos / Faltas
+                      Outros Descontos / Faltas (R$)
                     </label>
                     <input
                       type="number"

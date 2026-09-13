@@ -844,6 +844,45 @@ export interface SalaryAdvance {
   createdAt: string;
 }
 
+export interface MedicalCertificateRecord {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  employeeRole: string;
+  type: 'Atestado Médico' | 'Atestado Odontológico' | 'Declaração de Horas' | 'Acompanhamento Familiar' | 'Licença Maternidade/Paternidade' | 'Outro';
+  startDate: string; // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD
+  expectedReturnDate?: string; // YYYY-MM-DD
+  daysCount: number;
+  hoursCount?: number;
+  cid?: string;
+  doctorName?: string;
+  crmCro?: string;
+  clinic?: string;
+  status: 'homologado' | 'em_analise' | 'rejeitado';
+  attachmentName?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface AbsenceRecord {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  employeeRole: string;
+  date: string; // YYYY-MM-DD
+  endDate?: string;
+  daysCount: number;
+  type: 'injustificada' | 'justificada' | 'atraso' | 'suspensao';
+  discountPayroll: boolean;
+  discountAmount?: number;
+  referenceMonth: string; // MM/YYYY
+  reason?: string;
+  status: 'pendente' | 'justificada' | 'descontada' | 'abonada';
+  notes?: string;
+  createdAt: string;
+}
+
 // ==========================================
 // MÓDULO DE PNEUS E RODÍZIO DA FROTA
 // ==========================================

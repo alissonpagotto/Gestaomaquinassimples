@@ -21,6 +21,8 @@ import {
   VacationRecord,
   LeaveRecord,
   SalaryAdvance,
+  MedicalCertificateRecord,
+  AbsenceRecord,
   VehicleTypeDefinition,
   TireRotationLog,
   TireItem,
@@ -84,6 +86,8 @@ const STORAGE_KEYS = {
   VACATIONS: 'silagem_facil_clean_v1_vacations',
   LEAVES: 'silagem_facil_clean_v1_leaves',
   SALARY_ADVANCES: 'silagem_facil_clean_v1_salary_advances',
+  MEDICAL_CERTIFICATES: 'silagem_facil_clean_v1_medical_certificates',
+  ABSENCES: 'silagem_facil_clean_v1_absences',
   VEHICLE_TYPES: 'silagem_facil_clean_v1_vehicle_types',
   TIRE_ROTATION_LOGS: 'silagem_facil_clean_v1_tire_rotation_logs',
   TIRE_INVENTORY: 'silagem_facil_clean_v1_tire_inventory',
@@ -778,6 +782,44 @@ export function saveStoredSalaryAdvances(advances: SalaryAdvance[]): void {
     localStorage.setItem(STORAGE_KEYS.SALARY_ADVANCES, JSON.stringify(advances));
   } catch (e) {
     console.error('Failed to save salary advances', e);
+  }
+}
+
+// RH: Medical Certificates (Atestados)
+export function getStoredMedicalCertificates(): MedicalCertificateRecord[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.MEDICAL_CERTIFICATES);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch (e) {
+    return [];
+  }
+}
+
+export function saveStoredMedicalCertificates(certificates: MedicalCertificateRecord[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.MEDICAL_CERTIFICATES, JSON.stringify(certificates));
+  } catch (e) {
+    console.error('Failed to save medical certificates', e);
+  }
+}
+
+// RH: Absences (Faltas)
+export function getStoredAbsences(): AbsenceRecord[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.ABSENCES);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch (e) {
+    return [];
+  }
+}
+
+export function saveStoredAbsences(absences: AbsenceRecord[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.ABSENCES, JSON.stringify(absences));
+  } catch (e) {
+    console.error('Failed to save absences', e);
   }
 }
 

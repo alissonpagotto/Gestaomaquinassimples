@@ -8,7 +8,9 @@ import {
   UserSquare2,
   UserCheck,
   ShieldCheck,
-  UserPlus
+  UserPlus,
+  FileHeart,
+  CalendarX2
 } from 'lucide-react';
 import { 
   Employee, 
@@ -16,13 +18,23 @@ import {
   VacationRecord, 
   LeaveRecord, 
   SalaryAdvance,
-  CompanyProfile 
+  CompanyProfile,
+  MedicalCertificateRecord,
+  AbsenceRecord 
 } from '../../types';
+import { 
+  getStoredMedicalCertificates, 
+  saveStoredMedicalCertificates, 
+  getStoredAbsences, 
+  saveStoredAbsences 
+} from '../../lib/storage';
 import { RHDashboardTab } from './RHDashboardTab';
 import { PayrollTab } from './PayrollTab';
 import { VacationsTab } from './VacationsTab';
 import { LeavesTab } from './LeavesTab';
 import { AdvancesTab } from './AdvancesTab';
+import { AtestadosTab } from './AtestadosTab';
+import { FaltasTab } from './FaltasTab';
 import { PayslipModal } from './PayslipModal';
 import { EmployeesModule } from '../employees/EmployeesModule';
 
@@ -32,6 +44,8 @@ interface RHModuleProps {
   vacations: VacationRecord[];
   leaves: LeaveRecord[];
   advances: SalaryAdvance[];
+  certificates?: MedicalCertificateRecord[];
+  absences?: AbsenceRecord[];
   companyProfile: CompanyProfile;
   initialSubTab?: RHTabType;
   onSaveEmployees: (employees: Employee[]) => void;
@@ -39,10 +53,20 @@ interface RHModuleProps {
   onSaveVacations: (vacations: VacationRecord[]) => void;
   onSaveLeaves: (leaves: LeaveRecord[]) => void;
   onSaveAdvances: (advances: SalaryAdvance[]) => void;
+  onSaveCertificates?: (certificates: MedicalCertificateRecord[]) => void;
+  onSaveAbsences?: (absences: AbsenceRecord[]) => void;
   onNavigateToEmployees?: () => void;
 }
 
-export type RHTabType = 'dashboard' | 'funcionarios' | 'folha' | 'ferias' | 'afastamentos' | 'adiantamentos';
+export type RHTabType = 
+  | 'dashboard' 
+  | 'funcionarios' 
+  | 'folha' 
+  | 'ferias' 
+  | 'afastamentos' 
+  | 'adiantamentos' 
+  | 'atestados' 
+  | 'faltas';
 
 export const RHModule: React.FC<RHModuleProps> = ({
   employees,
@@ -50,6 +74,8 @@ export const RHModule: React.FC<RHModuleProps> = ({
   vacations,
   leaves,
   advances,
+  certificates: propCertificates,
+  absences: propAbsences,
   companyProfile,
   initialSubTab,
   onSaveEmployees,
@@ -57,10 +83,62 @@ export const RHModule: React.FC<RHModuleProps> = ({
   onSaveVacations,
   onSaveLeaves,
   onSaveAdvances,
+  onSaveCertificates,
+  onSaveAbsences,
   onNavigateToEmployees,
 }) => {
   const [activeTab, setActiveTab] = useState<RHTabType>(initialSubTab || 'dashboard');
   const [currentMonthRef, setCurrentMonthRef] = useState<string>('09/2026');
+
+  // Estado e persistência de Atestados Médicos
+  const [certificates, setCertificates] = useState<MedicalCertificateRecord[]>(() => {
+    return propCertificates || getStoredMedicalCertificates();
+  });
+
+  const handleSaveCertificates = (updated: MedicalCertificateRecord[]) => {
+    setCertificates(updated);
+    saveStoredMedicalCertificates(updated);
+    if (onSaveCertificates) {
+      onSaveCertificates(updated);
+    }
+  };
+
+  // Estado e persistência de Faltas e Ausências
+  const [absences, setAbsences] = useState<AbsenceRecord[]>(() => {
+    return propAbsences || getStoredAbsences();
+  });
+
+  const handleSaveAbsences = (updated: AbsenceRecord[]) => {
+    setAbsences(updated);
+    saveStoredAbsences(updated);
+    if (onSaveAbsences) {
+      onSaveAbsences(updated);
+    }
+  };
+
+  // Aplicar desconto de falta na folha de pagamento
+  const handleApplyDiscountToPayroll = (absence: AbsenceRecord) => {
+    if (!absence.discountAmount || absence.discountAmount <= 0) return;
+    
+    // Procura a folha do colaborador para o mês correspondente
+    const targetPayroll = payrolls.find(p => p.employeeId === absence.employeeId && p.referenceMonth === absence.referenceMonth);
+    if (targetPayroll) {
+      const updatedPayrolls = payrolls.map(p => {
+        if (p.id === targetPayroll.id) {
+          const currentOther = p.otherDiscounts || 0;
+          const newOther = currentOther + (absence.discountAmount || 0);
+          const newNet = Math.max(0, (p.baseSalary + (p.overtimeAmount || 0) + (p.bonusAmount || 0)) - ((p.inssDiscount || 0) + (p.advancesDiscount || 0) + newOther));
+          return {
+            ...p,
+            otherDiscounts: newOther,
+            netSalary: newNet,
+          };
+        }
+        return p;
+      });
+      onSavePayrolls(updatedPayrolls);
+    }
+  };
 
   // Ordenação automática e permanente de A a Z dos colaboradores para o RH
   const sortedEmployees = useMemo(() => {
@@ -205,6 +283,34 @@ export const RHModule: React.FC<RHModuleProps> = ({
           <span>Adiantamentos</span>
         </button>
 
+        {/* Aba 7: Atestados (Nova Aba RH) */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('atestados')}
+          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+            activeTab === 'atestados'
+              ? 'bg-sky-600 text-white shadow-xs'
+              : 'bg-blue-100/70 dark:bg-stone-800 text-black dark:text-stone-300 hover:bg-blue-100 dark:hover:bg-stone-700'
+          }`}
+        >
+          <FileHeart className="w-3.5 h-3.5" />
+          <span>Atestados</span>
+        </button>
+
+        {/* Aba 8: Faltas (Nova Aba RH) */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('faltas')}
+          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+            activeTab === 'faltas'
+              ? 'bg-sky-600 text-white shadow-xs'
+              : 'bg-blue-100/70 dark:bg-stone-800 text-black dark:text-stone-300 hover:bg-blue-100 dark:hover:bg-stone-700'
+          }`}
+        >
+          <CalendarX2 className="w-3.5 h-3.5" />
+          <span>Faltas</span>
+        </button>
+
       </div>
 
       {/* Renderização do Conteúdo de Cada Aba */}
@@ -268,6 +374,25 @@ export const RHModule: React.FC<RHModuleProps> = ({
           advances={advances}
           currentMonthRef={currentMonthRef}
           onSaveAdvances={onSaveAdvances}
+        />
+      )}
+
+      {activeTab === 'atestados' && (
+        <AtestadosTab
+          employees={sortedEmployees}
+          certificates={certificates}
+          onSaveCertificates={handleSaveCertificates}
+        />
+      )}
+
+      {activeTab === 'faltas' && (
+        <FaltasTab
+          employees={sortedEmployees}
+          absences={absences}
+          payrolls={payrolls}
+          currentMonthRef={currentMonthRef}
+          onSaveAbsences={handleSaveAbsences}
+          onApplyDiscountToPayroll={handleApplyDiscountToPayroll}
         />
       )}
 
