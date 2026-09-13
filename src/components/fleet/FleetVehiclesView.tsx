@@ -97,30 +97,30 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
     if (ownLower === 'proprio' || ownLower.includes('próprio') || ownLower.includes('proprio')) {
       return {
         label: ownLower === 'proprio' ? 'Próprio' : own,
-        className: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+        className: 'bg-emerald-50 text-[#000000] dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
       };
     }
     if (ownLower === 'terceirizado' || ownLower.includes('terceir')) {
       return {
         label: ownLower === 'terceirizado' ? 'De Terceiros' : own,
-        className: 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+        className: 'bg-amber-50 text-[#000000] dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
       };
     }
     if (ownLower === 'alugado' || ownLower.includes('alug') || ownLower.includes('locaç') || ownLower.includes('locac')) {
       return {
         label: ownLower === 'alugado' ? 'Alugado' : own,
-        className: 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+        className: 'bg-blue-50 text-[#000000] dark:bg-blue-950/60 dark:text-blue-300 border border-blue-300 dark:border-blue-800'
       };
     }
     if (ownLower === 'arrendado' || ownLower.includes('arrend') || ownLower.includes('financ')) {
       return {
         label: ownLower === 'arrendado' ? 'Arrendado' : own,
-        className: 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+        className: 'bg-purple-50 text-[#000000] dark:bg-purple-950/60 dark:text-purple-300 border border-purple-300 dark:border-purple-800'
       };
     }
     return {
       label: own,
-      className: 'bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300 border border-stone-300 dark:border-stone-700'
+      className: 'bg-stone-100 text-[#000000] dark:bg-stone-800 dark:text-stone-300 border border-stone-300 dark:border-stone-700'
     };
   };
 
@@ -535,20 +535,20 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                         <td className="py-3 px-4">
                           <div className="flex flex-col space-y-1">
                             {vehicle.fleetNumber && (
-                              <span className="inline-flex items-center text-[10px] font-black text-blue-800 dark:text-blue-200 bg-blue-100 dark:bg-blue-900/60 border border-blue-300 dark:border-blue-700 px-1.5 py-0.5 rounded w-fit">
+                              <span className="inline-flex items-center text-[10px] font-black text-[#000000] dark:text-blue-200 bg-blue-100 dark:bg-blue-900/60 border border-blue-300 dark:border-blue-700 px-1.5 py-0.5 rounded w-fit">
                                 Frota: {vehicle.fleetNumber}
                               </span>
                             )}
-                            <span className="font-extrabold text-stone-900 dark:text-stone-100 font-mono text-xs px-2.5 py-1 bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-md w-fit shadow-2xs">
+                            <span className="font-black text-[#000000] dark:text-stone-100 font-mono text-xs px-2.5 py-1 bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-md w-fit shadow-2xs">
                               {vehicle.licensePlateOrSerial || '--'}
                             </span>
                             {vehicle.serialNumber && (
-                              <span className="inline-flex items-center text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/80 px-1.5 py-0.5 rounded w-fit">
+                              <span className="inline-flex items-center text-[10px] font-bold text-[#000000] dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/80 px-1.5 py-0.5 rounded w-fit">
                                 Série: {vehicle.serialNumber}
                               </span>
                             )}
                             {vehicle.renavam && (
-                              <span className="text-[10px] text-stone-400 font-mono">
+                              <span className="text-[10px] text-[#000000] dark:text-stone-400 font-mono font-medium">
                                 RENAVAM: {vehicle.renavam}
                               </span>
                             )}
@@ -560,11 +560,11 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                           <div className="font-bold text-stone-900 dark:text-stone-100">
                             {vehicle.model || vehicle.name}
                           </div>
-                          <div className="text-[11px] text-stone-500 flex items-center space-x-1.5 mt-0.5">
+                          <div className="text-[11px] text-stone-600 dark:text-stone-400 flex items-center space-x-1.5 mt-0.5">
                             <span>{vehicle.brand || 'Agrícola'}</span>
                             {vehicle.year && <span>• Ano {vehicle.year}</span>}
                             {vehicle.vehicleTypeDetailed && (
-                              <span className="font-semibold text-sky-700 dark:text-sky-300">
+                              <span className="font-semibold text-sky-800 dark:text-sky-300">
                                 • {vehicle.vehicleTypeDetailed}
                               </span>
                             )}
@@ -573,29 +573,29 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                           {/* Badges de Composição e Reboque Vinculado */}
                           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                             {isCavalo && (
-                              <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                              <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
                                 🚛 Cavalo Mecânico
                               </span>
                             )}
                             {isReboque && (
-                              <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                              <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                                 🛞 Reboque{vehicle.trailerType ? `: ${vehicle.trailerType}` : ''}{vehicle.trailerAxlesCount ? ` (${vehicle.trailerAxlesCount} ${vehicle.trailerAxlesCount === 1 ? 'eixo' : 'eixos'})` : ''}
                               </span>
                             )}
                             {hasCoupledTrailer && (
-                              <div className="inline-flex items-center space-x-1 text-[10.5px] font-extrabold px-2.5 py-0.5 rounded-md bg-sky-50 text-sky-900 dark:bg-sky-950/70 dark:text-sky-200 border border-sky-300 dark:border-sky-800 shadow-2xs">
+                              <div className="inline-flex items-center space-x-1 text-[10.5px] font-extrabold px-2.5 py-0.5 rounded-md bg-sky-50 text-sky-950 dark:bg-sky-950/70 dark:text-sky-200 border border-sky-300 dark:border-sky-800 shadow-2xs">
                                 <span>🔗</span>
-                                <span className="font-bold text-sky-800 dark:text-sky-300">Reboque:</span>
+                                <span className="font-bold text-sky-900 dark:text-sky-300">Reboque:</span>
                                 {trailerPlateDisplay && (
-                                  <span className="font-mono bg-white dark:bg-stone-900 px-1.5 py-0.2 rounded border border-sky-200 dark:border-sky-800 text-sky-950 dark:text-sky-100 font-black">
+                                  <span className="font-mono bg-white dark:bg-stone-900 px-1.5 py-0.2 rounded border border-sky-200 dark:border-sky-800 text-[#000000] dark:text-sky-100 font-black">
                                     {trailerPlateDisplay}
                                   </span>
                                 )}
                                 {trailerModelDisplay && (
-                                  <span className="font-medium text-stone-700 dark:text-stone-300">• {trailerModelDisplay}</span>
+                                  <span className="font-medium text-stone-800 dark:text-stone-300">• {trailerModelDisplay}</span>
                                 )}
                                 {(vehicle.trailerCapacityLoadKg !== undefined && vehicle.trailerCapacityLoadKg > 0) && (
-                                  <span className="text-[10px] text-stone-500 dark:text-stone-400 font-semibold">
+                                  <span className="text-[10px] text-stone-600 dark:text-stone-400 font-semibold">
                                     ({vehicle.trailerCapacityLoadKg.toLocaleString('pt-BR')} kg{vehicle.trailerCapacityM3 ? ` / ${vehicle.trailerCapacityM3} m³` : ''})
                                   </span>
                                 )}
@@ -610,7 +610,7 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                             {(() => {
                               const badge = getOwnershipBadge(vehicle.ownership);
                               return (
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border ${badge.className}`}>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border text-[#000000] dark:text-inherit ${badge.className}`}>
                                   {badge.label}
                                 </span>
                               );
@@ -618,22 +618,22 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                             
                             {vehicle.ownerName ? (
                               <div className="text-xs">
-                                <div className="font-bold text-stone-800 dark:text-stone-200 leading-tight">
+                                <div className="font-bold text-[#000000] dark:text-stone-200 leading-tight">
                                   {vehicle.ownerName}
                                 </div>
                                 {vehicle.ownerDocument && (
-                                  <div className="text-[10px] text-stone-400 font-mono">
+                                  <div className="text-[10px] text-stone-600 dark:text-stone-400 font-mono font-medium">
                                     Doc: {vehicle.ownerDocument}
                                   </div>
                                 )}
                                 {vehicle.secondaryOwnerName && (
-                                  <div className="text-[10px] text-stone-500">
+                                  <div className="text-[10px] text-stone-700 dark:text-stone-400 font-medium">
                                     Sócio: {vehicle.secondaryOwnerName}
                                   </div>
                                 )}
                               </div>
                             ) : (
-                              <div className="text-[11px] text-stone-400 italic">
+                              <div className="text-[11px] text-stone-600 dark:text-stone-400 italic">
                                 Titular da empresa
                               </div>
                             )}
@@ -642,32 +642,33 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
 
                         {/* Pesos: Tara, Lotação e PBT */}
                         <td className="py-3 px-4">
-                          <div className="space-y-0.5 text-xs">
+                          <div className="space-y-0.5 text-xs text-[#000000] dark:text-stone-200">
                             {vehicle.taraWeightKg ? (
-                              <div className="text-stone-600 dark:text-stone-300">
-                                <span className="text-stone-400 text-[10px] uppercase font-bold">Tara:</span>{' '}
-                                <strong className="font-mono">{vehicle.taraWeightKg.toLocaleString('pt-BR')} kg</strong>
+                              <div>
+                                <span className="text-stone-700 dark:text-stone-400 text-[10px] uppercase font-bold">Tara:</span>{' '}
+                                <strong className="font-mono text-[#000000] dark:text-stone-100">{vehicle.taraWeightKg.toLocaleString('pt-BR')} kg</strong>
                               </div>
                             ) : null}
                             {vehicle.capacityLoadKg ? (
-                              <div className="text-stone-600 dark:text-stone-300">
-                                <span className="text-stone-400 text-[10px] uppercase font-bold">Lotação:</span>{' '}
-                                <strong className="font-mono">{vehicle.capacityLoadKg.toLocaleString('pt-BR')} kg</strong>
+                              <div>
+                                <span className="text-stone-700 dark:text-stone-400 text-[10px] uppercase font-bold">Lotação:</span>{' '}
+                                <strong className="font-mono text-[#000000] dark:text-stone-100">{vehicle.capacityLoadKg.toLocaleString('pt-BR')} kg</strong>
                               </div>
-                            ) : vehicle.capacityM3 ? (
-                              <div className="text-sky-700 dark:text-sky-300 font-bold">
-                                <span className="text-stone-400 text-[10px] uppercase font-bold">Vol:</span>{' '}
-                                {vehicle.capacityM3} m³
+                            ) : null}
+                            {vehicle.capacityM3 ? (
+                              <div className="font-bold">
+                                <span className="text-stone-700 dark:text-stone-400 text-[10px] uppercase font-bold">Vol:</span>{' '}
+                                <strong className="font-mono text-[#000000] dark:text-sky-300 font-black">{vehicle.capacityM3} m³</strong>
                               </div>
                             ) : null}
                             {pbt ? (
-                              <div className="text-stone-900 dark:text-stone-100 font-bold">
-                                <span className="text-stone-400 text-[10px] uppercase font-bold">PBT:</span>{' '}
-                                <span className="font-mono">{pbt.toLocaleString('pt-BR')} kg</span>
+                              <div className="font-bold">
+                                <span className="text-stone-700 dark:text-stone-400 text-[10px] uppercase font-bold">PBT:</span>{' '}
+                                <span className="font-mono text-[#000000] dark:text-stone-100 font-bold">{pbt.toLocaleString('pt-BR')} kg</span>
                               </div>
                             ) : null}
                             {!vehicle.taraWeightKg && !vehicle.capacityLoadKg && !vehicle.capacityM3 && !pbt && (
-                              <span className="text-stone-400 italic text-[11px]">--</span>
+                              <span className="text-stone-500 dark:text-stone-400 italic text-[11px]">--</span>
                             )}
                           </div>
                         </td>
@@ -676,27 +677,27 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                         <td className="py-3 px-4">
                           <div className="space-y-0.5 font-mono text-xs">
                             {vehicle.hourMeter !== undefined && vehicle.hourMeter > 0 && (
-                              <div className="font-bold text-amber-700 dark:text-amber-400 flex items-center space-x-1">
-                                <Clock className="w-3 h-3" />
-                                <span>{vehicle.hourMeter.toLocaleString('pt-BR')} h</span>
+                              <div className="font-bold text-[#000000] dark:text-amber-400 flex items-center space-x-1">
+                                <Clock className="w-3 h-3 text-[#000000] dark:text-amber-400" />
+                                <span className="text-[#000000] dark:text-amber-400">{vehicle.hourMeter.toLocaleString('pt-BR')} h</span>
                               </div>
                             )}
                             {vehicle.currentKm !== undefined && vehicle.currentKm > 0 && (
-                              <div className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center space-x-1">
-                                <Gauge className="w-3 h-3" />
-                                <span>{vehicle.currentKm.toLocaleString('pt-BR')} km</span>
+                              <div className="font-bold text-[#000000] dark:text-emerald-400 flex items-center space-x-1">
+                                <Gauge className="w-3 h-3 text-[#000000] dark:text-emerald-400" />
+                                <span className="text-[#000000] dark:text-emerald-400">{vehicle.currentKm.toLocaleString('pt-BR')} km</span>
                               </div>
                             )}
                             {!vehicle.hourMeter && !vehicle.currentKm && (
-                              <span className="text-stone-400">--</span>
+                              <span className="text-stone-500 dark:text-stone-400">--</span>
                             )}
                             
                             <button
                               onClick={() => handleOpenQuickMeter(vehicle)}
-                              className="text-[10px] font-bold text-sky-600 hover:text-sky-800 dark:text-sky-400 hover:underline flex items-center space-x-1 mt-1 cursor-pointer"
+                              className="text-[10px] font-black text-[#000000] hover:text-stone-700 dark:text-sky-400 dark:hover:text-sky-300 hover:underline flex items-center space-x-1 mt-1 cursor-pointer"
                               title="Lançar nova leitura rápida de Horímetro ou KM"
                             >
-                              <span>Atualizar</span>
+                              <span className="text-[#000000] dark:text-sky-400">Atualizar</span>
                             </button>
                           </div>
                         </td>
@@ -708,23 +709,23 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                               {driversList.map((drv, idx) => (
                                 <span
                                   key={idx}
-                                  className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 rounded-md"
+                                  className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 rounded-md"
                                 >
                                   👤 {drv}
                                 </span>
                               ))}
                             </div>
                           ) : (
-                            <span className="text-stone-400 text-xs italic">Sem motorista fixo</span>
+                            <span className="text-stone-500 dark:text-stone-400 text-xs italic">Sem motorista fixo</span>
                           )}
                         </td>
 
                         {/* Custos Acumulados */}
                         <td className="py-3 px-4">
-                          <div className="font-bold text-stone-900 dark:text-stone-100 font-['Outfit']">
+                          <div className="font-bold text-[#000000] dark:text-stone-100 font-['Outfit'] text-sm">
                             {formatCurrencyBRL(totalCost)}
                           </div>
-                          <div className="text-[10px] text-stone-400">
+                          <div className="text-[10px] text-[#000000] dark:text-stone-400 font-semibold">
                             Comb: {formatCurrencyBRL(totalFuel)}
                           </div>
                         </td>
@@ -838,17 +839,17 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center space-x-2">
                       {vehicle.fleetNumber && (
-                        <span className="font-mono text-xs font-black px-2 py-1 bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 border border-blue-300 dark:border-blue-700 rounded-lg shadow-2xs">
+                        <span className="font-mono text-xs font-black px-2 py-1 bg-blue-100 dark:bg-blue-900/60 text-[#000000] dark:text-blue-200 border border-blue-300 dark:border-blue-700 rounded-lg shadow-2xs">
                           #{vehicle.fleetNumber}
                         </span>
                       )}
-                      <span className="font-extrabold text-stone-900 dark:text-stone-100 font-mono text-sm px-2.5 py-1 bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg shadow-2xs">
+                      <span className="font-black text-[#000000] dark:text-stone-100 font-mono text-sm px-2.5 py-1 bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg shadow-2xs">
                         {vehicle.licensePlateOrSerial || '--'}
                       </span>
                       {(() => {
                         const badge = getOwnershipBadge(vehicle.ownership);
                         return (
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border ${badge.className}`}>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border text-[#000000] dark:text-inherit ${badge.className}`}>
                             {badge.label}
                           </span>
                         );
@@ -887,7 +888,7 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                       </p>
                     </div>
                     {vehicle.capacityM3 !== undefined && vehicle.capacityM3 > 0 && (
-                      <span className="px-2 py-1 bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 text-xs font-black rounded-lg border border-sky-200 dark:border-sky-800 shrink-0">
+                      <span className="px-2 py-1 bg-sky-50 dark:bg-sky-950/60 text-[#000000] dark:text-sky-300 text-xs font-black rounded-lg border border-sky-200 dark:border-sky-800 shrink-0">
                         {vehicle.capacityM3} m³
                       </span>
                     )}
@@ -1007,8 +1008,8 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
 
                     {/* Custos Acumulados */}
                     <div className="flex items-center justify-between">
-                      <span className="text-stone-500">Custos Acumulados:</span>
-                      <span className="font-bold text-stone-900 dark:text-stone-100 font-['Outfit']">
+                      <span className="text-stone-600 dark:text-stone-400 font-medium">Custos Acumulados:</span>
+                      <span className="font-bold text-[#000000] dark:text-stone-100 font-['Outfit']">
                         {formatCurrencyBRL(totalCost)}
                       </span>
                     </div>
