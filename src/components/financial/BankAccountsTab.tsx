@@ -16,8 +16,8 @@ import {
   FileText,
   Link2
 } from 'lucide-react';
-import { BankAccount, Expense, BankTransaction, Employee, ExpenseCategory } from '../../types';
-import { formatCurrencyBRL } from '../../lib/storage';
+import { BankAccount, Expense, BankTransaction, Employee, ExpenseCategory, CorporateCard } from '../../types';
+import { formatCurrencyBRL, formatDateBR, getStoredExpenses, saveStoredExpenses } from '../../lib/storage';
 import { useConfirm } from '../../context/ConfirmContext';
 import { BankAccountModal } from './BankAccountModal';
 import { BankLogoIcon } from './BankLogoIcon';
@@ -82,6 +82,50 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
         id: `bank_${Date.now()}`,
       } as BankAccount;
       onSaveAccounts([...accounts, newAcc]);
+    }
+  };
+
+  // Manipulador para provisionamento automático de fatura de cartão de crédito corporativo em Contas a Pagar
+  const handleProvisionCardInvoice = ({
+    card,
+    account,
+    amount,
+    dueDate,
+    description,
+  }: {
+    card: CorporateCard;
+    account?: BankAccount;
+    amount: number;
+    dueDate: string;
+    description: string;
+  }) => {
+    const newExpense: Expense = {
+      id: `exp_card_inv_${card.id}_${Date.now()}`,
+      description,
+      amount,
+      categoryId: 'cat_cartao',
+      categoryName: 'Fatura de Cartão Corporativo',
+      categoryColor: '#8b5cf6',
+      dueDate,
+      date: new Date().toISOString().split('T')[0],
+      status: 'pendente',
+      paymentMethod: 'boleto',
+      supplier: account ? `${account.bankName} - Cartão Corporativo (${card.name})` : `Cartão Corporativo (${card.name})`,
+      bankAccountId: account?.id,
+      bankAccountName: account?.name || account?.bankName,
+      employeeId: card.responsibleEmployeeId,
+      employeeName: card.responsibleEmployeeName,
+      corporateCardId: card.id,
+      corporateCardName: card.name,
+      notes: `Fatura de cartão corporativo provisionada automaticamente para quitação em ${formatDateBR(dueDate)}. Limite Total: ${formatCurrencyBRL(card.totalLimit)}. Titular: ${card.responsibleEmployeeName || 'Não especificado'}.`,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (onAddExpenseFromBankBill) {
+      onAddExpenseFromBankBill(newExpense);
+    } else {
+      const currentExpenses = getStoredExpenses();
+      saveStoredExpenses([newExpense, ...currentExpenses]);
     }
   };
 
@@ -359,6 +403,18 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
                         </span>
                       </div>
                     )}
+                    {/* Cartões Corporativos Vinculados */}
+                    {acc.corporateCards && acc.corporateCards.length > 0 && (
+                      <div className="flex justify-between items-center gap-2 pt-1 border-t border-slate-100">
+                        <span className="text-purple-800 font-semibold flex items-center gap-1">
+                          <CreditCard className="w-3 h-3 text-purple-600" />
+                          <span>{acc.corporateCards.length} {acc.corporateCards.length === 1 ? 'Cartão' : 'Cartões'}:</span>
+                        </span>
+                        <span className="font-mono text-[10px] font-bold text-purple-900 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
+                          {formatCurrencyBRL(acc.corporateCards.reduce((s, c) => s + (c.usedLimit || 0), 0))} util.
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -405,6 +461,9 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
         onClose={() => setIsModalOpen(false)}
         editingAccount={editingAccount}
         onSave={handleSaveAccount}
+        employees={employees}
+        expenses={expenses}
+        onProvisionCardInvoice={handleProvisionCardInvoice}
       />
 
       {/* Modal Extrato de Contas Bancárias (com busca obrigatória por intervalo de datas) */}

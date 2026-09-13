@@ -86,6 +86,8 @@ export interface Expense {
   paidByEmployeeName?: string; // Nome do funcionário que realizou o pagamento
   bankAccountId?: string; // ID da conta bancária de onde o saldo foi debitado
   bankAccountName?: string; // Nome da conta bancária debitada
+  corporateCardId?: string; // ID do cartão corporativo vinculado
+  corporateCardName?: string; // Nome/Identificador do cartão corporativo
   paymentAuthenticationCode?: string; // Código de autenticação / comprovante
   date?: string; // YYYY-MM-DD (compatibilidade)
   createdAt: string;
@@ -700,6 +702,20 @@ export interface MaintenanceLog {
   createdAt: string;
 }
 
+export interface CorporateCard {
+  id: string;
+  name: string; // Ex: "Visa Final 4321"
+  responsibleEmployeeId: string; // Funcionário Responsável (Módulo RH)
+  responsibleEmployeeName: string; // Nome do Funcionário
+  totalLimit: number; // Limite Total do Cartão (R$)
+  usedLimit: number; // Limite Utilizado / Saldo Devedor Atual (R$)
+  dueDay: number; // Dia de Vencimento da Fatura (1 a 31)
+  closingDay?: number; // Dia de Fechamento da Fatura (1 a 31, opcional)
+  status?: 'ativo' | 'bloqueado' | 'cancelado';
+  lastInvoiceProvisionedAt?: string;
+  notes?: string;
+}
+
 export interface BankAccount {
   id: string;
   name: string;
@@ -714,6 +730,7 @@ export interface BankAccount {
   pixKey?: string;
   pixKeyType?: 'cpf' | 'cnpj' | 'phone' | 'email' | 'random';
   color?: string;
+  corporateCards?: CorporateCard[];
 }
 
 export interface BankTransaction {
