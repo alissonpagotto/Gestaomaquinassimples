@@ -266,6 +266,13 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
   const [commissionPerAlqueire, setCommissionPerAlqueire] = useState<string>('0,00');
   const [commissionPerHectare, setCommissionPerHectare] = useState<string>('0,00');
 
+  // Se a função for Agenciador, desativa automaticamente a comissão de produção geral
+  useEffect(() => {
+    if (isBroker && receivesCommission) {
+      setReceivesCommission(false);
+    }
+  }, [isBroker, receivesCommission]);
+
   // CNH Details (Collapsible / Extended)
   const [showCnhFields, setShowCnhFields] = useState<boolean>(false);
   const [cnhNumber, setCnhNumber] = useState<string>('');
@@ -410,10 +417,11 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     setAdmissionDate(emp.admissionDate || '');
     setTerminationDate(emp.terminationDate || '');
     setIsActive(emp.active !== undefined ? emp.active : (emp.status !== 'inativo'));
-    setReceivesCommission(emp.receivesCommission || false);
-    setCommissionPerHour(emp.commissionPerHour !== undefined ? formatCurrencyInputDisplay(emp.commissionPerHour) : '0,00');
-    setCommissionPerAlqueire(emp.commissionPerAlqueire !== undefined ? formatCurrencyInputDisplay(emp.commissionPerAlqueire) : '0,00');
-    setCommissionPerHectare(emp.commissionPerHectare !== undefined ? formatCurrencyInputDisplay(emp.commissionPerHectare) : '0,00');
+    const isEmpBroker = r1.trim().toLowerCase() === 'agenciador' || r2.trim().toLowerCase() === 'agenciador';
+    setReceivesCommission(isEmpBroker ? false : (emp.receivesCommission || false));
+    setCommissionPerHour(!isEmpBroker && emp.commissionPerHour !== undefined ? formatCurrencyInputDisplay(emp.commissionPerHour) : '0,00');
+    setCommissionPerAlqueire(!isEmpBroker && emp.commissionPerAlqueire !== undefined ? formatCurrencyInputDisplay(emp.commissionPerAlqueire) : '0,00');
+    setCommissionPerHectare(!isEmpBroker && emp.commissionPerHectare !== undefined ? formatCurrencyInputDisplay(emp.commissionPerHectare) : '0,00');
     
     setCnhNumber(emp.cnhNumber || '');
     setCnhCategory(emp.cnhCategory || 'B');
@@ -478,6 +486,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     const finalRole = finalRoles.join(', ');
     const rawRegType = registrationType.trim();
     const finalRegType = (rawRegType === 'mecanico_especialista' ? 'Mecanico Especialista' : rawRegType) || 'Funcionário';
+    const finalReceivesCommission = !isBroker && receivesCommission;
 
     const snapshot: Partial<Employee> = {
       id: editingEmployee?.id || `emp_temp_${Date.now()}`,
@@ -500,10 +509,10 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
       terminationDate: terminationDate || undefined,
       active: isActive,
       status: isActive ? 'ativo' : 'inativo',
-      receivesCommission,
-      commissionPerHour: receivesCommission ? parsedPerHour : 0,
-      commissionPerAlqueire: receivesCommission ? parsedPerAlq : 0,
-      commissionPerHectare: receivesCommission ? parsedPerHa : 0,
+      receivesCommission: finalReceivesCommission,
+      commissionPerHour: finalReceivesCommission ? parsedPerHour : 0,
+      commissionPerAlqueire: finalReceivesCommission ? parsedPerAlq : 0,
+      commissionPerHectare: finalReceivesCommission ? parsedPerHa : 0,
       cnhNumber: cnhNumber.trim() || undefined,
       cnhCategory: cnhNumber.trim() ? cnhCategory : undefined,
       cnhExpiration: cnhExpiration || undefined,
@@ -612,6 +621,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     const parsedPerAlq = parseCurrencyInput(commissionPerAlqueire);
     const parsedPerHa = parseCurrencyInput(commissionPerHectare);
     const parsedBrokerCommission = isBroker ? parseCurrencyInput(brokerCommissionValue) : undefined;
+    const finalReceivesCommission = !isBroker && receivesCommission;
 
     const employeeData: Partial<Employee> = {
       name: name.trim(),
@@ -633,10 +643,10 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
       terminationDate: terminationDate || undefined,
       active: isActive,
       status: isActive ? (editingEmployee?.status === 'ferias' ? 'ferias' : editingEmployee?.status === 'afastado' ? 'afastado' : 'ativo') : 'inativo',
-      receivesCommission,
-      commissionPerHour: receivesCommission ? parsedPerHour : 0,
-      commissionPerAlqueire: receivesCommission ? parsedPerAlq : 0,
-      commissionPerHectare: receivesCommission ? parsedPerHa : 0,
+      receivesCommission: finalReceivesCommission,
+      commissionPerHour: finalReceivesCommission ? parsedPerHour : 0,
+      commissionPerAlqueire: finalReceivesCommission ? parsedPerAlq : 0,
+      commissionPerHectare: finalReceivesCommission ? parsedPerHa : 0,
       cnhNumber: cnhNumber.trim() || undefined,
       cnhCategory: cnhNumber.trim() ? cnhCategory : undefined,
       cnhExpiration: cnhExpiration || undefined,
@@ -1516,94 +1526,96 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                 </div>
               </div>
 
-              {/* SECTION 3: COMISSÃO */}
-              <div className="rounded-xl border border-stone-300 bg-white/70 p-3 space-y-2">
-                <div className="flex items-center space-x-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setReceivesCommission(!receivesCommission)}
-                    className={`
-                      relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none
-                      ${receivesCommission ? 'bg-[#0963cb]' : 'bg-stone-300'}
-                    `}
-                  >
-                    <span
+              {/* SECTION 3: COMISSÃO VARIÁVEL SOBRE PRODUÇÃO (OCULTADA PARA AGENCIADORES) */}
+              {!isBroker && (
+                <div className="rounded-xl border border-stone-300 bg-white/70 p-3 space-y-2 transition-all duration-200">
+                  <div className="flex items-center space-x-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setReceivesCommission(!receivesCommission)}
                       className={`
-                        pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out
-                        ${receivesCommission ? 'translate-x-5' : 'translate-x-0'}
+                        relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none
+                        ${receivesCommission ? 'bg-[#0963cb]' : 'bg-stone-300'}
                       `}
-                    />
-                  </button>
-                  <span className="text-xs sm:text-sm font-bold text-black">
-                    Recebe comissão variável sobre produção
-                  </span>
+                    >
+                      <span
+                        className={`
+                          pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out
+                          ${receivesCommission ? 'translate-x-5' : 'translate-x-0'}
+                        `}
+                      />
+                    </button>
+                    <span className="text-xs sm:text-sm font-bold text-black">
+                      Recebe comissão variável sobre produção
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-0.5">
+                    <div>
+                      <label className="block text-[11px] font-bold text-black mb-1">
+                        Por hora (R$/h)
+                      </label>
+                      <input
+                        type="text"
+                        value={commissionPerHour}
+                        onChange={(e) => setCommissionPerHour(e.target.value)}
+                        onBlur={() => {
+                          if (commissionPerHour) {
+                            const parsed = parseCurrencyInput(commissionPerHour);
+                            setCommissionPerHour(formatCurrencyInputDisplay(parsed));
+                          }
+                        }}
+                        disabled={!receivesCommission}
+                        className={`w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb] ${
+                          !receivesCommission ? 'opacity-60 cursor-not-allowed bg-stone-100' : ''
+                        }`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-black mb-1">
+                        Por alqueire (R$/alq)
+                      </label>
+                      <input
+                        type="text"
+                        value={commissionPerAlqueire}
+                        onChange={(e) => setCommissionPerAlqueire(e.target.value)}
+                        onBlur={() => {
+                          if (commissionPerAlqueire) {
+                            const parsed = parseCurrencyInput(commissionPerAlqueire);
+                            setCommissionPerAlqueire(formatCurrencyInputDisplay(parsed));
+                          }
+                        }}
+                        disabled={!receivesCommission}
+                        className={`w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb] ${
+                          !receivesCommission ? 'opacity-60 cursor-not-allowed bg-stone-100' : ''
+                        }`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-black mb-1">
+                        Por hectare (R$/ha)
+                      </label>
+                      <input
+                        type="text"
+                        value={commissionPerHectare}
+                        onChange={(e) => setCommissionPerHectare(e.target.value)}
+                        onBlur={() => {
+                          if (commissionPerHectare) {
+                            const parsed = parseCurrencyInput(commissionPerHectare);
+                            setCommissionPerHectare(formatCurrencyInputDisplay(parsed));
+                          }
+                        }}
+                        disabled={!receivesCommission}
+                        className={`w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb] ${
+                          !receivesCommission ? 'opacity-60 cursor-not-allowed bg-stone-100' : ''
+                        }`}
+                      />
+                    </div>
+                  </div>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-0.5">
-                  <div>
-                    <label className="block text-[11px] font-bold text-black mb-1">
-                      Por hora (R$/h)
-                    </label>
-                    <input
-                      type="text"
-                      value={commissionPerHour}
-                      onChange={(e) => setCommissionPerHour(e.target.value)}
-                      onBlur={() => {
-                        if (commissionPerHour) {
-                          const parsed = parseCurrencyInput(commissionPerHour);
-                          setCommissionPerHour(formatCurrencyInputDisplay(parsed));
-                        }
-                      }}
-                      disabled={!receivesCommission}
-                      className={`w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb] ${
-                        !receivesCommission ? 'opacity-60 cursor-not-allowed bg-stone-100' : ''
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-black mb-1">
-                      Por alqueire (R$/alq)
-                    </label>
-                    <input
-                      type="text"
-                      value={commissionPerAlqueire}
-                      onChange={(e) => setCommissionPerAlqueire(e.target.value)}
-                      onBlur={() => {
-                        if (commissionPerAlqueire) {
-                          const parsed = parseCurrencyInput(commissionPerAlqueire);
-                          setCommissionPerAlqueire(formatCurrencyInputDisplay(parsed));
-                        }
-                      }}
-                      disabled={!receivesCommission}
-                      className={`w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb] ${
-                        !receivesCommission ? 'opacity-60 cursor-not-allowed bg-stone-100' : ''
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-black mb-1">
-                      Por hectare (R$/ha)
-                    </label>
-                    <input
-                      type="text"
-                      value={commissionPerHectare}
-                      onChange={(e) => setCommissionPerHectare(e.target.value)}
-                      onBlur={() => {
-                        if (commissionPerHectare) {
-                          const parsed = parseCurrencyInput(commissionPerHectare);
-                          setCommissionPerHectare(formatCurrencyInputDisplay(parsed));
-                        }
-                      }}
-                      disabled={!receivesCommission}
-                      className={`w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb] ${
-                        !receivesCommission ? 'opacity-60 cursor-not-allowed bg-stone-100' : ''
-                      }`}
-                    />
-                  </div>
-                </div>
-              </div>
+              )}
 
               {/* SECTION 4: CNH & MELHORAR CATEGORIA (DT) */}
               <div className="border border-stone-300 rounded-xl overflow-hidden bg-white/70">
