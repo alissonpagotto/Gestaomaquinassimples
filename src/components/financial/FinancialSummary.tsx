@@ -281,7 +281,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
           <span>Despesas</span>
         </button>
 
-        {/* Aba Contas */}
+        {/* Aba Contas Bancárias */}
         <button
           type="button"
           onClick={() => setActiveTab('contas')}
@@ -292,7 +292,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
           }`}
         >
           <BarChart2 className="w-3.5 h-3.5" />
-          <span>Contas</span>
+          <span>Contas Bancárias</span>
         </button>
 
         {/* Aba A Pagar */}
@@ -732,7 +732,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
         </div>
       )}
 
-      {/* ABA: Contas */}
+      {/* ABA: Contas Bancárias */}
       {activeTab === 'contas' && (
         <BankAccountsTab
           accounts={bankAccounts}
