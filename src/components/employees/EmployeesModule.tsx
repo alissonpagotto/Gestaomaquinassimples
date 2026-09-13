@@ -397,7 +397,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     const r2 = normalizedRoles[1] || '';
 
     setRegistrationType(resolvedRegType);
-    setName(emp.name || '');
+    setName((emp.name || '').toUpperCase());
     setRole1(r1);
     setRole2(r2);
     setBrokerCommissionType(emp.brokerCommissionType || 'Porcentagem (%) sobre o valor do pedido');
@@ -407,9 +407,9 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
         : '5,00'
     );
     setCpf(emp.cpf || '');
-    setRg(emp.rg || '');
+    setRg((emp.rg || '').toUpperCase());
     setBirthDate(emp.birthDate || '');
-    setPis(emp.pis || '');
+    setPis((emp.pis || '').toUpperCase());
     setPhotoUrl(emp.photoUrl || '');
     setPhone(emp.phone || '');
     setBaseSalary(emp.baseSalary !== undefined ? formatCurrencyInputDisplay(emp.baseSalary) : (emp.salary !== undefined ? formatCurrencyInputDisplay(emp.salary) : '0,00'));
@@ -423,16 +423,16 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     setCommissionPerAlqueire(!isEmpBroker && emp.commissionPerAlqueire !== undefined ? formatCurrencyInputDisplay(emp.commissionPerAlqueire) : '0,00');
     setCommissionPerHectare(!isEmpBroker && emp.commissionPerHectare !== undefined ? formatCurrencyInputDisplay(emp.commissionPerHectare) : '0,00');
     
-    setCnhNumber(emp.cnhNumber || '');
+    setCnhNumber((emp.cnhNumber || '').toUpperCase());
     setCnhCategory(emp.cnhCategory || 'B');
     setCnhExpiration(emp.cnhExpiration || '');
     setCnhUpgradeDT(Boolean(emp.cnhUpgradeDT));
     setCnhUpgradeCategory(emp.cnhUpgradeCategory || 'A');
 
-    setPaymentLocation(emp.paymentLocation || '');
-    setBankPixKey(emp.bankPixKey || '');
-    setBankAgency(emp.bankAgency || '');
-    setBankAccount(emp.bankAccount || '');
+    setPaymentLocation((emp.paymentLocation || '').toUpperCase());
+    setBankPixKey((emp.bankPixKey || '').toUpperCase());
+    setBankAgency((emp.bankAgency || '').toUpperCase());
+    setBankAccount((emp.bankAccount || '').toUpperCase());
 
     setAdmissionExamDoc(emp.admissionExamDoc || null);
     setExperienceContractDoc(emp.experienceContractDoc || null);
@@ -490,16 +490,16 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
 
     const snapshot: Partial<Employee> = {
       id: editingEmployee?.id || `emp_temp_${Date.now()}`,
-      name: name.trim() || 'Nome do Colaborador',
+      name: name.trim().toUpperCase() || 'NOME DO COLABORADOR',
       registrationType: finalRegType,
       role: finalRole,
       roles: finalRoles,
       brokerCommissionType: isBroker ? brokerCommissionType : undefined,
       brokerCommissionValue: isBroker ? parseCurrencyInput(brokerCommissionValue) : undefined,
       cpf: cpf.trim() || undefined,
-      rg: rg.trim() || undefined,
+      rg: rg.trim() ? rg.trim().toUpperCase() : undefined,
       birthDate: birthDate || undefined,
-      pis: pis.trim() || undefined,
+      pis: pis.trim() ? pis.trim().toUpperCase() : undefined,
       photoUrl: photoUrl || undefined,
       phone: phone.trim() || 'Não informado',
       baseSalary: parsedSalary,
@@ -513,15 +513,15 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
       commissionPerHour: finalReceivesCommission ? parsedPerHour : 0,
       commissionPerAlqueire: finalReceivesCommission ? parsedPerAlq : 0,
       commissionPerHectare: finalReceivesCommission ? parsedPerHa : 0,
-      cnhNumber: cnhNumber.trim() || undefined,
+      cnhNumber: cnhNumber.trim() ? cnhNumber.trim().toUpperCase() : undefined,
       cnhCategory: cnhNumber.trim() ? cnhCategory : undefined,
       cnhExpiration: cnhExpiration || undefined,
       cnhUpgradeDT,
       cnhUpgradeCategory: cnhUpgradeDT ? cnhUpgradeCategory : undefined,
-      paymentLocation: paymentLocation.trim() || undefined,
-      bankPixKey: bankPixKey.trim() || undefined,
-      bankAgency: bankAgency.trim() || undefined,
-      bankAccount: bankAccount.trim() || undefined,
+      paymentLocation: paymentLocation.trim() ? paymentLocation.trim().toUpperCase() : undefined,
+      bankPixKey: bankPixKey.trim() ? bankPixKey.trim().toUpperCase() : undefined,
+      bankAgency: bankAgency.trim() ? bankAgency.trim().toUpperCase() : undefined,
+      bankAccount: bankAccount.trim() ? bankAccount.trim().toUpperCase() : undefined,
       admissionExamDoc: admissionExamDoc || undefined,
       experienceContractDoc: experienceContractDoc || undefined,
       generalDocs: generalDocs || undefined,
@@ -624,16 +624,16 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     const finalReceivesCommission = !isBroker && receivesCommission;
 
     const employeeData: Partial<Employee> = {
-      name: name.trim(),
+      name: name.trim().toUpperCase(),
       registrationType: finalRegType,
       role: finalRole,
       roles: finalRoles,
       brokerCommissionType: isBroker ? brokerCommissionType : undefined,
       brokerCommissionValue: parsedBrokerCommission,
       cpf: cpf.trim() || undefined,
-      rg: rg.trim() || undefined,
+      rg: rg.trim() ? rg.trim().toUpperCase() : undefined,
       birthDate: birthDate || undefined,
-      pis: pis.trim() || undefined,
+      pis: pis.trim() ? pis.trim().toUpperCase() : undefined,
       photoUrl: photoUrl || undefined,
       phone: phone.trim(),
       baseSalary: parsedSalary,
@@ -647,15 +647,15 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
       commissionPerHour: finalReceivesCommission ? parsedPerHour : 0,
       commissionPerAlqueire: finalReceivesCommission ? parsedPerAlq : 0,
       commissionPerHectare: finalReceivesCommission ? parsedPerHa : 0,
-      cnhNumber: cnhNumber.trim() || undefined,
+      cnhNumber: cnhNumber.trim() ? cnhNumber.trim().toUpperCase() : undefined,
       cnhCategory: cnhNumber.trim() ? cnhCategory : undefined,
       cnhExpiration: cnhExpiration || undefined,
       cnhUpgradeDT,
       cnhUpgradeCategory: cnhUpgradeDT ? cnhUpgradeCategory : undefined,
-      paymentLocation: paymentLocation.trim() || undefined,
-      bankPixKey: bankPixKey.trim() || undefined,
-      bankAgency: bankAgency.trim() || undefined,
-      bankAccount: bankAccount.trim() || undefined,
+      paymentLocation: paymentLocation.trim() ? paymentLocation.trim().toUpperCase() : undefined,
+      bankPixKey: bankPixKey.trim() ? bankPixKey.trim().toUpperCase() : undefined,
+      bankAgency: bankAgency.trim() ? bankAgency.trim().toUpperCase() : undefined,
+      bankAccount: bankAccount.trim() ? bankAccount.trim().toUpperCase() : undefined,
       admissionExamDoc: admissionExamDoc || undefined,
       experienceContractDoc: experienceContractDoc || undefined,
       generalDocs: generalDocs || undefined,
@@ -968,7 +968,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                 <tr key={emp.id} className="hover:bg-slate-50 transition">
                   <td className="py-3.5 px-4">
                     <div className="flex items-center space-x-2">
-                      <div className="font-bold text-black">
+                      <div className="font-bold text-black uppercase">
                         {emp.name}
                       </div>
                       {emp.active === false || emp.status === 'inativo' ? (
@@ -1210,8 +1210,8 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                         type="text"
                         required
                         value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
+                        onChange={(e) => setName(e.target.value.toUpperCase())}
+                        className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb] uppercase"
                       />
                     </div>
 
@@ -1236,8 +1236,8 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                       <input
                         type="text"
                         value={rg}
-                        onChange={(e) => setRg(e.target.value)}
-                        className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
+                        onChange={(e) => setRg(e.target.value.toUpperCase())}
+                        className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb] uppercase"
                       />
                     </div>
 
@@ -1261,8 +1261,8 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                       <input
                         type="text"
                         value={pis}
-                        onChange={(e) => setPis(e.target.value)}
-                        className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
+                        onChange={(e) => setPis(e.target.value.toUpperCase())}
+                        className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb] uppercase"
                       />
                     </div>
                   </div>
@@ -1641,8 +1641,8 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                         <input
                           type="text"
                           value={cnhNumber}
-                          onChange={(e) => setCnhNumber(e.target.value)}
-                          className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
+                          onChange={(e) => setCnhNumber(e.target.value.toUpperCase())}
+                          className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs focus:outline-none focus:ring-1 focus:ring-[#0963cb] uppercase"
                         />
                       </div>
 
@@ -1748,8 +1748,8 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                     <input
                       type="text"
                       value={paymentLocation}
-                      onChange={(e) => setPaymentLocation(e.target.value)}
-                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
+                      onChange={(e) => setPaymentLocation(e.target.value.toUpperCase())}
+                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb] uppercase"
                     />
                   </div>
 
@@ -1760,8 +1760,8 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                     <input
                       type="text"
                       value={bankPixKey}
-                      onChange={(e) => setBankPixKey(e.target.value)}
-                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
+                      onChange={(e) => setBankPixKey(e.target.value.toUpperCase())}
+                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb] uppercase"
                     />
                   </div>
 
@@ -1772,8 +1772,8 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                     <input
                       type="text"
                       value={bankAgency}
-                      onChange={(e) => setBankAgency(e.target.value)}
-                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
+                      onChange={(e) => setBankAgency(e.target.value.toUpperCase())}
+                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb] uppercase"
                     />
                   </div>
 
@@ -1784,8 +1784,8 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                     <input
                       type="text"
                       value={bankAccount}
-                      onChange={(e) => setBankAccount(e.target.value)}
-                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb]"
+                      onChange={(e) => setBankAccount(e.target.value.toUpperCase())}
+                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-black text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#0963cb] uppercase"
                     />
                   </div>
                 </div>

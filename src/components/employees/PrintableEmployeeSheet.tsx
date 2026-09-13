@@ -166,7 +166,7 @@ export const PrintableEmployeeSheet: React.FC<PrintableEmployeeSheetProps> = ({
             <tbody>
               <tr>
                 <td className="label-cell" style={{ width: '22%' }}>Nome Completo:</td>
-                <td className="value-cell" colSpan={3} style={{ fontSize: '11pt', fontWeight: 'bold' }}>
+                <td className="value-cell" colSpan={3} style={{ fontSize: '11pt', fontWeight: 'bold', textTransform: 'uppercase' }}>
                   {employee.name || '—'}
                 </td>
               </tr>
@@ -348,7 +348,7 @@ export const PrintableEmployeeSheet: React.FC<PrintableEmployeeSheetProps> = ({
       {/* BLOCO DE ASSINATURAS */}
       <div className="signature-box" style={{ marginTop: '40px', display: 'flex', justifyContent: 'space-between' }}>
         <div className="signature-line" style={{ width: '45%', textAlign: 'center', borderTop: '1px solid #000', paddingTop: '6px' }}>
-          <div style={{ fontWeight: 'bold', fontSize: '9.5pt' }}>{employee.name || 'COLABORADOR'}</div>
+          <div style={{ fontWeight: 'bold', fontSize: '9.5pt', textTransform: 'uppercase' }}>{employee.name || 'COLABORADOR'}</div>
           <div style={{ fontSize: '8pt', color: '#475569' }}>
             CPF: {employee.cpf || '_____________________'}
           </div>
