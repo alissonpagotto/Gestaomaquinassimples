@@ -205,7 +205,8 @@ export interface Machinery {
   compositionType?: 'veiculo_simples' | 'cavalo' | 'reboque' | 'outro'; // 'Cavalo', 'Reboque', 'Veículo Simples'
   hasCoupledTrailer?: boolean; // Este veículo possui reboque vinculado?
   trailerPlate?: string; // Placa do Reboque
-  trailerModel?: string; // Modelo/Tipo de Reboque
+  trailerModel?: string; // Modelo do Reboque
+  coupledTrailerType?: string; // Tipo de Reboque acoplado (ex: Caçamba, Graneleiro, Silagem, Basculante, Baú)
   trailerType?: string; // Tipo de Reboque quando o veículo é Reboque (Prancha, Baú, Graneleiro, Basculante, Sider)
   trailerAxlesCount?: number; // Quantidade de Eixos do reboque
   trailerCapacityLoadKg?: number; // Capacidade de Carga do Reboque (kg)

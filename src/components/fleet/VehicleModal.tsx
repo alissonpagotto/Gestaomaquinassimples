@@ -143,6 +143,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
   const [hasCoupledTrailer, setHasCoupledTrailer] = useState(false);
   const [trailerPlate, setTrailerPlate] = useState('');
   const [trailerModel, setTrailerModel] = useState('');
+  const [coupledTrailerType, setCoupledTrailerType] = useState('');
   const [trailerCapacityLoadKg, setTrailerCapacityLoadKg] = useState('');
   const [trailerCapacityM3, setTrailerCapacityM3] = useState('');
   const [compositionType, setCompositionType] = useState<Machinery['compositionType']>('veiculo_simples');
@@ -157,6 +158,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     if (!enabled) {
       setTrailerPlate('');
       setTrailerModel('');
+      setCoupledTrailerType('');
       setTrailerCapacityLoadKg('');
       setTrailerCapacityM3('');
       setCoupledTrailerId('');
@@ -173,6 +175,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       if (found) {
         setTrailerPlate(found.licensePlateOrSerial || '');
         setTrailerModel(found.model || found.name || '');
+        setCoupledTrailerType(found.trailerType || '');
         if (found.capacityLoadKg) {
           setTrailerCapacityLoadKg(String(found.capacityLoadKg));
         }
@@ -331,12 +334,14 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
 
     let finalCoupledName: string | undefined = undefined;
     if (hasCoupledTrailer) {
-      if (trailerPlate.trim() && trailerModel.trim()) {
-        finalCoupledName = `${trailerPlate.trim().toUpperCase()} - ${trailerModel.trim()}`;
+      const descParts = [trailerModel.trim(), coupledTrailerType.trim()].filter(Boolean);
+      const trailerDesc = descParts.join(' - ');
+      if (trailerPlate.trim() && trailerDesc) {
+        finalCoupledName = `${trailerPlate.trim().toUpperCase()} - ${trailerDesc}`;
       } else if (trailerPlate.trim()) {
         finalCoupledName = trailerPlate.trim().toUpperCase();
-      } else if (trailerModel.trim()) {
-        finalCoupledName = trailerModel.trim();
+      } else if (trailerDesc) {
+        finalCoupledName = trailerDesc;
       } else if (coupledTrailerName.trim()) {
         finalCoupledName = coupledTrailerName.trim();
       } else {
@@ -371,6 +376,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       hasCoupledTrailer,
       trailerPlate: hasCoupledTrailer ? (trailerPlate.trim().toUpperCase() || undefined) : undefined,
       trailerModel: hasCoupledTrailer ? (trailerModel.trim() || undefined) : undefined,
+      coupledTrailerType: hasCoupledTrailer ? (coupledTrailerType.trim() || undefined) : undefined,
       trailerCapacityLoadKg: hasCoupledTrailer && trailerCapacityLoadKg ? parseFloat(trailerCapacityLoadKg) : undefined,
       trailerCapacityM3: hasCoupledTrailer && trailerCapacityM3 ? parseFloat(trailerCapacityM3) : undefined,
       coupledTrailerId: hasCoupledTrailer ? (coupledTrailerId || undefined) : undefined,
@@ -541,6 +547,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setHasCoupledTrailer(hasTrailer);
       setTrailerPlate(editingVehicle.trailerPlate || '');
       setTrailerModel(editingVehicle.trailerModel || '');
+      setCoupledTrailerType(editingVehicle.coupledTrailerType || '');
       setTrailerCapacityLoadKg(editingVehicle.trailerCapacityLoadKg !== undefined ? String(editingVehicle.trailerCapacityLoadKg) : '');
       setTrailerCapacityM3(editingVehicle.trailerCapacityM3 !== undefined ? String(editingVehicle.trailerCapacityM3) : '');
       setCompositionType(editingVehicle.compositionType || 'veiculo_simples');
@@ -635,6 +642,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setHasCoupledTrailer(false);
       setTrailerPlate('');
       setTrailerModel('');
+      setCoupledTrailerType('');
       setTrailerCapacityLoadKg('');
       setTrailerCapacityM3('');
       setCompositionType('veiculo_simples');
@@ -872,12 +880,14 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     let finalCoupledName: string | undefined = undefined;
     if (hasCoupledTrailer) {
       finalCoupledId = coupledTrailerId || undefined;
-      if (trailerPlate.trim() && trailerModel.trim()) {
-        finalCoupledName = `${trailerPlate.trim().toUpperCase()} - ${trailerModel.trim()}`;
+      const descParts = [trailerModel.trim(), coupledTrailerType.trim()].filter(Boolean);
+      const trailerDesc = descParts.join(' - ');
+      if (trailerPlate.trim() && trailerDesc) {
+        finalCoupledName = `${trailerPlate.trim().toUpperCase()} - ${trailerDesc}`;
       } else if (trailerPlate.trim()) {
         finalCoupledName = trailerPlate.trim().toUpperCase();
-      } else if (trailerModel.trim()) {
-        finalCoupledName = trailerModel.trim();
+      } else if (trailerDesc) {
+        finalCoupledName = trailerDesc;
       } else if (coupledTrailerName.trim()) {
         finalCoupledName = coupledTrailerName.trim();
       } else {
@@ -923,6 +933,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       hasCoupledTrailer: isReboqueCategory ? false : hasCoupledTrailer,
       trailerPlate: !isReboqueCategory && hasCoupledTrailer ? (trailerPlate.trim().toUpperCase() || undefined) : undefined,
       trailerModel: !isReboqueCategory && hasCoupledTrailer ? (trailerModel.trim() || undefined) : undefined,
+      coupledTrailerType: !isReboqueCategory && hasCoupledTrailer ? (coupledTrailerType.trim() || undefined) : undefined,
       trailerCapacityLoadKg: !isReboqueCategory && hasCoupledTrailer && trailerCapacityLoadKg ? parseFloat(trailerCapacityLoadKg) : undefined,
       trailerCapacityM3: !isReboqueCategory && hasCoupledTrailer && trailerCapacityM3 ? parseFloat(trailerCapacityM3) : undefined,
       compositionType: isReboqueCategory ? 'reboque' : (hasCoupledTrailer ? 'cavalo' : compositionType),
@@ -1141,12 +1152,12 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
         {activeTab === 'dados' && (
           <form 
             onSubmit={handleSubmit} 
-            className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-[#b0d2ed]"
+            className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 bg-[#b0d2ed]"
             style={{ backgroundColor: '#b0d2ed' }}
           >
             
             {/* SEÇÃO 1: IDENTIFICAÇÃO BÁSICA (CARD BRANCO) */}
-            <div className="p-4 rounded-xl bg-white border border-blue-200/80 shadow-xs space-y-3.5">
+            <div className="p-3 sm:p-3.5 rounded-xl bg-white border border-blue-200/80 shadow-xs space-y-3">
               <div className="flex items-center space-x-2">
                 <Truck className="w-4 h-4 text-[#0963cb]" />
                 <h4 className="text-xs font-bold uppercase tracking-wider text-[#000000]" style={{ color: '#000000' }}>
@@ -1459,7 +1470,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
 
             {/* SEÇÃO: VÍNCULO DE REBOQUE / IMPLEMENTO (CARD BRANCO) */}
             {!isReboqueCategory ? (
-            <div className="p-4 rounded-xl bg-white border border-blue-200/80 shadow-xs space-y-3.5">
+            <div className="p-3 sm:p-3.5 rounded-xl bg-white border border-blue-200/80 shadow-xs space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Link2 className="w-4 h-4 text-[#0963cb]" />
@@ -1473,13 +1484,13 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               </div>
 
               {/* 1. Pergunta de Vínculo (Checkbox / Switch) */}
-              <div className="flex items-center justify-between p-3.5 rounded-xl bg-blue-50/50 border border-blue-200/80">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition shadow-2xs ${hasCoupledTrailer ? 'bg-[#0963cb] text-white' : 'bg-stone-200 text-stone-600'}`}>
-                    <Truck className="w-4 h-4" />
+              <div className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-blue-50/50 border border-blue-200/80">
+                <div className="flex items-center space-x-2.5">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition shadow-2xs ${hasCoupledTrailer ? 'bg-[#0963cb] text-white' : 'bg-stone-200 text-stone-600'}`}>
+                    <Truck className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <label htmlFor="coupledTrailerSwitch" className="text-xs sm:text-sm font-bold text-[#000000] cursor-pointer block" style={{ color: '#000000' }}>
+                    <label htmlFor="coupledTrailerSwitch" className="text-xs font-bold text-[#000000] cursor-pointer block" style={{ color: '#000000' }}>
                       Este veículo possui reboque vinculado?
                     </label>
                     <span className="text-[11px] text-stone-600">
@@ -1499,8 +1510,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                     onChange={(e) => handleToggleCoupledTrailer(e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0963cb]"></div>
-                  <span className="ml-2.5 text-xs font-black uppercase text-[#000000]" style={{ color: '#000000' }}>
+                  <div className="w-10 h-5 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0963cb]"></div>
+                  <span className="ml-2 text-xs font-black uppercase text-[#000000]" style={{ color: '#000000' }}>
                     {hasCoupledTrailer ? 'Sim' : 'Não'}
                   </span>
                 </label>
@@ -1508,11 +1519,11 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
 
               {/* 2. Bloco Dinâmico do Reboque */}
               {hasCoupledTrailer && (
-                <div className="p-3.5 bg-stone-50/80 rounded-xl border border-blue-200/80 space-y-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-stone-200">
-                    <div className="flex items-center space-x-2">
+                <div className="p-3 bg-stone-50/80 rounded-xl border border-blue-200/80 space-y-2.5">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-stone-200">
+                    <div className="flex items-center space-x-1.5">
                       <Layers className="w-3.5 h-3.5 text-[#0963cb]" />
-                      <h5 className="text-xs font-bold uppercase tracking-wider text-[#000000]" style={{ color: '#000000' }}>
+                      <h5 className="text-[11px] font-bold uppercase tracking-wider text-[#000000]" style={{ color: '#000000' }}>
                         Dados do Reboque
                       </h5>
                     </div>
@@ -1544,11 +1555,11 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                     </div>
                   )}
 
-                  {/* Grid de Campos Básicos do Reboque */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                    {/* Placa do Reboque */}
+                  {/* Grid Horizontal Compacta de Campos do Reboque (12 colunas) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                    {/* 1º: Placa do Reboque (sm:col-span-3) */}
                     <div className="sm:col-span-3">
-                      <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                      <label className="block text-[11px] font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                         Placa do Reboque
                       </label>
                       <input
@@ -1556,29 +1567,44 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                         placeholder="Ex: ABC-1D23"
                         value={trailerPlate}
                         onChange={(e) => setTrailerPlate(e.target.value.toUpperCase())}
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs sm:text-sm font-mono font-bold uppercase focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                        className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs font-mono font-bold uppercase focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                         style={{ backgroundColor: '#ffffff', color: '#000000' }}
                       />
                     </div>
 
-                    {/* Modelo / Tipo de Reboque */}
-                    <div className="sm:col-span-5">
-                      <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
-                        Modelo / Tipo de Reboque
+                    {/* 2º: Modelo do Reboque (sm:col-span-3) */}
+                    <div className="sm:col-span-3">
+                      <label className="block text-[11px] font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                        Modelo do Reboque
                       </label>
                       <input
                         type="text"
-                        placeholder="Ex: Carreta Basculante, Transbordo, Graneleiro"
+                        placeholder="Ex: Randon Basculante"
                         value={trailerModel}
                         onChange={(e) => setTrailerModel(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                        className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                         style={{ backgroundColor: '#ffffff', color: '#000000' }}
                       />
                     </div>
 
-                    {/* Capacidade de Carga (kg) */}
+                    {/* 3º: Tipo de Reboque (sm:col-span-2) */}
                     <div className="sm:col-span-2">
-                      <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                      <label className="block text-[11px] font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                        Tipo de Reboque
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ex: Graneleiro, Caçamba"
+                        value={coupledTrailerType}
+                        onChange={(e) => setCoupledTrailerType(e.target.value)}
+                        className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                        style={{ backgroundColor: '#ffffff', color: '#000000' }}
+                      />
+                    </div>
+
+                    {/* 4º: Capacidade de Carga (kg) (sm:col-span-2) */}
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                         Capacidade Carga (kg)
                       </label>
                       <div className="relative">
@@ -1588,7 +1614,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                           placeholder="Ex: 25000"
                           value={trailerCapacityLoadKg}
                           onChange={(e) => setTrailerCapacityLoadKg(e.target.value)}
-                          className="w-full px-3 py-2 pr-7 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                          className="w-full px-3 py-1.5 pr-7 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                           style={{ backgroundColor: '#ffffff', color: '#000000' }}
                         />
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-stone-500">
@@ -1597,9 +1623,9 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Capacidade Volumétrica (m³) */}
+                    {/* 5º: Capacidade Volumétrica (m³) (sm:col-span-2) */}
                     <div className="sm:col-span-2">
-                      <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                      <label className="block text-[11px] font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
                         Capacidade (m³)
                       </label>
                       <div className="relative">
@@ -1609,7 +1635,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                           placeholder="Ex: 40"
                           value={trailerCapacityM3}
                           onChange={(e) => setTrailerCapacityM3(e.target.value)}
-                          className="w-full px-3 py-2 pr-7 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                          className="w-full px-3 py-1.5 pr-7 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                           style={{ backgroundColor: '#ffffff', color: '#000000' }}
                         />
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-stone-500">
@@ -1622,7 +1648,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               )}
             </div>
             ) : (
-              <div className="p-3.5 rounded-xl bg-stone-100/80 border border-stone-200 flex items-center justify-between text-xs text-stone-600">
+              <div className="p-3 sm:p-3.5 rounded-xl bg-stone-100/80 border border-stone-200 flex items-center justify-between text-xs text-stone-600">
                 <div className="flex items-center space-x-2.5">
                   <div className="w-7 h-7 rounded-lg bg-stone-200 text-stone-500 flex items-center justify-center shrink-0">
                     <Link2 className="w-3.5 h-3.5" />
@@ -1641,7 +1667,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
             )}
 
             {/* SEÇÃO 2: PROPRIEDADE & NO NOME DE QUEM (CARD BRANCO) */}
-            <div className="p-4 rounded-xl bg-white border border-blue-200/80 shadow-xs space-y-3.5">
+            <div className="p-3 sm:p-3.5 rounded-xl bg-white border border-blue-200/80 shadow-xs space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center space-x-2">
                   <Building className="w-4 h-4 text-[#0963cb]" />
