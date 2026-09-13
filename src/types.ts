@@ -306,7 +306,8 @@ export interface Employee {
   id: string;
   name: string;
   registrationType?: EmployeeRegistrationType;
-  role: EmployeeRole; // 'Operador de Ensiladeira', 'Tratorista', 'Motorista de Caminhão', 'Mecânico', 'Mecanico Especialista', etc.
+  role: EmployeeRole | string; // 'Operador de Ensiladeira', 'Tratorista', 'Motorista de Caminhão', 'Mecânico', etc.
+  roles?: string[]; // Array de múltiplos cargos selecionados (suporte a multi-select)
   cpf?: string;
   rg?: string; // Número do RG
   birthDate?: string; // Data de Nascimento

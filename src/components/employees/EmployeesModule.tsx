@@ -31,6 +31,7 @@ import { Employee, CompanyProfile, EmployeeAttachment, Cargo, EmployeeRole, Empl
 import { formatDateBR, checkCnhStatus, formatCurrencyBRL, getStoredCompanyProfile } from '../../lib/storage';
 import { formatPhone, formatCpfCnpj, parseCurrencyInput, formatCurrencyInputDisplay } from '../../lib/formatters';
 import { ManageableDropdown } from '../common/ManageableDropdown';
+import { ManageableMultiSelect } from '../common/ManageableMultiSelect';
 import { useConfirm } from '../../context/ConfirmContext';
 import { PrintPreviewModal } from '../common/PrintPreviewModal';
 import { PrintDocumentOptions } from '../../lib/printService';
@@ -211,7 +212,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
   // Form State
   const [registrationType, setRegistrationType] = useState<EmployeeRegistrationType | string>('Funcionário');
   const [name, setName] = useState<string>('');
-  const [role, setRole] = useState<EmployeeRole | string>('Operador de Forrageira');
+  const [roles, setRoles] = useState<string[]>(['Operador de Forrageira']);
   const [cpf, setCpf] = useState<string>('');
   const [rg, setRg] = useState<string>('');
   const [birthDate, setBirthDate] = useState<string>('');
@@ -258,6 +259,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
       .filter(emp =>
         (emp.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (emp.role || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (emp.roles && emp.roles.some(r => r.toLowerCase().includes(searchTerm.toLowerCase()))) ||
         (emp.cpf && emp.cpf.includes(searchTerm)) ||
         (emp.rg && emp.rg.includes(searchTerm)) ||
         (emp.pis && emp.pis.includes(searchTerm)) ||
@@ -280,7 +282,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     setEditingEmployee(null);
     setRegistrationType('Funcionário');
     setName('');
-    setRole('Operador de Forrageira');
+    setRoles(['Operador de Forrageira']);
     setCpf('');
     setRg('');
     setBirthDate('');
@@ -337,10 +339,22 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
   const handleOpenEdit = (emp: Employee) => {
     setEditingEmployee(emp);
     const resolvedRegType = emp.registrationType === 'mecanico_especialista' ? 'Mecanico Especialista' : (emp.registrationType || 'Funcionário');
-    const resolvedRole = emp.role === 'mecanico_especialista' ? 'Mecanico Especialista' : (emp.role || 'Operador de Ensiladeira');
+    
+    // Inicialização do array de cargos com suporte a múltiplos cargos
+    let initialRoles: string[] = [];
+    if (Array.isArray(emp.roles) && emp.roles.length > 0) {
+      initialRoles = emp.roles;
+    } else if (emp.role) {
+      initialRoles = emp.role.split(',').map(r => r.trim()).filter(Boolean);
+    }
+    if (initialRoles.length === 0) {
+      initialRoles = ['Operador de Forrageira'];
+    }
+    const normalizedRoles = initialRoles.map(r => r === 'mecanico_especialista' ? 'Mecanico especialista' : r);
+
     setRegistrationType(resolvedRegType);
     setName(emp.name || '');
-    setRole(resolvedRole);
+    setRoles(normalizedRoles);
     setCpf(emp.cpf || '');
     setRg(emp.rg || '');
     setBirthDate(emp.birthDate || '');
@@ -413,8 +427,8 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     const parsedPerAlq = parseCurrencyInput(commissionPerAlqueire);
     const parsedPerHa = parseCurrencyInput(commissionPerHectare);
 
-    const rawRole = role.trim();
-    const finalRole = (rawRole === 'mecanico_especialista' ? 'Mecanico Especialista' : rawRole) || 'Operador';
+    const finalRoles = roles.length > 0 ? roles : ['Operador de Forrageira'];
+    const finalRole = finalRoles.join(', ');
     const rawRegType = registrationType.trim();
     const finalRegType = (rawRegType === 'mecanico_especialista' ? 'Mecanico Especialista' : rawRegType) || 'Funcionário';
 
@@ -423,6 +437,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
       name: name.trim() || 'Nome do Colaborador',
       registrationType: finalRegType,
       role: finalRole,
+      roles: finalRoles,
       cpf: cpf.trim() || undefined,
       rg: rg.trim() || undefined,
       birthDate: birthDate || undefined,
@@ -530,8 +545,8 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     e.preventDefault();
     if (!name.trim()) return;
 
-    const rawRole = role.trim();
-    const finalRole = (rawRole === 'mecanico_especialista' ? 'Mecanico Especialista' : rawRole) || 'Operador de Ensiladeira';
+    const finalRoles = roles.length > 0 ? roles : ['Operador de Forrageira'];
+    const finalRole = finalRoles.join(', ');
     
     const rawRegType = registrationType.trim();
     const finalRegType = (rawRegType === 'mecanico_especialista' ? 'Mecanico Especialista' : rawRegType) || 'Funcionário';
@@ -545,6 +560,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
       name: name.trim(),
       registrationType: finalRegType,
       role: finalRole,
+      roles: finalRoles,
       cpf: cpf.trim() || undefined,
       rg: rg.trim() || undefined,
       birthDate: birthDate || undefined,
@@ -910,11 +926,23 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                   </td>
 
                   <td className="py-3.5 px-4">
-                    <div className="flex items-center space-x-1.5 text-black font-bold">
-                      <Briefcase className="w-3.5 h-3.5 text-slate-500" />
-                      <span>{emp.role}</span>
+                    <div className="flex items-start space-x-1.5 text-black font-bold">
+                      <Briefcase className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
+                      <div className="flex flex-wrap gap-1 items-center">
+                        {(emp.roles && emp.roles.length > 0
+                          ? emp.roles
+                          : (emp.role || 'Operador').split(',').map(r => r.trim()).filter(Boolean)
+                        ).map((r, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-sky-50 text-sky-900 border border-sky-200/70"
+                          >
+                            {r}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <div className="text-[11px] text-black/75 font-medium mt-0.5">
+                    <div className="text-[11px] text-black/75 font-medium mt-1">
                       {emp.contractType || 'Registrado (CLT)'}
                       {emp.admissionDate && ` • Adm: ${formatDateBR(emp.admissionDate)}`}
                     </div>
@@ -1172,14 +1200,14 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <ManageableDropdown
+                    <ManageableMultiSelect
                       id="employee-role-dropdown"
                       label="Cargo / Função"
-                      value={role}
-                      onChange={setRole}
+                      values={roles}
+                      onChange={setRoles}
                       options={roleOptions}
                       onOptionsChange={handleUpdateRoleOptions}
-                      placeholder=""
+                      placeholder="Selecione os cargos..."
                       newItemPlaceholder="Novo cargo..."
                     />
                   </div>
