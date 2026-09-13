@@ -31,7 +31,8 @@ import { Employee, CompanyProfile, EmployeeAttachment, Cargo, EmployeeRole, Empl
 import { formatDateBR, checkCnhStatus, formatCurrencyBRL, getStoredCompanyProfile } from '../../lib/storage';
 import { formatPhone, formatCpfCnpj, parseCurrencyInput, formatCurrencyInputDisplay } from '../../lib/formatters';
 import { ManageableDropdown } from '../common/ManageableDropdown';
-import { ManageableMultiSelect } from '../common/ManageableMultiSelect';
+import { RoleSelectDropdown } from './RoleSelectDropdown';
+import { CategoryOptionsManagerModal } from '../common/CategoryOptionsManagerModal';
 import { useConfirm } from '../../context/ConfirmContext';
 import { PrintPreviewModal } from '../common/PrintPreviewModal';
 import { PrintDocumentOptions } from '../../lib/printService';
@@ -199,9 +200,15 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
   };
 
   const handleUpdateRoleOptions = (newOpts: string[]) => {
-    const sorted = Array.from(new Set(newOpts)).sort((a, b) => a.localeCompare('pt-BR'));
+    const sorted = Array.from(new Set(newOpts)).sort((a, b) => a.localeCompare(b, 'pt-BR'));
     setRoleOptions(sorted);
     localStorage.setItem(STORAGE_KEYS.ROLES, JSON.stringify(sorted));
+    if (role1 && !sorted.some(r => r.toLowerCase() === role1.toLowerCase())) {
+      setRole1(sorted[0] || 'Operador de Forrageira');
+    }
+    if (role2 && !sorted.some(r => r.toLowerCase() === role2.toLowerCase())) {
+      setRole2('');
+    }
   };
 
   const handleUpdateContractTypeOptions = (newOpts: string[]) => {
@@ -212,7 +219,15 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
   // Form State
   const [registrationType, setRegistrationType] = useState<EmployeeRegistrationType | string>('Funcionário');
   const [name, setName] = useState<string>('');
-  const [roles, setRoles] = useState<string[]>(['Operador de Forrageira']);
+  const [role1, setRole1] = useState<string>('Operador de Forrageira');
+  const [role2, setRole2] = useState<string>('');
+  const [isRoleManagerOpen, setIsRoleManagerOpen] = useState<boolean>(false);
+  const [roleManagerTarget, setRoleManagerTarget] = useState<'role1' | 'role2' | null>(null);
+
+  const sortedRoleOptions = useMemo(() => {
+    return [...roleOptions].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [roleOptions]);
+
   const [cpf, setCpf] = useState<string>('');
   const [rg, setRg] = useState<string>('');
   const [birthDate, setBirthDate] = useState<string>('');
@@ -282,7 +297,8 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     setEditingEmployee(null);
     setRegistrationType('Funcionário');
     setName('');
-    setRoles(['Operador de Forrageira']);
+    setRole1('Operador de Forrageira');
+    setRole2('');
     setCpf('');
     setRg('');
     setBirthDate('');
@@ -340,21 +356,21 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     setEditingEmployee(emp);
     const resolvedRegType = emp.registrationType === 'mecanico_especialista' ? 'Mecanico Especialista' : (emp.registrationType || 'Funcionário');
     
-    // Inicialização do array de cargos com suporte a múltiplos cargos
+    // Inicialização das funções 1 e 2
     let initialRoles: string[] = [];
     if (Array.isArray(emp.roles) && emp.roles.length > 0) {
       initialRoles = emp.roles;
     } else if (emp.role) {
       initialRoles = emp.role.split(',').map(r => r.trim()).filter(Boolean);
     }
-    if (initialRoles.length === 0) {
-      initialRoles = ['Operador de Forrageira'];
-    }
     const normalizedRoles = initialRoles.map(r => r === 'mecanico_especialista' ? 'Mecanico especialista' : r);
+    const r1 = normalizedRoles[0] || 'Operador de Forrageira';
+    const r2 = normalizedRoles[1] || '';
 
     setRegistrationType(resolvedRegType);
     setName(emp.name || '');
-    setRoles(normalizedRoles);
+    setRole1(r1);
+    setRole2(r2);
     setCpf(emp.cpf || '');
     setRg(emp.rg || '');
     setBirthDate(emp.birthDate || '');
@@ -427,7 +443,10 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     const parsedPerAlq = parseCurrencyInput(commissionPerAlqueire);
     const parsedPerHa = parseCurrencyInput(commissionPerHectare);
 
-    const finalRoles = roles.length > 0 ? roles : ['Operador de Forrageira'];
+    const activeRoles: string[] = [];
+    if (role1.trim()) activeRoles.push(role1.trim());
+    if (role2.trim() && role2.trim().toLowerCase() !== role1.trim().toLowerCase()) activeRoles.push(role2.trim());
+    const finalRoles = activeRoles.length > 0 ? activeRoles : ['Operador de Forrageira'];
     const finalRole = finalRoles.join(', ');
     const rawRegType = registrationType.trim();
     const finalRegType = (rawRegType === 'mecanico_especialista' ? 'Mecanico Especialista' : rawRegType) || 'Funcionário';
@@ -544,8 +563,15 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+    if (!role1.trim()) {
+      alert('Por favor, selecione a Função 1 (obrigatória).');
+      return;
+    }
 
-    const finalRoles = roles.length > 0 ? roles : ['Operador de Forrageira'];
+    const activeRoles: string[] = [];
+    if (role1.trim()) activeRoles.push(role1.trim());
+    if (role2.trim() && role2.trim().toLowerCase() !== role1.trim().toLowerCase()) activeRoles.push(role2.trim());
+    const finalRoles = activeRoles.length > 0 ? activeRoles : ['Operador de Forrageira'];
     const finalRole = finalRoles.join(', ');
     
     const rawRegType = registrationType.trim();
@@ -1198,21 +1224,42 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                   </h4>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-3">
-                    <ManageableMultiSelect
-                      id="employee-role-dropdown"
-                      label="Cargo / Função"
-                      values={roles}
-                      onChange={setRoles}
-                      options={roleOptions}
-                      onOptionsChange={handleUpdateRoleOptions}
-                      defaultOptions={DEFAULT_ROLES}
-                      placeholder="Selecione os cargos..."
-                      newItemPlaceholder="Novo cargo..."
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Linha 1: Função 1 (Obrigatório) & Função 2 (Opcional) */}
+                  <div>
+                    <RoleSelectDropdown
+                      id="employee-role-1"
+                      label="Função 1"
+                      required
+                      value={role1}
+                      onChange={setRole1}
+                      options={sortedRoleOptions}
+                      onOpenManager={() => {
+                        setRoleManagerTarget('role1');
+                        setIsRoleManagerOpen(true);
+                      }}
+                      placeholder="Selecione a função principal..."
                     />
                   </div>
 
+                  <div>
+                    <RoleSelectDropdown
+                      id="employee-role-2"
+                      label="Função 2 (Opcional)"
+                      isOptional
+                      value={role2}
+                      onChange={setRole2}
+                      options={sortedRoleOptions}
+                      disabledOption={role1}
+                      onOpenManager={() => {
+                        setRoleManagerTarget('role2');
+                        setIsRoleManagerOpen(true);
+                      }}
+                      placeholder="Selecione (se houver acúmulo)..."
+                    />
+                  </div>
+
+                  {/* Linha 2: Telefone / WhatsApp & Salário Base */}
                   <div>
                     <label className="block text-xs font-bold text-black mb-1">
                       Telefone / WhatsApp
@@ -1244,7 +1291,8 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                     />
                   </div>
 
-                  <div>
+                  {/* Linha 3: Regime de Contratação */}
+                  <div className="sm:col-span-2">
                     <ManageableDropdown
                       label="Regime de Contratação"
                       value={contractType}
@@ -1256,6 +1304,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                     />
                   </div>
 
+                  {/* Linha 4: Data de Admissão & Data de Demissão */}
                   <div>
                     <label className="block text-xs font-bold text-black mb-1">
                       Data de Admissão <span className="text-rose-600">*</span>
@@ -1854,6 +1903,28 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
       <PrintableEmployeeSheet 
         employee={employeeToPrint} 
         companyProfile={activeCompany} 
+      />
+
+      {/* Modal Gerenciador de Cargos e Funções */}
+      <CategoryOptionsManagerModal
+        isOpen={isRoleManagerOpen}
+        onClose={() => {
+          setIsRoleManagerOpen(false);
+          setRoleManagerTarget(null);
+        }}
+        title="Gerenciar Cargos & Funções"
+        subtitle="Inclua, edite, reordene ou exclua funções cadastradas na empresa"
+        items={roleOptions}
+        defaultItems={DEFAULT_ROLES}
+        onSaveItems={handleUpdateRoleOptions}
+        placeholder="Nome da nova função / cargo..."
+        onSelectItem={(selectedRole) => {
+          if (roleManagerTarget === 'role1') {
+            setRole1(selectedRole);
+          } else if (roleManagerTarget === 'role2') {
+            setRole2(selectedRole);
+          }
+        }}
       />
 
     </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Edit2, Trash2, Check, Search, Tag, ArrowUp, ArrowDown, ArrowDownAZ } from 'lucide-react';
+import { X, Plus, Edit2, Trash2, Check, Search, Tag, ArrowUp, ArrowDown, ArrowDownAZ, RotateCcw } from 'lucide-react';
 
 interface CategoryOptionsManagerModalProps {
   isOpen: boolean;
@@ -8,6 +8,7 @@ interface CategoryOptionsManagerModalProps {
   subtitle?: string;
   items: string[];
   onSaveItems: (items: string[]) => void;
+  defaultItems?: string[];
   placeholder?: string;
   onSelectItem?: (item: string) => void;
 }
@@ -19,6 +20,7 @@ export const CategoryOptionsManagerModal: React.FC<CategoryOptionsManagerModalPr
   subtitle = 'Adicione, edite ou exclua opções desta categoria',
   items,
   onSaveItems,
+  defaultItems,
   placeholder = 'Nome da nova opção / categoria...',
   onSelectItem,
 }) => {
@@ -179,15 +181,34 @@ export const CategoryOptionsManagerModal: React.FC<CategoryOptionsManagerModalPr
                 <span className="text-[10px] text-stone-400">Clique nas setas para reordenar ou no botão A-Z</span>
               </div>
 
-              <button
-                type="button"
-                onClick={handleSortAZ}
-                className="inline-flex items-center space-x-1.5 px-2.5 py-1 text-[11px] font-bold text-stone-700 dark:text-stone-200 bg-stone-100 dark:bg-stone-800 hover:bg-[#009688] hover:text-white dark:hover:bg-[#009688] border border-stone-200 dark:border-stone-700 rounded-lg transition cursor-pointer shadow-2xs"
-                title="Ordenar alfabeticamente de A a Z"
-              >
-                <ArrowDownAZ className="w-3.5 h-3.5" />
-                <span>Ordenar A-Z</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                {defaultItems && defaultItems.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm('Deseja restaurar as opções para a lista padrão original?')) {
+                        const sorted = [...defaultItems].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+                        onSaveItems(sorted);
+                      }
+                    }}
+                    className="inline-flex items-center space-x-1.5 px-2.5 py-1 text-[11px] font-bold text-stone-700 dark:text-stone-200 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 rounded-lg transition cursor-pointer shadow-2xs"
+                    title="Restaurar lista de opções padrão"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Restaurar Padrões</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleSortAZ}
+                  className="inline-flex items-center space-x-1.5 px-2.5 py-1 text-[11px] font-bold text-stone-700 dark:text-stone-200 bg-stone-100 dark:bg-stone-800 hover:bg-[#009688] hover:text-white dark:hover:bg-[#009688] border border-stone-200 dark:border-stone-700 rounded-lg transition cursor-pointer shadow-2xs"
+                  title="Ordenar alfabeticamente de A a Z"
+                >
+                  <ArrowDownAZ className="w-3.5 h-3.5" />
+                  <span>Ordenar A-Z</span>
+                </button>
+              </div>
             </div>
 
             <div className="border border-stone-200 dark:border-stone-800 rounded-xl divide-y divide-stone-100 dark:divide-stone-800 bg-white dark:bg-stone-900 overflow-hidden shadow-2xs">
