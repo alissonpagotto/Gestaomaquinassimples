@@ -129,12 +129,50 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     saveStoredVehicleOwnershipRegimes(updated);
   };
 
-  // Composition & Detailed Type
+  // Vínculo de Reboque & Bloco Dinâmico
+  const [hasCoupledTrailer, setHasCoupledTrailer] = useState(false);
+  const [trailerPlate, setTrailerPlate] = useState('');
+  const [trailerModel, setTrailerModel] = useState('');
+  const [trailerCapacityLoadKg, setTrailerCapacityLoadKg] = useState('');
+  const [trailerCapacityM3, setTrailerCapacityM3] = useState('');
   const [compositionType, setCompositionType] = useState<Machinery['compositionType']>('veiculo_simples');
   const [coupledTrailerId, setCoupledTrailerId] = useState('');
   const [coupledTrailerName, setCoupledTrailerName] = useState('');
   const [customTrailerText, setCustomTrailerText] = useState('');
   const [vehicleTypeDetailed, setVehicleTypeDetailed] = useState('');
+
+  // Alternar vínculo de reboque e limpar campos quando desativado
+  const handleToggleCoupledTrailer = (enabled: boolean) => {
+    setHasCoupledTrailer(enabled);
+    if (!enabled) {
+      setTrailerPlate('');
+      setTrailerModel('');
+      setTrailerCapacityLoadKg('');
+      setTrailerCapacityM3('');
+      setCoupledTrailerId('');
+      setCoupledTrailerName('');
+      setCustomTrailerText('');
+    }
+  };
+
+  // Preenchimento rápido a partir de reboque existente na frota
+  const handleSelectCandidateTrailer = (trailerId: string) => {
+    setCoupledTrailerId(trailerId);
+    if (trailerId && trailerId !== 'outro') {
+      const found = candidateTrailers.find(t => t.id === trailerId);
+      if (found) {
+        setTrailerPlate(found.licensePlateOrSerial || '');
+        setTrailerModel(found.model || found.name || '');
+        if (found.capacityLoadKg) {
+          setTrailerCapacityLoadKg(String(found.capacityLoadKg));
+        }
+        if (found.capacityM3) {
+          setTrailerCapacityM3(String(found.capacityM3));
+        }
+        setCoupledTrailerName(`${found.licensePlateOrSerial || ''} - ${found.model || found.name}`.trim());
+      }
+    }
+  };
 
   // Weights & Capacity
   const [taraWeightKg, setTaraWeightKg] = useState('');
@@ -281,15 +319,18 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     const assignedNames = selectedEmpObjects.map(emp => emp.name);
     const compiledDriverString = assignedNames.join(', ');
 
-    let finalCoupledName = coupledTrailerName;
-    if (compositionType === 'cavalo') {
-      if (customTrailerText.trim()) {
-        finalCoupledName = customTrailerText.trim();
-      } else if (coupledTrailerId && coupledTrailerId !== 'outro') {
-        const found = candidateTrailers.find(t => t.id === coupledTrailerId);
-        if (found) {
-          finalCoupledName = `${found.licensePlateOrSerial || ''} - ${found.model || found.name}`.trim();
-        }
+    let finalCoupledName: string | undefined = undefined;
+    if (hasCoupledTrailer) {
+      if (trailerPlate.trim() && trailerModel.trim()) {
+        finalCoupledName = `${trailerPlate.trim().toUpperCase()} - ${trailerModel.trim()}`;
+      } else if (trailerPlate.trim()) {
+        finalCoupledName = trailerPlate.trim().toUpperCase();
+      } else if (trailerModel.trim()) {
+        finalCoupledName = trailerModel.trim();
+      } else if (coupledTrailerName.trim()) {
+        finalCoupledName = coupledTrailerName.trim();
+      } else {
+        finalCoupledName = 'Reboque vinculado';
       }
     }
 
@@ -316,9 +357,14 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       categoryType: categoryType || 'forrageira',
       status: status || 'disponivel',
       ownership: ownership || 'proprio',
-      compositionType,
-      coupledTrailerId: coupledTrailerId || undefined,
-      coupledTrailerName: finalCoupledName || undefined,
+      compositionType: hasCoupledTrailer ? 'cavalo' : compositionType,
+      hasCoupledTrailer,
+      trailerPlate: hasCoupledTrailer ? (trailerPlate.trim().toUpperCase() || undefined) : undefined,
+      trailerModel: hasCoupledTrailer ? (trailerModel.trim() || undefined) : undefined,
+      trailerCapacityLoadKg: hasCoupledTrailer && trailerCapacityLoadKg ? parseFloat(trailerCapacityLoadKg) : undefined,
+      trailerCapacityM3: hasCoupledTrailer && trailerCapacityM3 ? parseFloat(trailerCapacityM3) : undefined,
+      coupledTrailerId: hasCoupledTrailer ? (coupledTrailerId || undefined) : undefined,
+      coupledTrailerName: finalCoupledName,
       vehicleTypeDetailed: vehicleTypeDetailed.trim() || undefined,
       taraWeightKg: taraWeightKg ? parseFloat(taraWeightKg) : undefined,
       capacityLoadKg: capacityLoadKg ? parseFloat(capacityLoadKg) : undefined,
@@ -472,7 +518,19 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
           : 'Próprio'
       );
       
-      // Composition & type
+      // Vínculo de Reboque & Composição
+      const hasTrailer = Boolean(
+        editingVehicle.hasCoupledTrailer ||
+        editingVehicle.trailerPlate ||
+        editingVehicle.trailerModel ||
+        editingVehicle.coupledTrailerId ||
+        editingVehicle.coupledTrailerName
+      );
+      setHasCoupledTrailer(hasTrailer);
+      setTrailerPlate(editingVehicle.trailerPlate || '');
+      setTrailerModel(editingVehicle.trailerModel || '');
+      setTrailerCapacityLoadKg(editingVehicle.trailerCapacityLoadKg !== undefined ? String(editingVehicle.trailerCapacityLoadKg) : '');
+      setTrailerCapacityM3(editingVehicle.trailerCapacityM3 !== undefined ? String(editingVehicle.trailerCapacityM3) : '');
       setCompositionType(editingVehicle.compositionType || 'veiculo_simples');
       setCoupledTrailerId(editingVehicle.coupledTrailerId || '');
       setCoupledTrailerName(editingVehicle.coupledTrailerName || '');
@@ -551,6 +609,11 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setStatus('disponivel');
       setOwnership('proprio');
 
+      setHasCoupledTrailer(false);
+      setTrailerPlate('');
+      setTrailerModel('');
+      setTrailerCapacityLoadKg('');
+      setTrailerCapacityM3('');
       setCompositionType('veiculo_simples');
       setCoupledTrailerId('');
       setCoupledTrailerName('');
@@ -779,21 +842,21 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     const compiledDriverString = assignedNames.join(', ');
 
     // Coupled trailer logic
-    let finalCoupledId = coupledTrailerId;
-    let finalCoupledName = coupledTrailerName;
-    if (compositionType === 'cavalo') {
-      if (customTrailerText.trim()) {
-        finalCoupledName = customTrailerText.trim();
-        finalCoupledId = 'custom';
-      } else if (coupledTrailerId && coupledTrailerId !== 'outro') {
-        const found = candidateTrailers.find(t => t.id === coupledTrailerId);
-        if (found) {
-          finalCoupledName = `${found.licensePlateOrSerial || ''} - ${found.model || found.name}`.trim();
-        }
+    let finalCoupledId: string | undefined = undefined;
+    let finalCoupledName: string | undefined = undefined;
+    if (hasCoupledTrailer) {
+      finalCoupledId = coupledTrailerId || undefined;
+      if (trailerPlate.trim() && trailerModel.trim()) {
+        finalCoupledName = `${trailerPlate.trim().toUpperCase()} - ${trailerModel.trim()}`;
+      } else if (trailerPlate.trim()) {
+        finalCoupledName = trailerPlate.trim().toUpperCase();
+      } else if (trailerModel.trim()) {
+        finalCoupledName = trailerModel.trim();
+      } else if (coupledTrailerName.trim()) {
+        finalCoupledName = coupledTrailerName.trim();
+      } else {
+        finalCoupledName = 'Reboque vinculado';
       }
-    } else {
-      finalCoupledId = undefined as any;
-      finalCoupledName = undefined as any;
     }
 
     // Use automatically calculated consumption or preserve existing
@@ -830,10 +893,15 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       status: status || 'disponivel',
       ownership: ownership || 'proprio',
       
-      // Composition & Types
-      compositionType,
-      coupledTrailerId: finalCoupledId || undefined,
-      coupledTrailerName: finalCoupledName || undefined,
+      // Vínculo de Reboque
+      hasCoupledTrailer,
+      trailerPlate: hasCoupledTrailer ? (trailerPlate.trim().toUpperCase() || undefined) : undefined,
+      trailerModel: hasCoupledTrailer ? (trailerModel.trim() || undefined) : undefined,
+      trailerCapacityLoadKg: hasCoupledTrailer && trailerCapacityLoadKg ? parseFloat(trailerCapacityLoadKg) : undefined,
+      trailerCapacityM3: hasCoupledTrailer && trailerCapacityM3 ? parseFloat(trailerCapacityM3) : undefined,
+      compositionType: hasCoupledTrailer ? 'cavalo' : compositionType,
+      coupledTrailerId: finalCoupledId,
+      coupledTrailerName: finalCoupledName,
       vehicleTypeDetailed: vehicleTypeDetailed.trim() || undefined,
 
       // Weights
@@ -1234,6 +1302,170 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                   </select>
                 </div>
               </div>
+            </div>
+
+            {/* SEÇÃO: VÍNCULO DE REBOQUE / IMPLEMENTO (CARD BRANCO) */}
+            <div className="p-4 rounded-xl bg-white border border-blue-200/80 shadow-xs space-y-3.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Link2 className="w-4 h-4 text-[#0963cb]" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#000000]" style={{ color: '#000000' }}>
+                    Vínculo de Reboque / Implemento
+                  </h4>
+                </div>
+                <span className="text-[11px] font-semibold text-stone-500">
+                  Acoplamento Operacional
+                </span>
+              </div>
+
+              {/* 1. Pergunta de Vínculo (Checkbox / Switch) */}
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-blue-50/50 border border-blue-200/80">
+                <div className="flex items-center space-x-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition shadow-2xs ${hasCoupledTrailer ? 'bg-[#0963cb] text-white' : 'bg-stone-200 text-stone-600'}`}>
+                    <Truck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <label htmlFor="coupledTrailerSwitch" className="text-xs sm:text-sm font-bold text-[#000000] cursor-pointer block" style={{ color: '#000000' }}>
+                      Este veículo possui reboque vinculado?
+                    </label>
+                    <span className="text-[11px] text-stone-600">
+                      {hasCoupledTrailer 
+                        ? 'Sim — Reboque, carreta ou implemento acoplado a este veículo' 
+                        : 'Não — Veículo operando de forma isolada / sem reboque'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Switch Moderno */}
+                <label className="relative inline-flex items-center cursor-pointer select-none">
+                  <input
+                    id="coupledTrailerSwitch"
+                    type="checkbox"
+                    checked={hasCoupledTrailer}
+                    onChange={(e) => handleToggleCoupledTrailer(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0963cb]"></div>
+                  <span className="ml-2.5 text-xs font-black uppercase text-[#000000]" style={{ color: '#000000' }}>
+                    {hasCoupledTrailer ? 'Sim' : 'Não'}
+                  </span>
+                </label>
+              </div>
+
+              {/* 2. Bloco Dinâmico do Reboque */}
+              {hasCoupledTrailer && (
+                <div className="p-3.5 bg-stone-50/80 rounded-xl border border-blue-200/80 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-stone-200">
+                    <div className="flex items-center space-x-2">
+                      <Layers className="w-3.5 h-3.5 text-[#0963cb]" />
+                      <h5 className="text-xs font-bold uppercase tracking-wider text-[#000000]" style={{ color: '#000000' }}>
+                        Dados do Reboque
+                      </h5>
+                    </div>
+                    {candidateTrailers.length > 0 && (
+                      <span className="text-[10px] text-stone-500 font-medium">
+                        Preenchimento manual ou vínculo rápido
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Seletor Opcional de Reboques Cadastrados */}
+                  {candidateTrailers.length > 0 && (
+                    <div>
+                      <label className="block text-[11px] font-bold mb-1 text-stone-700">
+                        Vincular a partir da Frota Existente (Opcional):
+                      </label>
+                      <select
+                        value={coupledTrailerId}
+                        onChange={(e) => handleSelectCandidateTrailer(e.target.value)}
+                        className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-2xs"
+                      >
+                        <option value="">-- Preencher dados manualmente ou selecionar reboque da frota --</option>
+                        {candidateTrailers.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.licensePlateOrSerial || t.fleetNumber || 'S/N'} — {t.model || t.name} {t.capacityLoadKg ? `(${t.capacityLoadKg} kg)` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Grid de Campos Básicos do Reboque */}
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                    {/* Placa do Reboque */}
+                    <div className="sm:col-span-3">
+                      <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                        Placa do Reboque
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ex: ABC-1D23"
+                        value={trailerPlate}
+                        onChange={(e) => setTrailerPlate(e.target.value.toUpperCase())}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs sm:text-sm font-mono font-bold uppercase focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                        style={{ backgroundColor: '#ffffff', color: '#000000' }}
+                      />
+                    </div>
+
+                    {/* Modelo / Tipo de Reboque */}
+                    <div className="sm:col-span-5">
+                      <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                        Modelo / Tipo de Reboque
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ex: Carreta Basculante, Transbordo, Graneleiro"
+                        value={trailerModel}
+                        onChange={(e) => setTrailerModel(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                        style={{ backgroundColor: '#ffffff', color: '#000000' }}
+                      />
+                    </div>
+
+                    {/* Capacidade de Carga (kg) */}
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                        Capacidade Carga (kg)
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="any"
+                          placeholder="Ex: 25000"
+                          value={trailerCapacityLoadKg}
+                          onChange={(e) => setTrailerCapacityLoadKg(e.target.value)}
+                          className="w-full px-3 py-2 pr-7 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                          style={{ backgroundColor: '#ffffff', color: '#000000' }}
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-stone-500">
+                          kg
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Capacidade Volumétrica (m³) */}
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold mb-1 text-[#000000]" style={{ color: '#000000' }}>
+                        Capacidade (m³)
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="any"
+                          placeholder="Ex: 40"
+                          value={trailerCapacityM3}
+                          onChange={(e) => setTrailerCapacityM3(e.target.value)}
+                          className="w-full px-3 py-2 pr-7 rounded-xl border border-stone-300 bg-white text-[#000000] text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                          style={{ backgroundColor: '#ffffff', color: '#000000' }}
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-stone-500">
+                          m³
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* SEÇÃO 2: PROPRIEDADE & NO NOME DE QUEM (CARD BRANCO) */}

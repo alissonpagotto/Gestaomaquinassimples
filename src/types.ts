@@ -201,10 +201,15 @@ export interface Machinery {
   lastTireRotationKm?: number;
   lastTireRotationHourMeter?: number;
 
-  // Composição e Tipo Específico
+  // Composição e Vínculo de Reboque
   compositionType?: 'veiculo_simples' | 'cavalo' | 'reboque' | 'outro'; // 'Cavalo', 'Reboque', 'Veículo Simples'
-  coupledTrailerId?: string; // ID do reboque engatado (quando for Cavalo)
-  coupledTrailerName?: string; // Placa / Identificação do reboque engatado
+  hasCoupledTrailer?: boolean; // Este veículo possui reboque vinculado?
+  trailerPlate?: string; // Placa do Reboque
+  trailerModel?: string; // Modelo/Tipo de Reboque
+  trailerCapacityLoadKg?: number; // Capacidade de Carga do Reboque (kg)
+  trailerCapacityM3?: number; // Capacidade Volumétrica do Reboque (m³)
+  coupledTrailerId?: string; // ID do reboque engatado (quando selecionado)
+  coupledTrailerName?: string; // Placa / Identificação do reboque engatado (compatibilidade)
   vehicleTypeDetailed?: string; // Truck, Bi-trem, Rodotrem, Cavalo Mecânico, etc.
 
   // Controle de Peso

@@ -77,7 +77,11 @@ export function generateVehicleRegistrationPrintHtml(
           </div>
           <div style="grid-column: span 2;">
             <div style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase;">Implemento / Reboque Vinculado</div>
-            <div style="font-size: 12px; font-weight: 700; color: #0f172a;">${vehicle.coupledTrailerName || 'Nenhum acoplado'}</div>
+            <div style="font-size: 12px; font-weight: 700; color: #0f172a;">
+              ${vehicle.hasCoupledTrailer || vehicle.trailerPlate || vehicle.coupledTrailerName
+                ? `${vehicle.trailerPlate ? `Placa: ${vehicle.trailerPlate}` : ''} ${vehicle.trailerModel ? `• Modelo: ${vehicle.trailerModel}` : (vehicle.coupledTrailerName ? `• ${vehicle.coupledTrailerName}` : '')} ${vehicle.trailerCapacityLoadKg ? `(Capacidade: ${vehicle.trailerCapacityLoadKg} kg${vehicle.trailerCapacityM3 ? ` / ${vehicle.trailerCapacityM3} m³` : ''})` : ''}`.trim()
+                : 'Nenhum acoplado'}
+            </div>
           </div>
         </div>
       </div>

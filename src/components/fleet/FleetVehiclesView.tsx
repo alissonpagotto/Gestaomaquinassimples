@@ -521,6 +521,9 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
 
                     const isCavalo = vehicle.compositionType === 'cavalo';
                     const isReboque = vehicle.compositionType === 'reboque' || vehicle.categoryType === 'reboque';
+                    const hasCoupledTrailer = Boolean(vehicle.hasCoupledTrailer || vehicle.trailerPlate || vehicle.coupledTrailerName || vehicle.coupledTrailerId);
+                    const trailerPlateDisplay = vehicle.trailerPlate || (vehicle.coupledTrailerName && vehicle.coupledTrailerName.includes('-') ? vehicle.coupledTrailerName.split('-')[0].trim() : '');
+                    const trailerModelDisplay = vehicle.trailerModel || (vehicle.coupledTrailerName && vehicle.coupledTrailerName.includes('-') ? vehicle.coupledTrailerName.split('-').slice(1).join('-').trim() : vehicle.coupledTrailerName);
                     const pbt = (vehicle.taraWeightKg && vehicle.capacityLoadKg)
                       ? (vehicle.taraWeightKg + vehicle.capacityLoadKg)
                       : vehicle.grossWeightKg;
@@ -567,22 +570,36 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                             )}
                           </div>
 
-                          {/* Badge de Composição */}
-                          <div className="mt-1 flex flex-wrap items-center gap-1">
+                          {/* Badges de Composição e Reboque Vinculado */}
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                             {isCavalo && (
                               <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
                                 🚛 Cavalo Mecânico
-                              </span>
-                            )}
-                            {isCavalo && (vehicle.coupledTrailerName || vehicle.coupledTrailerId) && (
-                              <span className="inline-flex items-center text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                                🔗 Engatado: {vehicle.coupledTrailerName || 'Reboque vinculado'}
                               </span>
                             )}
                             {isReboque && (
                               <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                                 🛞 Reboque / Carreta
                               </span>
+                            )}
+                            {hasCoupledTrailer && (
+                              <div className="inline-flex items-center space-x-1 text-[10.5px] font-extrabold px-2.5 py-0.5 rounded-md bg-sky-50 text-sky-900 dark:bg-sky-950/70 dark:text-sky-200 border border-sky-300 dark:border-sky-800 shadow-2xs">
+                                <span>🔗</span>
+                                <span className="font-bold text-sky-800 dark:text-sky-300">Reboque:</span>
+                                {trailerPlateDisplay && (
+                                  <span className="font-mono bg-white dark:bg-stone-900 px-1.5 py-0.2 rounded border border-sky-200 dark:border-sky-800 text-sky-950 dark:text-sky-100 font-black">
+                                    {trailerPlateDisplay}
+                                  </span>
+                                )}
+                                {trailerModelDisplay && (
+                                  <span className="font-medium text-stone-700 dark:text-stone-300">• {trailerModelDisplay}</span>
+                                )}
+                                {(vehicle.trailerCapacityLoadKg !== undefined && vehicle.trailerCapacityLoadKg > 0) && (
+                                  <span className="text-[10px] text-stone-500 dark:text-stone-400 font-semibold">
+                                    ({vehicle.trailerCapacityLoadKg.toLocaleString('pt-BR')} kg{vehicle.trailerCapacityM3 ? ` / ${vehicle.trailerCapacityM3} m³` : ''})
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
                         </td>
@@ -803,6 +820,9 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
 
             const isCavalo = vehicle.compositionType === 'cavalo';
             const isReboque = vehicle.compositionType === 'reboque' || vehicle.categoryType === 'reboque';
+            const hasCoupledTrailer = Boolean(vehicle.hasCoupledTrailer || vehicle.trailerPlate || vehicle.coupledTrailerName || vehicle.coupledTrailerId);
+            const trailerPlateDisplay = vehicle.trailerPlate || (vehicle.coupledTrailerName && vehicle.coupledTrailerName.includes('-') ? vehicle.coupledTrailerName.split('-')[0].trim() : '');
+            const trailerModelDisplay = vehicle.trailerModel || (vehicle.coupledTrailerName && vehicle.coupledTrailerName.includes('-') ? vehicle.coupledTrailerName.split('-').slice(1).join('-').trim() : vehicle.coupledTrailerName);
             const pbt = (vehicle.taraWeightKg && vehicle.capacityLoadKg)
               ? (vehicle.taraWeightKg + vehicle.capacityLoadKg)
               : vehicle.grossWeightKg;
@@ -873,23 +893,44 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                     )}
                   </div>
 
-                  {/* Composition Tags (Cavalo / Reboque) */}
-                  {(isCavalo || isReboque) && (
-                    <div className="mt-2 flex flex-wrap gap-1">
+                  {/* Composition Tags & Reboque Vinculado */}
+                  {(isCavalo || isReboque || hasCoupledTrailer) && (
+                    <div className="mt-2 flex flex-wrap gap-1.5 items-center">
                       {isCavalo && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200">
                           🚛 Cavalo Mecânico
-                        </span>
-                      )}
-                      {isCavalo && (vehicle.coupledTrailerName || vehicle.coupledTrailerId) && (
-                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300">
-                          🔗 Engatado: {vehicle.coupledTrailerName || 'Reboque'}
                         </span>
                       )}
                       {isReboque && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200">
                           🛞 Reboque / Carreta
                         </span>
+                      )}
+                      {hasCoupledTrailer && (
+                        <div className="w-full mt-1 p-2 rounded-lg bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-800 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase text-sky-900 dark:text-sky-200 flex items-center gap-1">
+                              <span>🔗</span> Reboque Vinculado:
+                            </span>
+                            {trailerPlateDisplay && (
+                              <span className="font-mono font-black text-[11px] bg-white dark:bg-stone-900 px-1.5 py-0.5 rounded border border-sky-300 text-sky-950 dark:text-sky-100">
+                                {trailerPlateDisplay}
+                              </span>
+                            )}
+                          </div>
+                          {trailerModelDisplay && (
+                            <div className="mt-1 text-[11px] font-semibold text-stone-800 dark:text-stone-200">
+                              {trailerModelDisplay}
+                            </div>
+                          )}
+                          {(vehicle.trailerCapacityLoadKg || vehicle.trailerCapacityM3) && (
+                            <div className="mt-0.5 text-[10px] text-stone-600 dark:text-stone-400">
+                              Capacidade: {vehicle.trailerCapacityLoadKg ? `${vehicle.trailerCapacityLoadKg.toLocaleString('pt-BR')} kg` : ''}
+                              {vehicle.trailerCapacityLoadKg && vehicle.trailerCapacityM3 ? ' • ' : ''}
+                              {vehicle.trailerCapacityM3 ? `${vehicle.trailerCapacityM3} m³` : ''}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
