@@ -465,8 +465,8 @@ export const MachineryModule: React.FC<MachineryModuleProps> = ({
                         <h4 className="font-bold text-xs text-stone-900 dark:text-stone-100 font-mono">
                           {veh.licensePlateOrSerial || veh.name}
                         </h4>
-                        <p className="text-[11px] text-stone-500 dark:text-stone-400 line-clamp-1">
-                          {veh.model || veh.brand}
+                        <p className="text-[11px] text-stone-500 dark:text-stone-400 line-clamp-1 uppercase">
+                          {(veh.model || veh.brand || '').toUpperCase()}
                         </p>
                       </div>
                     </div>

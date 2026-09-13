@@ -173,8 +173,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     if (trailerId && trailerId !== 'outro') {
       const found = candidateTrailers.find(t => t.id === trailerId);
       if (found) {
-        setTrailerPlate(found.licensePlateOrSerial || '');
-        setTrailerModel(found.model || found.name || '');
+        setTrailerPlate((found.licensePlateOrSerial || '').toUpperCase());
+        setTrailerModel((found.model || found.name || '').toUpperCase());
         setCoupledTrailerType(found.trailerType || '');
         if (found.capacityLoadKg) {
           setTrailerCapacityLoadKg(String(found.capacityLoadKg));
@@ -182,7 +182,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
         if (found.capacityM3) {
           setTrailerCapacityM3(String(found.capacityM3));
         }
-        setCoupledTrailerName(`${found.licensePlateOrSerial || ''} - ${found.model || found.name}`.trim());
+        setCoupledTrailerName(`${found.licensePlateOrSerial || ''} - ${(found.model || found.name || '').toUpperCase()}`.trim());
       }
     }
   };
@@ -324,8 +324,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
 
   // Helper to compile the active/current vehicle object (merging form fields or editingVehicle)
   const buildCurrentVehicleSnapshot = (): Machinery => {
-    const formattedModel = model.trim() || plate.trim() || fleetNumber.trim() || serialNumber.trim() || 'Veículo / Equipamento';
-    const formattedBrand = brand.trim() || 'Agrícola';
+    const formattedModel = (model.trim() || plate.trim() || fleetNumber.trim() || serialNumber.trim() || 'Veículo / Equipamento').toUpperCase();
+    const formattedBrand = (brand.trim() || 'Agrícola').toUpperCase();
     const formattedName = `${formattedBrand} ${formattedModel}`.trim();
 
     const selectedEmpObjects = activeEmployees.filter(emp => selectedDriverIds.includes(emp.id));
@@ -334,7 +334,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
 
     let finalCoupledName: string | undefined = undefined;
     if (hasCoupledTrailer) {
-      const descParts = [trailerModel.trim(), coupledTrailerType.trim()].filter(Boolean);
+      const descParts = [trailerModel.trim().toUpperCase(), coupledTrailerType.trim()].filter(Boolean);
       const trailerDesc = descParts.join(' - ');
       if (trailerPlate.trim() && trailerDesc) {
         finalCoupledName = `${trailerPlate.trim().toUpperCase()} - ${trailerDesc}`;
@@ -343,7 +343,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       } else if (trailerDesc) {
         finalCoupledName = trailerDesc;
       } else if (coupledTrailerName.trim()) {
-        finalCoupledName = coupledTrailerName.trim();
+        finalCoupledName = coupledTrailerName.trim().toUpperCase();
       } else {
         finalCoupledName = 'Reboque vinculado';
       }
@@ -375,7 +375,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       compositionType: hasCoupledTrailer ? 'cavalo' : compositionType,
       hasCoupledTrailer,
       trailerPlate: hasCoupledTrailer ? (trailerPlate.trim().toUpperCase() || undefined) : undefined,
-      trailerModel: hasCoupledTrailer ? (trailerModel.trim() || undefined) : undefined,
+      trailerModel: hasCoupledTrailer ? (trailerModel.trim().toUpperCase() || undefined) : undefined,
       coupledTrailerType: hasCoupledTrailer ? (coupledTrailerType.trim() || undefined) : undefined,
       trailerCapacityLoadKg: hasCoupledTrailer && trailerCapacityLoadKg ? parseFloat(trailerCapacityLoadKg) : undefined,
       trailerCapacityM3: hasCoupledTrailer && trailerCapacityM3 ? parseFloat(trailerCapacityM3) : undefined,
@@ -501,8 +501,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     if (editingVehicle) {
       setFleetNumber(editingVehicle.fleetNumber || '');
       setPlate(editingVehicle.licensePlateOrSerial || '');
-      setBrand(editingVehicle.brand || '');
-      setModel(editingVehicle.model || '');
+      setBrand((editingVehicle.brand || '').toUpperCase());
+      setModel((editingVehicle.model || '').toUpperCase());
       setYear(editingVehicle.year ? String(editingVehicle.year) : '');
       setRenavam(editingVehicle.renavam || '');
       setColor(editingVehicle.color || '');
@@ -545,8 +545,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
         editingVehicle.coupledTrailerName
       );
       setHasCoupledTrailer(hasTrailer);
-      setTrailerPlate(editingVehicle.trailerPlate || '');
-      setTrailerModel(editingVehicle.trailerModel || '');
+      setTrailerPlate((editingVehicle.trailerPlate || '').toUpperCase());
+      setTrailerModel((editingVehicle.trailerModel || '').toUpperCase());
       setCoupledTrailerType(editingVehicle.coupledTrailerType || '');
       setTrailerCapacityLoadKg(editingVehicle.trailerCapacityLoadKg !== undefined ? String(editingVehicle.trailerCapacityLoadKg) : '');
       setTrailerCapacityM3(editingVehicle.trailerCapacityM3 !== undefined ? String(editingVehicle.trailerCapacityM3) : '');
@@ -866,8 +866,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       return;
     }
 
-    const formattedModel = model.trim() || plate.trim() || fleetNumber.trim() || serialNumber.trim();
-    const formattedBrand = brand.trim() || 'Agrícola';
+    const formattedModel = (model.trim() || plate.trim() || fleetNumber.trim() || serialNumber.trim()).toUpperCase();
+    const formattedBrand = (brand.trim() || 'Agrícola').toUpperCase();
     const formattedName = `${formattedBrand} ${formattedModel}`.trim();
 
     // Compile driver names
@@ -932,7 +932,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       // Vínculo de Reboque
       hasCoupledTrailer: isReboqueCategory ? false : hasCoupledTrailer,
       trailerPlate: !isReboqueCategory && hasCoupledTrailer ? (trailerPlate.trim().toUpperCase() || undefined) : undefined,
-      trailerModel: !isReboqueCategory && hasCoupledTrailer ? (trailerModel.trim() || undefined) : undefined,
+      trailerModel: !isReboqueCategory && hasCoupledTrailer ? (trailerModel.trim().toUpperCase() || undefined) : undefined,
       coupledTrailerType: !isReboqueCategory && hasCoupledTrailer ? (coupledTrailerType.trim() || undefined) : undefined,
       trailerCapacityLoadKg: !isReboqueCategory && hasCoupledTrailer && trailerCapacityLoadKg ? parseFloat(trailerCapacityLoadKg) : undefined,
       trailerCapacityM3: !isReboqueCategory && hasCoupledTrailer && trailerCapacityM3 ? parseFloat(trailerCapacityM3) : undefined,
@@ -1232,8 +1232,9 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                   <input
                     type="text"
                     value={brand}
-                    onChange={(e) => setBrand(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                    onChange={(e) => setBrand(e.target.value.toUpperCase())}
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-semibold uppercase focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                    style={{ backgroundColor: '#ffffff', color: '#000000' }}
                   />
                 </div>
 
@@ -1244,8 +1245,9 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                   <input
                     type="text"
                     value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                    onChange={(e) => setModel(e.target.value.toUpperCase())}
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-semibold uppercase focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                    style={{ backgroundColor: '#ffffff', color: '#000000' }}
                   />
                 </div>
 
@@ -1547,8 +1549,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                       >
                         <option value="">-- Preencher dados manualmente ou selecionar reboque da frota --</option>
                         {candidateTrailers.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.licensePlateOrSerial || t.fleetNumber || 'S/N'} — {t.model || t.name} {t.capacityLoadKg ? `(${t.capacityLoadKg} kg)` : ''}
+                          <option key={t.id} value={t.id} className="uppercase">
+                            {t.licensePlateOrSerial || t.fleetNumber || 'S/N'} — {(t.model || t.name || '').toUpperCase()} {t.capacityLoadKg ? `(${t.capacityLoadKg} kg)` : ''}
                           </option>
                         ))}
                       </select>
@@ -1582,8 +1584,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                         type="text"
                         placeholder="Ex: Randon Basculante"
                         value={trailerModel}
-                        onChange={(e) => setTrailerModel(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
+                        onChange={(e) => setTrailerModel(e.target.value.toUpperCase())}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-semibold uppercase focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
                         style={{ backgroundColor: '#ffffff', color: '#000000' }}
                       />
                     </div>

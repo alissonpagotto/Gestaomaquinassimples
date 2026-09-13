@@ -98,8 +98,8 @@ export const formatEmployeeOptionLabel = (emp: Employee): string => {
 
 export const formatMachineryOptionLabel = (m: Machinery): string => {
   const plate = m.licensePlateOrSerial ? m.licensePlateOrSerial.trim().toUpperCase() : '';
-  const nameOrModel = m.name || m.model || 'Equipamento';
-  const brand = m.brand ? ` (${m.brand})` : '';
+  const nameOrModel = (m.name || m.model || 'Equipamento').toUpperCase();
+  const brand = m.brand ? ` (${m.brand.toUpperCase()})` : '';
   const cap = m.capacityM3 && m.capacityM3 > 0 ? ` [${m.capacityM3} m³]` : '';
   
   if (plate) {
@@ -110,8 +110,8 @@ export const formatMachineryOptionLabel = (m: Machinery): string => {
 
 export const formatTruckOptionLabel = (m: Machinery): string => {
   const plate = m.licensePlateOrSerial ? m.licensePlateOrSerial.trim().toUpperCase() : '';
-  const nameOrModel = m.name || m.model || 'Caminhão';
-  const brand = m.brand ? ` (${m.brand})` : '';
+  const nameOrModel = (m.name || m.model || 'Caminhão').toUpperCase();
+  const brand = m.brand ? ` (${m.brand.toUpperCase()})` : '';
   const cap = m.capacityM3 && m.capacityM3 > 0 ? ` [${m.capacityM3} m³]` : '';
   if (plate) {
     return `${plate} — ${nameOrModel}${brand}${cap}`;

@@ -387,7 +387,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   const primaryMachinery = linkedMachineries[0] || (machineryId ? machineries.find((m) => m.id === machineryId) : undefined);
   const resolvedMachineryId = primaryMachinery?.id;
   const resolvedMachineryName = primaryMachinery
-    ? (primaryMachinery.licensePlateOrSerial ? `${primaryMachinery.licensePlateOrSerial} - ${primaryMachinery.model || primaryMachinery.name}` : primaryMachinery.model || primaryMachinery.name)
+    ? (primaryMachinery.licensePlateOrSerial ? `${primaryMachinery.licensePlateOrSerial} - ${(primaryMachinery.model || primaryMachinery.name).toUpperCase()}` : (primaryMachinery.model || primaryMachinery.name).toUpperCase())
     : undefined;
   const defaultCostCenter = costCenterId ? costCenters.find((cc) => cc.id === costCenterId) : costCenters[0];
 
@@ -876,7 +876,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                 {linkedMachineries.length > 0 && (
                   <span className="flex items-center space-x-1 text-emerald-800 dark:text-emerald-400 font-medium">
                     <Tractor className="w-3 h-3 shrink-0" />
-                    <span>Máquina(s): {linkedMachineries.map((m) => m.licensePlateOrSerial ? `${m.licensePlateOrSerial} (${m.model || m.name})` : m.model || m.name).join(', ')}</span>
+                    <span>Máquina(s): {linkedMachineries.map((m) => m.licensePlateOrSerial ? `${m.licensePlateOrSerial} (${(m.model || m.name || '').toUpperCase()})` : (m.model || m.name || '').toUpperCase()).join(', ')}</span>
                   </span>
                 )}
                 {resolvedTargetTeams.length > 0 && (

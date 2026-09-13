@@ -45,11 +45,11 @@ export function generateVehicleRegistrationPrintHtml(
           </div>
           <div>
             <div style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase;">Marca</div>
-            <div style="font-size: 12px; font-weight: 700; color: #0f172a;">${vehicle.brand || '--'}</div>
+            <div style="font-size: 12px; font-weight: 700; color: #0f172a; text-transform: uppercase;">${(vehicle.brand || '--').toUpperCase()}</div>
           </div>
           <div>
             <div style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase;">Modelo / Descrição</div>
-            <div style="font-size: 12px; font-weight: 700; color: #0f172a;">${vehicle.model || vehicle.name || '--'}</div>
+            <div style="font-size: 12px; font-weight: 700; color: #0f172a; text-transform: uppercase;">${(vehicle.model || vehicle.name || '--').toUpperCase()}</div>
           </div>
           <div>
             <div style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase;">Ano Fabricação / Mod.</div>

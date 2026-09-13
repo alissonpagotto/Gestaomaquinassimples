@@ -164,7 +164,7 @@ export const ReportsAtivoImobilizadoTab: React.FC<ReportsAtivoImobilizadoTabProp
           <td style="padding: 7px 8px; font-weight: 800; font-family: monospace; text-align: center;">${v.fleetNumber || '--'}</td>
           <td style="padding: 7px 8px; font-weight: 700; font-family: monospace;">${(v.licensePlateOrSerial || '--').toUpperCase()}</td>
           <td style="padding: 7px 8px;">
-            <strong>${v.brand || ''} ${v.model || v.name || ''}</strong>
+            <strong style="text-transform: uppercase;">${(v.brand || '').toUpperCase()} ${(v.model || v.name || '').toUpperCase()}</strong>
             <div style="font-size: 9px; color: #64748b;">${v.year ? `Ano: ${v.year}` : ''} ${v.renavam ? `| Renavam: ${v.renavam}` : ''} | Reg.: ${v.ownership === 'proprio' ? 'Próprio' : v.ownership || 'Próprio'}</div>
           </td>
           <td style="padding: 7px 8px; text-align: right; font-weight: 700;">${fipeVal}</td>
@@ -432,8 +432,8 @@ export const ReportsAtivoImobilizadoTab: React.FC<ReportsAtivoImobilizadoTabProp
                         {(v.licensePlateOrSerial || '--').toUpperCase()}
                       </td>
                       <td className="py-2 px-3">
-                        <div className="font-bold text-stone-900 dark:text-stone-100">
-                          {v.brand || ''} {v.model || v.name || 'Veículo'}
+                        <div className="font-bold text-stone-900 dark:text-stone-100 uppercase">
+                          {(v.brand || '').toUpperCase()} {(v.model || v.name || 'Veículo').toUpperCase()}
                         </div>
                         <div className="text-[10px] text-stone-500 flex items-center space-x-1.5 mt-0.5">
                           {v.year && <span>Ano: {v.year}</span>}

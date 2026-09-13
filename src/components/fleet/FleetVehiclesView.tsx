@@ -557,15 +557,15 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
 
                         {/* Veículo & Composição */}
                         <td className="py-3 px-4">
-                          <div className="font-bold text-stone-900 dark:text-stone-100">
-                            {vehicle.model || vehicle.name}
+                          <div className="font-bold text-stone-900 dark:text-stone-100 uppercase">
+                            {(vehicle.model || vehicle.name || '').toUpperCase()}
                           </div>
-                          <div className="text-[11px] text-stone-600 dark:text-stone-400 flex items-center space-x-1.5 mt-0.5">
-                            <span>{vehicle.brand || 'Agrícola'}</span>
-                            {vehicle.year && <span>• Ano {vehicle.year}</span>}
+                          <div className="text-[11px] text-stone-600 dark:text-stone-400 flex items-center space-x-1.5 mt-0.5 uppercase">
+                            <span className="font-semibold">{(vehicle.brand || 'Agrícola').toUpperCase()}</span>
+                            {vehicle.year && <span className="normal-case">• Ano {vehicle.year}</span>}
                             {vehicle.vehicleTypeDetailed && (
                               <span className="font-semibold text-sky-800 dark:text-sky-300">
-                                • {vehicle.vehicleTypeDetailed}
+                                • {vehicle.vehicleTypeDetailed.toUpperCase()}
                               </span>
                             )}
                           </div>
@@ -573,13 +573,13 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                           {/* Badges de Composição e Reboque Vinculado */}
                           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                             {isCavalo && (
-                              <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                              <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 uppercase">
                                 🚛 Cavalo Mecânico
                               </span>
                             )}
                             {isReboque && (
-                              <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                                🛞 Reboque{vehicle.trailerType ? `: ${vehicle.trailerType}` : ''}{vehicle.trailerAxlesCount ? ` (${vehicle.trailerAxlesCount} ${vehicle.trailerAxlesCount === 1 ? 'eixo' : 'eixos'})` : ''}
+                              <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 uppercase">
+                                🛞 Reboque{vehicle.trailerType ? `: ${vehicle.trailerType.toUpperCase()}` : ''}{vehicle.trailerAxlesCount ? ` (${vehicle.trailerAxlesCount} ${vehicle.trailerAxlesCount === 1 ? 'eixo' : 'eixos'})` : ''}
                               </span>
                             )}
                             {hasCoupledTrailer && (
@@ -587,12 +587,12 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                                 <span>🔗</span>
                                 <span className="font-bold text-sky-900 dark:text-sky-300">Reboque:</span>
                                 {trailerPlateDisplay && (
-                                  <span className="font-mono bg-white dark:bg-stone-900 px-1.5 py-0.2 rounded border border-sky-200 dark:border-sky-800 text-[#000000] dark:text-sky-100 font-black">
-                                    {trailerPlateDisplay}
+                                  <span className="font-mono bg-white dark:bg-stone-900 px-1.5 py-0.2 rounded border border-sky-200 dark:border-sky-800 text-[#000000] dark:text-sky-100 font-black uppercase">
+                                    {trailerPlateDisplay.toUpperCase()}
                                   </span>
                                 )}
                                 {trailerModelDisplay && (
-                                  <span className="font-medium text-stone-800 dark:text-stone-300">• {trailerModelDisplay}</span>
+                                  <span className="font-semibold text-stone-800 dark:text-stone-300 uppercase">• {trailerModelDisplay.toUpperCase()}</span>
                                 )}
                                 {(vehicle.trailerCapacityLoadKg !== undefined && vehicle.trailerCapacityLoadKg > 0) && (
                                   <span className="text-[10px] text-stone-600 dark:text-stone-400 font-semibold">
@@ -879,12 +879,12 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                   {/* Title & Brand */}
                   <div className="mt-2.5 flex items-start justify-between">
                     <div>
-                      <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
-                        {vehicle.model || vehicle.name}
+                      <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 uppercase">
+                        {(vehicle.model || vehicle.name || '').toUpperCase()}
                       </h3>
-                      <p className="text-xs text-stone-500 dark:text-stone-400">
-                        {vehicle.brand || 'Agrícola'} {vehicle.year ? `• Ano ${vehicle.year}` : ''}
-                        {vehicle.vehicleTypeDetailed ? ` • ${vehicle.vehicleTypeDetailed}` : ''}
+                      <p className="text-xs text-stone-500 dark:text-stone-400 uppercase">
+                        <span className="font-semibold">{(vehicle.brand || 'Agrícola').toUpperCase()}</span> {vehicle.year ? <span className="normal-case">• Ano {vehicle.year}</span> : ''}
+                        {vehicle.vehicleTypeDetailed ? ` • ${vehicle.vehicleTypeDetailed.toUpperCase()}` : ''}
                       </p>
                     </div>
                     {vehicle.capacityM3 !== undefined && vehicle.capacityM3 > 0 && (
@@ -920,8 +920,8 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                             )}
                           </div>
                           {trailerModelDisplay && (
-                            <div className="mt-1 text-[11px] font-semibold text-stone-800 dark:text-stone-200">
-                              {trailerModelDisplay}
+                            <div className="mt-1 text-[11px] font-semibold text-stone-800 dark:text-stone-200 uppercase">
+                              {trailerModelDisplay.toUpperCase()}
                             </div>
                           )}
                           {(vehicle.trailerCapacityLoadKg || vehicle.trailerCapacityM3) && (
@@ -1080,7 +1080,7 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                   <span>Atualizar Leitura do Medidor</span>
                 </h3>
                 <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                  {quickMeterVehicle.model || quickMeterVehicle.name} • Placa: {quickMeterVehicle.licensePlateOrSerial || quickMeterVehicle.serialNumber || '--'}
+                  <span className="uppercase font-semibold">{(quickMeterVehicle.model || quickMeterVehicle.name || '').toUpperCase()}</span> • Placa: {(quickMeterVehicle.licensePlateOrSerial || quickMeterVehicle.serialNumber || '--').toUpperCase()}
                 </p>
               </div>
               <button
