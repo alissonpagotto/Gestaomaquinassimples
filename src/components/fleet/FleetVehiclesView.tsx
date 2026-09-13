@@ -169,7 +169,7 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
       const matchComposition = 
         selectedComposition === 'todos' ||
         (selectedComposition === 'cavalo' && m.compositionType === 'cavalo') ||
-        (selectedComposition === 'reboque' && (m.compositionType === 'reboque' || m.categoryType === 'reboque')) ||
+        (selectedComposition === 'reboque' && (m.compositionType === 'reboque' || (m.categoryType || '').trim().toLowerCase() === 'reboque')) ||
         (selectedComposition === 'veiculo_simples' && (m.compositionType === 'veiculo_simples' || !m.compositionType));
 
       return matchSearch && matchCategory && matchStatus && matchOwnership && matchComposition;
@@ -520,7 +520,7 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                       : (vehicle.operatorOrDriver ? vehicle.operatorOrDriver.split(',').map(s => s.trim()) : []);
 
                     const isCavalo = vehicle.compositionType === 'cavalo';
-                    const isReboque = vehicle.compositionType === 'reboque' || vehicle.categoryType === 'reboque';
+                    const isReboque = vehicle.compositionType === 'reboque' || (vehicle.categoryType || '').trim().toLowerCase() === 'reboque';
                     const hasCoupledTrailer = Boolean(vehicle.hasCoupledTrailer || vehicle.trailerPlate || vehicle.coupledTrailerName || vehicle.coupledTrailerId);
                     const trailerPlateDisplay = vehicle.trailerPlate || (vehicle.coupledTrailerName && vehicle.coupledTrailerName.includes('-') ? vehicle.coupledTrailerName.split('-')[0].trim() : '');
                     const trailerModelDisplay = vehicle.trailerModel || (vehicle.coupledTrailerName && vehicle.coupledTrailerName.includes('-') ? vehicle.coupledTrailerName.split('-').slice(1).join('-').trim() : vehicle.coupledTrailerName);
@@ -579,7 +579,7 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                             )}
                             {isReboque && (
                               <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                                🛞 Reboque / Carreta
+                                🛞 Reboque{vehicle.trailerType ? `: ${vehicle.trailerType}` : ''}{vehicle.trailerAxlesCount ? ` (${vehicle.trailerAxlesCount} ${vehicle.trailerAxlesCount === 1 ? 'eixo' : 'eixos'})` : ''}
                               </span>
                             )}
                             {hasCoupledTrailer && (
@@ -819,7 +819,7 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
               : (vehicle.operatorOrDriver ? vehicle.operatorOrDriver.split(',').map(s => s.trim()) : []);
 
             const isCavalo = vehicle.compositionType === 'cavalo';
-            const isReboque = vehicle.compositionType === 'reboque' || vehicle.categoryType === 'reboque';
+            const isReboque = vehicle.compositionType === 'reboque' || (vehicle.categoryType || '').trim().toLowerCase() === 'reboque';
             const hasCoupledTrailer = Boolean(vehicle.hasCoupledTrailer || vehicle.trailerPlate || vehicle.coupledTrailerName || vehicle.coupledTrailerId);
             const trailerPlateDisplay = vehicle.trailerPlate || (vehicle.coupledTrailerName && vehicle.coupledTrailerName.includes('-') ? vehicle.coupledTrailerName.split('-')[0].trim() : '');
             const trailerModelDisplay = vehicle.trailerModel || (vehicle.coupledTrailerName && vehicle.coupledTrailerName.includes('-') ? vehicle.coupledTrailerName.split('-').slice(1).join('-').trim() : vehicle.coupledTrailerName);
@@ -903,7 +903,7 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                       )}
                       {isReboque && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200">
-                          🛞 Reboque / Carreta
+                          🛞 Reboque{vehicle.trailerType ? `: ${vehicle.trailerType}` : ''}{vehicle.trailerAxlesCount ? ` (${vehicle.trailerAxlesCount} ${vehicle.trailerAxlesCount === 1 ? 'eixo' : 'eixos'})` : ''}
                         </span>
                       )}
                       {hasCoupledTrailer && (

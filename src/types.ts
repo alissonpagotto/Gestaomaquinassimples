@@ -206,6 +206,8 @@ export interface Machinery {
   hasCoupledTrailer?: boolean; // Este veículo possui reboque vinculado?
   trailerPlate?: string; // Placa do Reboque
   trailerModel?: string; // Modelo/Tipo de Reboque
+  trailerType?: string; // Tipo de Reboque quando o veículo é Reboque (Prancha, Baú, Graneleiro, Basculante, Sider)
+  trailerAxlesCount?: number; // Quantidade de Eixos do reboque
   trailerCapacityLoadKg?: number; // Capacidade de Carga do Reboque (kg)
   trailerCapacityM3?: number; // Capacidade Volumétrica do Reboque (m³)
   coupledTrailerId?: string; // ID do reboque engatado (quando selecionado)
