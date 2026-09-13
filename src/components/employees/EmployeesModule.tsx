@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   UserSquare2, 
   Plus, 
@@ -39,11 +39,12 @@ import { generateEmployeeSheetHtml, generateEmployeeWhatsAppText } from './emplo
 
 
 const STORAGE_KEYS = {
-  REG_TYPES: 'silagem_facil_custom_reg_types_v2',
-  ROLES: 'silagem_facil_custom_roles_v1',
+  REG_TYPES: 'silagem_facil_custom_reg_types_v3',
+  ROLES: 'silagem_facil_custom_roles_v2',
   CONTRACT_TYPES: 'silagem_facil_custom_contract_types_v1',
 };
 
+// Opções estritas de Vínculo Contratual em ordem alfabética exata
 const DEFAULT_REG_TYPES = [
   'Agenciador',
   'Auxiliar',
@@ -51,17 +52,34 @@ const DEFAULT_REG_TYPES = [
   'Funcionário',
   'Mecanico Especialista',
   'Motorista Terceirizado',
-  'Operador de Maquinas',
   'Prestador de Serviço'
 ];
 
-const DEFAULT_ROLES = [
-  'Motorista',
+// Cargos/Funções operacionais que NUNCA devem constar no Tipo de Cadastro
+const EXCLUDED_FROM_REG_TYPES = [
+  'Operador de Maquinas',
+  'Operador de Máquinas',
+  'Operador de Forrageira',
+  'Operador de Trator Agrícola',
+  'Operador de Trator',
   'Operador de forrageira',
-  'Operador de trator',
-  'Auxiliar',
+  'Operador de trator'
+];
+
+// Opções estritas de Cargo / Função em ordem alfabética exata
+const DEFAULT_ROLES = [
   'Administrador',
-  'Mecanico Especialista'
+  'Auxiliar de produção',
+  'Escritorio',
+  'Financeiro',
+  'Mecanico',
+  'Mecanico especialista',
+  'Mecanico interno',
+  'Motorista',
+  'Operador de Forrageira',
+  'Operador de maquinas',
+  'Operador de trator',
+  'Recepcionista'
 ];
 
 const DEFAULT_CONTRACT_TYPES = [
@@ -74,11 +92,15 @@ const DEFAULT_CONTRACT_TYPES = [
 interface EmployeesModuleProps {
   employees: Employee[];
   onSaveEmployees: (employees: Employee[]) => void;
+  externalNewEmployeeTrigger?: number;
+  externalPrintEmployeesTrigger?: number;
 }
 
 export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
   employees,
   onSaveEmployees,
+  externalNewEmployeeTrigger,
+  externalPrintEmployeesTrigger,
 }) => {
   const { confirm } = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
@@ -97,13 +119,31 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
   // Dynamic Options with persistence
   const [regTypeOptions, setRegTypeOptions] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.REG_TYPES);
-      if (saved) {
-        const parsed = JSON.parse(saved);
+      // 1. Checar armazenamento v3 atualizado
+      const savedV3 = localStorage.getItem(STORAGE_KEYS.REG_TYPES);
+      if (savedV3) {
+        const parsed = JSON.parse(savedV3);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          const cleaned = parsed.filter(item => !EXCLUDED_FROM_REG_TYPES.includes(item));
+          return Array.from(new Set(cleaned)).sort((a, b) => a.localeCompare('pt-BR'));
         }
       }
+
+      // 2. Migrar de v2 se existir, removendo cargos/funções operacionais
+      const savedV2 = localStorage.getItem('silagem_facil_custom_reg_types_v2');
+      if (savedV2) {
+        const parsed = JSON.parse(savedV2);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const customOnly = parsed.filter(item => 
+            !EXCLUDED_FROM_REG_TYPES.includes(item) && !DEFAULT_REG_TYPES.includes(item)
+          );
+          const merged = [...DEFAULT_REG_TYPES, ...customOnly].sort((a, b) => a.localeCompare('pt-BR'));
+          localStorage.setItem(STORAGE_KEYS.REG_TYPES, JSON.stringify(merged));
+          return merged;
+        }
+      }
+
+      localStorage.setItem(STORAGE_KEYS.REG_TYPES, JSON.stringify(DEFAULT_REG_TYPES));
       return DEFAULT_REG_TYPES;
     } catch {
       return DEFAULT_REG_TYPES;
@@ -112,18 +152,29 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
 
   const [roleOptions, setRoleOptions] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.ROLES);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          if (!parsed.includes('Mecanico Especialista')) {
-            const updated = [...parsed, 'Mecanico Especialista'];
-            localStorage.setItem(STORAGE_KEYS.ROLES, JSON.stringify(updated));
-            return updated;
-          }
-          return parsed;
+      // 1. Checar armazenamento v2 atualizado
+      const savedV2 = localStorage.getItem(STORAGE_KEYS.ROLES);
+      if (savedV2) {
+        const parsed = JSON.parse(savedV2);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return Array.from(new Set(parsed)).sort((a, b) => a.localeCompare('pt-BR'));
         }
       }
+
+      // 2. Migrar se o usuário tiver adicionado cargos customizados em v1
+      const savedV1 = localStorage.getItem('silagem_facil_custom_roles_v1');
+      if (savedV1) {
+        const parsed = JSON.parse(savedV1);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const oldDefaults = ['Motorista', 'Operador de forrageira', 'Operador de trator', 'Auxiliar', 'Administrador', 'Mecanico Especialista'];
+          const customOnly = parsed.filter(item => !oldDefaults.includes(item) && !DEFAULT_ROLES.includes(item));
+          const merged = [...DEFAULT_ROLES, ...customOnly].sort((a, b) => a.localeCompare('pt-BR'));
+          localStorage.setItem(STORAGE_KEYS.ROLES, JSON.stringify(merged));
+          return merged;
+        }
+      }
+
+      localStorage.setItem(STORAGE_KEYS.ROLES, JSON.stringify(DEFAULT_ROLES));
       return DEFAULT_ROLES;
     } catch {
       return DEFAULT_ROLES;
@@ -140,13 +191,16 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
   });
 
   const handleUpdateRegTypeOptions = (newOpts: string[]) => {
-    setRegTypeOptions(newOpts);
-    localStorage.setItem(STORAGE_KEYS.REG_TYPES, JSON.stringify(newOpts));
+    const cleaned = newOpts.filter(item => !EXCLUDED_FROM_REG_TYPES.includes(item));
+    const sorted = Array.from(new Set(cleaned)).sort((a, b) => a.localeCompare('pt-BR'));
+    setRegTypeOptions(sorted);
+    localStorage.setItem(STORAGE_KEYS.REG_TYPES, JSON.stringify(sorted));
   };
 
   const handleUpdateRoleOptions = (newOpts: string[]) => {
-    setRoleOptions(newOpts);
-    localStorage.setItem(STORAGE_KEYS.ROLES, JSON.stringify(newOpts));
+    const sorted = Array.from(new Set(newOpts)).sort((a, b) => a.localeCompare('pt-BR'));
+    setRoleOptions(sorted);
+    localStorage.setItem(STORAGE_KEYS.ROLES, JSON.stringify(sorted));
   };
 
   const handleUpdateContractTypeOptions = (newOpts: string[]) => {
@@ -157,7 +211,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
   // Form State
   const [registrationType, setRegistrationType] = useState<EmployeeRegistrationType | string>('Funcionário');
   const [name, setName] = useState<string>('');
-  const [role, setRole] = useState<EmployeeRole | string>('Auxiliar');
+  const [role, setRole] = useState<EmployeeRole | string>('Operador de Forrageira');
   const [cpf, setCpf] = useState<string>('');
   const [rg, setRg] = useState<string>('');
   const [birthDate, setBirthDate] = useState<string>('');
@@ -226,7 +280,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     setEditingEmployee(null);
     setRegistrationType('Funcionário');
     setName('');
-    setRole('Operador de Ensiladeira');
+    setRole('Operador de Forrageira');
     setCpf('');
     setRg('');
     setBirthDate('');
@@ -258,6 +312,27 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     setShowCnhFields(false);
     setIsModalOpen(true);
   };
+
+  // Listeners para triggers externos vindos da linha do cabeçalho principal
+  const lastNewTriggerRef = useRef(externalNewEmployeeTrigger);
+  useEffect(() => {
+    if (externalNewEmployeeTrigger !== undefined && externalNewEmployeeTrigger !== lastNewTriggerRef.current) {
+      lastNewTriggerRef.current = externalNewEmployeeTrigger;
+      if (externalNewEmployeeTrigger > 0) {
+        handleOpenNew();
+      }
+    }
+  }, [externalNewEmployeeTrigger]);
+
+  const lastPrintTriggerRef = useRef(externalPrintEmployeesTrigger);
+  useEffect(() => {
+    if (externalPrintEmployeesTrigger !== undefined && externalPrintEmployeesTrigger !== lastPrintTriggerRef.current) {
+      lastPrintTriggerRef.current = externalPrintEmployeesTrigger;
+      if (externalPrintEmployeesTrigger > 0) {
+        setIsPrintModalOpen(true);
+      }
+    }
+  }, [externalPrintEmployeesTrigger]);
 
   const handleOpenEdit = (emp: Employee) => {
     setEditingEmployee(emp);
@@ -720,97 +795,63 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
   }, [filteredEmployees, employees, activeCompany, cnhReport]);
 
   return (
-    <div id="employees-module" className="space-y-6 animate-fade-in">
-      
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/20 pb-3">
-        <div>
-          <h2 className="text-sm sm:text-base font-black text-white tracking-tight font-['Outfit']">
-            Funcionários, Motoristas & Operadores
-          </h2>
-          <p className="text-xs text-white/90 font-medium mt-0.5">
-            Cadastro completo, remuneração, comissões por hectare/alqueire e controle de CNH
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Print Button */}
-          <button
-            onClick={() => setIsPrintModalOpen(true)}
-            title="Imprimir relatório completo de funcionários e operadores com logotipo e dados cadastrais"
-            className="inline-flex items-center space-x-1.5 px-3.5 py-2 text-xs sm:text-sm font-bold text-black bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition shadow-xs active:scale-95 cursor-pointer"
-          >
-            <Printer className="w-4 h-4 text-black" />
-            <span>Imprimir Lista</span>
-          </button>
-
-          {/* New Employee Button */}
-          <button
-            onClick={handleOpenNew}
-            className="inline-flex items-center space-x-2 px-4 py-2 text-xs sm:text-sm font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition active:scale-95 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Novo Cadastro</span>
-          </button>
-        </div>
-      </div>
-
+    <div id="employees-module" className="space-y-3 sm:space-y-3.5 animate-fade-in">
       {/* CNH Alert & Staff Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex items-center justify-between text-black">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-3.5 shadow-xs flex items-center justify-between text-black">
           <div>
-            <span className="text-[11px] font-black uppercase tracking-wider text-rose-700">
+            <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-rose-700">
               CNHs Vencidas
             </span>
-            <div className="text-2xl font-black text-rose-700 font-['Outfit'] mt-1">
+            <div className="text-xl sm:text-2xl font-black text-rose-700 font-['Outfit'] mt-0.5">
               {cnhReport.expiredCount}
             </div>
-            <p className="text-[11px] text-black/75 font-medium mt-0.5">
+            <p className="text-[10px] sm:text-[11px] text-black/75 font-medium mt-0.5">
               Exige regularização imediata
             </p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 flex items-center justify-center font-black">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 flex items-center justify-center font-black">
             !
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex items-center justify-between text-black">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-3.5 shadow-xs flex items-center justify-between text-black">
           <div>
-            <span className="text-[11px] font-black uppercase tracking-wider text-amber-700">
+            <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-amber-700">
               CNHs a Vencer (60 dias)
             </span>
-            <div className="text-2xl font-black text-amber-700 font-['Outfit'] mt-1">
+            <div className="text-xl sm:text-2xl font-black text-amber-700 font-['Outfit'] mt-0.5">
               {cnhReport.expiringIn60DaysCount}
             </div>
-            <p className="text-[11px] text-black/75 font-medium mt-0.5">
+            <p className="text-[10px] sm:text-[11px] text-black/75 font-medium mt-0.5">
               Agendar renovação com motorista
             </p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center font-bold">
-            <AlertTriangle className="w-5 h-5" />
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center font-bold">
+            <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex items-center justify-between text-black">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-3.5 shadow-xs flex items-center justify-between text-black">
           <div>
-            <span className="text-[11px] font-black uppercase tracking-wider text-black">
+            <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-black">
               Total de Colaboradores
             </span>
-            <div className="text-2xl font-black text-black font-['Outfit'] mt-1">
+            <div className="text-xl sm:text-2xl font-black text-black font-['Outfit'] mt-0.5">
               {employees.length}
             </div>
-            <p className="text-[11px] text-black/75 font-medium mt-0.5">
+            <p className="text-[10px] sm:text-[11px] text-black/75 font-medium mt-0.5">
               {employees.filter(e => e.active !== false && e.status !== 'inativo').length} ativos no momento
             </p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 text-black flex items-center justify-center">
-            <UserSquare2 className="w-5 h-5" />
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 border border-slate-200 text-black flex items-center justify-center">
+            <UserSquare2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-xs flex items-center space-x-3 text-black">
+      <div className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-xs flex items-center space-x-3 text-black">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-black absolute left-3 top-1/2 -translate-y-1/2" />
           <input

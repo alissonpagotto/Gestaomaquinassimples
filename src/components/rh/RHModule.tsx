@@ -10,7 +10,9 @@ import {
   ShieldCheck,
   UserPlus,
   FileHeart,
-  CalendarX2
+  CalendarX2,
+  Printer,
+  Plus
 } from 'lucide-react';
 import { 
   Employee, 
@@ -170,11 +172,15 @@ export const RHModule: React.FC<RHModuleProps> = ({
     setActiveTab('adiantamentos');
   };
 
+  // Triggers para acionar ações de Funcionários a partir do cabeçalho superior
+  const [externalNewEmployeeTrigger, setExternalNewEmployeeTrigger] = useState(0);
+  const [externalPrintEmployeesTrigger, setExternalPrintEmployeesTrigger] = useState(0);
+
   return (
-    <div className="w-full max-w-none space-y-4 sm:space-y-6">
+    <div className="w-full max-w-none space-y-3 sm:space-y-4">
       
-      {/* Top Header com Título e Subtítulo */}
-      <div className="no-print flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/20 pb-3">
+      {/* Top Header com Título, Subtítulo e Botões de Ação */}
+      <div className="no-print flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-white/20 pb-2 sm:pb-2.5">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
             Recursos Humanos
@@ -184,7 +190,30 @@ export const RHModule: React.FC<RHModuleProps> = ({
           </p>
         </div>
 
-        {activeTab !== 'funcionarios' && (
+        {activeTab === 'funcionarios' ? (
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            {/* Botão Imprimir Lista reposicionado */}
+            <button
+              type="button"
+              onClick={() => setExternalPrintEmployeesTrigger(prev => prev + 1)}
+              title="Imprimir relatório completo de funcionários e operadores com logotipo e dados cadastrais"
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs sm:text-sm font-bold text-black bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition shadow-xs active:scale-95 cursor-pointer"
+            >
+              <Printer className="w-4 h-4 text-black" />
+              <span>Imprimir Lista</span>
+            </button>
+
+            {/* Botão + Novo Cadastro reposicionado */}
+            <button
+              type="button"
+              onClick={() => setExternalNewEmployeeTrigger(prev => prev + 1)}
+              className="inline-flex items-center space-x-2 px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition active:scale-95 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Novo Cadastro</span>
+            </button>
+          </div>
+        ) : (
           <button
             type="button"
             onClick={() => setActiveTab('funcionarios')}
@@ -196,14 +225,14 @@ export const RHModule: React.FC<RHModuleProps> = ({
         )}
       </div>
 
-      {/* Navegação por Abas */}
-      <div className="no-print crm-card bg-[#87AFE3] dark:bg-stone-900 rounded-xl border border-blue-200/80 dark:border-stone-800 p-1.5 flex items-center space-x-1 sm:space-x-1.5 overflow-x-auto shadow-xs">
+      {/* Navegação por Abas - Mais compacta */}
+      <div className="no-print crm-card bg-[#87AFE3] dark:bg-stone-900 rounded-xl border border-blue-200/80 dark:border-stone-800 p-1 sm:p-1.5 flex items-center space-x-1 sm:space-x-1.5 overflow-x-auto shadow-xs">
         
         {/* Aba 1: Dashboard */}
         <button
           type="button"
           onClick={() => setActiveTab('dashboard')}
-          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+          className={`inline-flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
             activeTab === 'dashboard'
               ? 'bg-sky-600 text-white shadow-xs'
               : 'bg-blue-100/70 dark:bg-stone-800 text-black dark:text-stone-300 hover:bg-blue-100 dark:hover:bg-stone-700'
@@ -217,7 +246,7 @@ export const RHModule: React.FC<RHModuleProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('funcionarios')}
-          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+          className={`inline-flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
             activeTab === 'funcionarios'
               ? 'bg-sky-600 text-white shadow-xs'
               : 'bg-blue-100/70 dark:bg-stone-800 text-black dark:text-stone-300 hover:bg-blue-100 dark:hover:bg-stone-700'
@@ -231,7 +260,7 @@ export const RHModule: React.FC<RHModuleProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('folha')}
-          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+          className={`inline-flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
             activeTab === 'folha'
               ? 'bg-sky-600 text-white shadow-xs'
               : 'bg-blue-100/70 dark:bg-stone-800 text-black dark:text-stone-300 hover:bg-blue-100 dark:hover:bg-stone-700'
@@ -245,7 +274,7 @@ export const RHModule: React.FC<RHModuleProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('ferias')}
-          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+          className={`inline-flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
             activeTab === 'ferias'
               ? 'bg-sky-600 text-white shadow-xs'
               : 'bg-blue-100/70 dark:bg-stone-800 text-black dark:text-stone-300 hover:bg-blue-100 dark:hover:bg-stone-700'
@@ -259,7 +288,7 @@ export const RHModule: React.FC<RHModuleProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('afastamentos')}
-          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+          className={`inline-flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
             activeTab === 'afastamentos'
               ? 'bg-sky-600 text-white shadow-xs'
               : 'bg-blue-100/70 dark:bg-stone-800 text-black dark:text-stone-300 hover:bg-blue-100 dark:hover:bg-stone-700'
@@ -273,7 +302,7 @@ export const RHModule: React.FC<RHModuleProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('adiantamentos')}
-          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+          className={`inline-flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
             activeTab === 'adiantamentos'
               ? 'bg-sky-600 text-white shadow-xs'
               : 'bg-blue-100/70 dark:bg-stone-800 text-black dark:text-stone-300 hover:bg-blue-100 dark:hover:bg-stone-700'
@@ -287,7 +316,7 @@ export const RHModule: React.FC<RHModuleProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('atestados')}
-          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+          className={`inline-flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
             activeTab === 'atestados'
               ? 'bg-sky-600 text-white shadow-xs'
               : 'bg-blue-100/70 dark:bg-stone-800 text-black dark:text-stone-300 hover:bg-blue-100 dark:hover:bg-stone-700'
@@ -301,7 +330,7 @@ export const RHModule: React.FC<RHModuleProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('faltas')}
-          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+          className={`inline-flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
             activeTab === 'faltas'
               ? 'bg-sky-600 text-white shadow-xs'
               : 'bg-blue-100/70 dark:bg-stone-800 text-black dark:text-stone-300 hover:bg-blue-100 dark:hover:bg-stone-700'
@@ -337,6 +366,8 @@ export const RHModule: React.FC<RHModuleProps> = ({
         <EmployeesModule
           employees={sortedEmployees}
           onSaveEmployees={onSaveEmployees}
+          externalNewEmployeeTrigger={externalNewEmployeeTrigger}
+          externalPrintEmployeesTrigger={externalPrintEmployeesTrigger}
         />
       )}
 
