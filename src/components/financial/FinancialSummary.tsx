@@ -85,6 +85,7 @@ interface FinancialSummaryProps {
     paidByEmployeeName: string;
     bankAccountId: string;
     bankAccountName: string;
+    creditSupplier?: string;
     paymentMethod: PaymentMethod;
     authenticationCode?: string;
     notes?: string;
@@ -175,6 +176,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
     paidByEmployeeName: string;
     bankAccountId: string;
     bankAccountName: string;
+    creditSupplier?: string;
     paymentMethod: PaymentMethod;
     authenticationCode?: string;
     notes?: string;
@@ -198,6 +200,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
           paidByEmployeeName: params.paidByEmployeeName,
           bankAccountId: params.bankAccountId,
           bankAccountName: params.bankAccountName,
+          creditSupplier: params.creditSupplier || e.creditSupplier || e.supplier,
           paymentMethod: params.paymentMethod,
           notes: params.notes ? (e.notes ? `${e.notes} | ${params.notes}` : params.notes) : e.notes,
         };
@@ -230,7 +233,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
       bankAccountId: params.bankAccountId,
       bankAccountName: params.bankAccountName,
       date: params.paymentDate,
-      description: `Pagamento Despesa: ${exp.supplier || exp.description}`,
+      description: `Pagamento Despesa: ${params.creditSupplier || exp.supplier || exp.description}`,
       type: 'saida',
       amount: exp.amount,
       category: exp.categoryName || 'Despesas',
@@ -1029,6 +1032,8 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
           onSettleExpense={handleSettleExpenseInternal}
           onReverseExpense={handleReverseExpenseInternal}
           onEditExpense={onEditExpense}
+          onDeleteExpense={onDeleteExpense}
+          onViewReceipt={onViewReceipt}
           onNewExpense={onNewExpense}
         />
       )}

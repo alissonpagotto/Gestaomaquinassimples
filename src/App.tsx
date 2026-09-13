@@ -461,8 +461,8 @@ export default function App() {
 
   const handleDeleteExpense = async (id: string) => {
     const isConfirmed = await confirm({
-      title: 'Excluir Despesa',
-      message: 'Deseja realmente excluir este lançamento de despesa do sistema?',
+      title: 'Excluir Lançamento Financeiro',
+      message: 'Tem certeza que deseja excluir permanentemente este lançamento financeiro?',
       confirmLabel: 'Sim, Excluir',
       cancelLabel: 'Cancelar',
       variant: 'danger',
@@ -501,6 +501,7 @@ export default function App() {
               paidByEmployeeName: settlementData.paidByEmployeeName,
               bankAccountId: settlementData.bankAccountId,
               bankAccountName: settlementData.bankAccountName,
+              creditSupplier: settlementData.creditSupplier,
             }
           : e
       )
@@ -763,6 +764,7 @@ export default function App() {
               onSaveSettlements={handleSaveSettlements}
               onToggleExpenseStatus={handleToggleExpenseStatus}
               onSettlePayment={handleSettlePayment}
+              onSettleExpense={(params) => handleSettlePayment(params.expenseId, params)}
               onEditExpense={(exp) => {
                 setEditingExpense(exp);
                 setIsExpenseModalOpen(true);

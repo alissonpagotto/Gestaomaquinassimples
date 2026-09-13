@@ -25,6 +25,7 @@ export interface PaymentSettlementData {
   paidByEmployeeName: string;
   bankAccountId: string;
   bankAccountName: string;
+  creditSupplier: string;
   paymentMethod: PaymentMethod;
   authenticationCode?: string;
   notes?: string;
@@ -43,6 +44,7 @@ interface PaymentSettlementModalProps {
     paidByEmployeeName: string;
     bankAccountId: string;
     bankAccountName: string;
+    creditSupplier: string;
     paymentMethod: PaymentMethod;
     authenticationCode?: string;
     notes?: string;
@@ -63,6 +65,7 @@ export const PaymentSettlementModal: React.FC<PaymentSettlementModalProps> = ({
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [customEmployeeName, setCustomEmployeeName] = useState('');
   const [selectedBankAccountId, setSelectedBankAccountId] = useState('');
+  const [creditSupplier, setCreditSupplier] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
   const [authenticationCode, setAuthenticationCode] = useState('');
   const [notes, setNotes] = useState('');
@@ -73,6 +76,9 @@ export const PaymentSettlementModal: React.FC<PaymentSettlementModalProps> = ({
     if (!isOpen || !expense) return;
     setErrorMessage('');
     setPaymentDate(today);
+
+    // Inicializa Fornecedor do Crédito
+    setCreditSupplier(expense.creditSupplier || expense.supplier || '');
 
     // Se a despesa já tinha método de pagamento configurado
     if (expense.paymentMethod) {
@@ -143,7 +149,19 @@ export const PaymentSettlementModal: React.FC<PaymentSettlementModalProps> = ({
       return;
     }
 
-    // Validação 2: Identificação do Responsável ("quem fez o pagamento")
+    // Validação 2: Qual o Fornecedor do Crédito
+    if (!creditSupplier.trim()) {
+      setErrorMessage('Informe obrigatoriamente "Qual o Fornecedor do Crédito" para efetuar o pagamento.');
+      return;
+    }
+
+    // Validação 3: Qual Banco (Conta Bancária de onde sairá o dinheiro)
+    if (!selectedBankAccountId || !selectedAccount) {
+      setErrorMessage('Selecione obrigatoriamente "Qual Banco" (Conta Bancária de onde sairá o dinheiro).');
+      return;
+    }
+
+    // Validação 4: Identificação do Responsável ("quem fez o pagamento")
     let employeeName = '';
     let employeeId = selectedEmployeeId;
 
@@ -161,12 +179,6 @@ export const PaymentSettlementModal: React.FC<PaymentSettlementModalProps> = ({
       return;
     }
 
-    // Validação 3: Conta Bancária de onde será debitado o saldo
-    if (!selectedBankAccountId || !selectedAccount) {
-      setErrorMessage('Selecione obrigatoriamente a Conta Bancária / Caixa de onde o saldo será debitado.');
-      return;
-    }
-
     onConfirmSettlement({
       expenseId: expense.id,
       paymentDate,
@@ -174,6 +186,7 @@ export const PaymentSettlementModal: React.FC<PaymentSettlementModalProps> = ({
       paidByEmployeeName: employeeName,
       bankAccountId: selectedAccount.id,
       bankAccountName: selectedAccount.name,
+      creditSupplier: creditSupplier.trim(),
       paymentMethod,
       authenticationCode: authenticationCode.trim() || undefined,
       notes: notes.trim() || undefined,
@@ -286,7 +299,111 @@ export const PaymentSettlementModal: React.FC<PaymentSettlementModalProps> = ({
             </div>
           </div>
 
-          {/* BLOCO: RESPONSÁVEL PELO PAGAMENTO ("Quem fez o pagamento") */}
+          {/* BLOCO 1: QUAL BANCO (Conta Bancária de onde sairá o dinheiro) */}
+          <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-2xs space-y-2.5">
+            <label 
+              htmlFor="select-conta-baixa" 
+              className="block text-xs font-black text-black flex items-center justify-between"
+            >
+              <span className="flex items-center gap-1.5">
+                <Landmark className="w-4 h-4 text-[#0963cb]" />
+                <span>Qual Banco (Conta Bancária de onde sairá o dinheiro) <span className="text-rose-600">*</span></span>
+              </span>
+              <span className="text-[10px] text-rose-600 font-bold bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">Obrigatório</span>
+            </label>
+
+            {bankAccounts.length === 0 ? (
+              <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 font-medium">
+                Nenhuma conta bancária cadastrada no sistema. Cadastre uma conta na aba "Contas Bancárias" antes de realizar a baixa.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <select
+                  id="select-conta-baixa"
+                  required
+                  value={selectedBankAccountId}
+                  onChange={(e) => {
+                    setSelectedBankAccountId(e.target.value);
+                    setErrorMessage('');
+                  }}
+                  className="w-full px-3 py-2 text-xs sm:text-sm font-bold bg-white text-black border border-stone-300 rounded-xl focus:ring-2 focus:ring-[#0963cb] outline-hidden shadow-2xs cursor-pointer"
+                >
+                  <option value="">-- Selecione o Banco / Conta para Saída do Dinheiro --</option>
+                  {bankAccounts.map((acc) => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.bankCode ? `[${acc.bankCode}] ` : ''}{acc.name} ({acc.bankName}) - Saldo: {formatCurrencyBRL(acc.balance)}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Pré-visualização do impacto no saldo */}
+                {selectedAccount && (
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+                    <div className="flex items-center space-x-2.5">
+                      <div 
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 overflow-hidden shadow-2xs"
+                        style={{ backgroundColor: selectedAccount.color || '#0963cb' }}
+                      >
+                        <BankLogoIcon code={selectedAccount.bankCode} name={selectedAccount.bankName} size={20} className="text-white" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-black text-xs">
+                          {selectedAccount.name}
+                        </div>
+                        <div className="text-[11px] text-stone-500">
+                          {selectedAccount.bankName} {selectedAccount.accountNumber ? `• CC: ${selectedAccount.accountNumber}` : ''}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="text-[10px] text-stone-500 font-semibold">
+                        Saldo Atual: <strong className="text-black">{formatCurrencyBRL(accountBalanceBefore)}</strong>
+                      </div>
+                      <div className="text-[11px] font-black flex items-center justify-end gap-1">
+                        <span className="text-stone-500">Após Débito:</span>
+                        <span className={accountBalanceAfter < 0 ? 'text-rose-600' : 'text-emerald-700'}>
+                          {formatCurrencyBRL(accountBalanceAfter)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* BLOCO 2: QUAL O FORNECEDOR DO CRÉDITO */}
+          <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-2xs space-y-2.5">
+            <label 
+              htmlFor="input-fornecedor-credito" 
+              className="block text-xs font-black text-black flex items-center justify-between"
+            >
+              <span className="flex items-center gap-1.5">
+                <Building2 className="w-4 h-4 text-[#0963cb]" />
+                <span>Qual o Fornecedor do Crédito (Favorecido / Financiador) <span className="text-rose-600">*</span></span>
+              </span>
+              <span className="text-[10px] text-rose-600 font-bold bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">Obrigatório</span>
+            </label>
+
+            <input
+              id="input-fornecedor-credito"
+              type="text"
+              required
+              value={creditSupplier}
+              onChange={(e) => {
+                setCreditSupplier(e.target.value);
+                setErrorMessage('');
+              }}
+              placeholder="Ex: John Deere Financial, Banco do Brasil, Bradesco Financiamentos, Fornecedor X..."
+              className="w-full px-3 py-2 text-xs sm:text-sm font-bold bg-white text-black border border-stone-300 rounded-xl focus:ring-2 focus:ring-[#0963cb] outline-hidden shadow-2xs"
+            />
+            <span className="text-[10px] text-stone-500 font-medium block">
+              Informe a instituição financeira, banco concedente de crédito ou fornecedor favorecido deste pagamento
+            </span>
+          </div>
+
+          {/* BLOCO 3: RESPONSÁVEL PELO PAGAMENTO ("Quem fez o pagamento") */}
           <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-2xs space-y-2.5">
             <label 
               htmlFor="select-funcionario-baixa" 
@@ -332,80 +449,6 @@ export const PaymentSettlementModal: React.FC<PaymentSettlementModalProps> = ({
             <span className="text-[10px] text-stone-500 font-medium block">
               Registrado para auditoria, prestação de contas e histórico de conformidade financeira
             </span>
-          </div>
-
-          {/* BLOCO: CONTA BANCÁRIA PARA DÉBITO */}
-          <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-2xs space-y-2.5">
-            <label 
-              htmlFor="select-conta-baixa" 
-              className="block text-xs font-black text-black flex items-center justify-between"
-            >
-              <span className="flex items-center gap-1.5">
-                <Landmark className="w-4 h-4 text-[#0963cb]" />
-                <span>Conta Bancária para Débito do Saldo <span className="text-rose-600">*</span></span>
-              </span>
-              <span className="text-[10px] text-stone-500 font-semibold">Débito em conta</span>
-            </label>
-
-            {bankAccounts.length === 0 ? (
-              <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 font-medium">
-                Nenhuma conta bancária cadastrada no sistema. Cadastre uma conta na aba "Contas Bancárias" antes de realizar a baixa.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <select
-                  id="select-conta-baixa"
-                  required
-                  value={selectedBankAccountId}
-                  onChange={(e) => {
-                    setSelectedBankAccountId(e.target.value);
-                    setErrorMessage('');
-                  }}
-                  className="w-full px-3 py-2 text-xs sm:text-sm font-bold bg-white text-black border border-stone-300 rounded-xl focus:ring-2 focus:ring-[#0963cb] outline-hidden shadow-2xs cursor-pointer"
-                >
-                  <option value="">-- Selecione o Banco/Conta para Débito --</option>
-                  {bankAccounts.map((acc) => (
-                    <option key={acc.id} value={acc.id}>
-                      {acc.bankCode ? `[${acc.bankCode}] ` : ''}{acc.name} ({acc.bankName}) - Saldo: {formatCurrencyBRL(acc.balance)}
-                    </option>
-                  ))}
-                </select>
-
-                {/* Pré-visualização do impacto no saldo */}
-                {selectedAccount && (
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
-                    <div className="flex items-center space-x-2.5">
-                      <div 
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 overflow-hidden shadow-2xs"
-                        style={{ backgroundColor: selectedAccount.color || '#0963cb' }}
-                      >
-                        <BankLogoIcon code={selectedAccount.bankCode} name={selectedAccount.bankName} size={20} className="text-white" />
-                      </div>
-                      <div>
-                        <div className="font-bold text-black text-xs">
-                          {selectedAccount.name}
-                        </div>
-                        <div className="text-[11px] text-stone-500">
-                          {selectedAccount.bankName} {selectedAccount.accountNumber ? `• CC: ${selectedAccount.accountNumber}` : ''}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <div className="text-[10px] text-stone-500 font-semibold">
-                        Saldo Atual: <strong className="text-black">{formatCurrencyBRL(accountBalanceBefore)}</strong>
-                      </div>
-                      <div className="text-[11px] font-black flex items-center justify-end gap-1">
-                        <span className="text-stone-500">Após Débito:</span>
-                        <span className={accountBalanceAfter < 0 ? 'text-rose-600' : 'text-emerald-700'}>
-                          {formatCurrencyBRL(accountBalanceAfter)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           {/* BLOCO: DATA DE PAGAMENTO & FORMA DE PAGAMENTO */}

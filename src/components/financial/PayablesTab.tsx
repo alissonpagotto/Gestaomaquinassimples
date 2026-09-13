@@ -14,7 +14,11 @@ import {
   UserCheck,
   RotateCcw,
   ShieldCheck,
-  Plus
+  Plus,
+  Check,
+  Edit3,
+  Trash2,
+  Paperclip
 } from 'lucide-react';
 import { Expense, BankAccount, Employee, PaymentMethod } from '../../types';
 import { formatCurrencyBRL, formatDateBR } from '../../lib/storage';
@@ -33,12 +37,14 @@ interface PayablesTabProps {
     paidByEmployeeName: string;
     bankAccountId: string;
     bankAccountName: string;
+    creditSupplier?: string;
     paymentMethod: PaymentMethod;
     authenticationCode?: string;
     notes?: string;
   }) => void;
   onReverseExpense?: (id: string) => void;
   onEditExpense?: (exp: Expense) => void;
+  onDeleteExpense?: (id: string) => void;
   onViewReceipt?: (exp: Expense) => void;
   onNewExpense?: () => void;
 }
@@ -51,6 +57,7 @@ export const PayablesTab: React.FC<PayablesTabProps> = ({
   onSettleExpense,
   onReverseExpense,
   onEditExpense,
+  onDeleteExpense,
   onViewReceipt,
   onNewExpense,
 }) => {
@@ -58,14 +65,12 @@ export const PayablesTab: React.FC<PayablesTabProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pendente' | 'pago'>('all');
   const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
+  const [settlementExpense, setSettlementExpense] = useState<Expense | null>(null);
+  const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false);
 
   // Filtro opcional por intervalo de datas
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-
-  // Modal de Baixa de Pagamento
-  const [settlementExpense, setSettlementExpense] = useState<Expense | null>(null);
-  const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false);
 
   // Month filter list based on current system date
   const monthFilterOptions = useMemo(() => {
@@ -159,6 +164,20 @@ export const PayablesTab: React.FC<PayablesTabProps> = ({
       } else {
         onToggleStatus(exp.id);
       }
+    }
+  };
+
+  const handleDeleteClick = async (exp: Expense) => {
+    const isConfirmed = await confirm({
+      title: 'Confirmar Exclusão',
+      message: 'Tem certeza que deseja excluir permanentemente este lançamento financeiro?',
+      confirmLabel: 'Excluir',
+      cancelLabel: 'Cancelar',
+      variant: 'danger',
+    });
+
+    if (isConfirmed && onDeleteExpense) {
+      onDeleteExpense(exp.id);
     }
   };
 
@@ -310,13 +329,12 @@ export const PayablesTab: React.FC<PayablesTabProps> = ({
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-[11px] font-black text-black uppercase tracking-wider border-b border-slate-200">
               <tr>
-                <th className="py-2.5 px-3">Status</th>
                 <th className="py-2.5 px-3">Vencimento</th>
                 <th className="py-2.5 px-3">Fornecedor / Descrição</th>
                 <th className="py-2.5 px-3">Categoria</th>
                 <th className="py-2.5 px-3">Responsável / Banco</th>
                 <th className="py-2.5 px-3 text-right">Valor (R$)</th>
-                <th className="py-2.5 px-3 text-center">Ações</th>
+                <th className="py-2.5 px-3 text-right pr-4">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -328,32 +346,6 @@ export const PayablesTab: React.FC<PayablesTabProps> = ({
 
                   return (
                     <tr key={exp.id} className="hover:bg-slate-50 transition">
-                      {/* Status */}
-                      <td className="py-2.5 px-3">
-                        <button
-                          type="button"
-                          onClick={() => handleActionClick(exp)}
-                          className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[11px] font-bold transition cursor-pointer border ${
-                            isPaid
-                              ? 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100'
-                              : 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100'
-                          }`}
-                          title={isPaid ? 'Clique para estornar o pagamento' : 'Clique para registrar a baixa do pagamento'}
-                        >
-                          {isPaid ? (
-                            <>
-                              <CheckCircle2 className="w-3 h-3" />
-                              <span>Pago</span>
-                            </>
-                          ) : (
-                            <>
-                              <Clock className="w-3 h-3" />
-                              <span>A Pagar</span>
-                            </>
-                          )}
-                        </button>
-                      </td>
-
                       {/* Vencimento com Identificação de Atraso */}
                       <td className="py-2.5 px-3 font-bold text-black whitespace-nowrap text-xs">
                         <div className="font-mono">
@@ -431,27 +423,109 @@ export const PayablesTab: React.FC<PayablesTabProps> = ({
                         {formatCurrencyBRL(exp.amount)}
                       </td>
 
-                      {/* Ações */}
-                      <td className="py-2.5 px-3 text-center">
-                        <button
-                          type="button"
-                          id={`btn-acao-baixa-${exp.id}`}
-                          onClick={() => handleActionClick(exp)}
-                          className={`text-[11px] font-black px-2.5 py-1 rounded-lg border transition cursor-pointer shadow-2xs ${
-                            isPaid
-                              ? 'border-slate-300 text-stone-700 hover:bg-slate-100'
-                              : 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700'
-                          }`}
-                        >
-                          {isPaid ? 'Estornar' : 'Liquidar'}
-                        </button>
+                      {/* Ações (Organizadas à direita, com indicador de Status à esquerda do botão Liquidar) */}
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap pr-4">
+                        <div className="flex items-center justify-end space-x-2">
+                          
+                          {/* Indicador de STATUS (posicionado exatamente ao lado esquerdo do botão Liquidar) */}
+                          {isPaid ? (
+                            <span 
+                              id={`status-badge-${exp.id}`}
+                              className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 border border-emerald-300 text-emerald-800 shadow-2xs"
+                              title={`Conta liquidada / paga em ${exp.paymentDate ? formatDateBR(exp.paymentDate) : 'data anterior'}`}
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              <span>Paga</span>
+                            </span>
+                          ) : isOverdue ? (
+                            <span 
+                              id={`status-badge-${exp.id}`}
+                              className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[11px] font-black bg-rose-50 border border-rose-300 text-rose-700 shadow-2xs"
+                              title="Conta com vencimento expirado"
+                            >
+                              <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                              <span>Vencida</span>
+                            </span>
+                          ) : (
+                            <span 
+                              id={`status-badge-${exp.id}`}
+                              className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 border border-amber-300 text-amber-800 shadow-2xs"
+                              title="Conta pendente aguardando liquidação"
+                            >
+                              <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                              <span>A Pagar</span>
+                            </span>
+                          )}
+
+                          {/* Botão Liquidar / Estornar */}
+                          <button
+                            type="button"
+                            id={`btn-acao-baixa-${exp.id}`}
+                            onClick={() => handleActionClick(exp)}
+                            className={`inline-flex items-center space-x-1 text-xs font-black px-3 py-1.5 rounded-lg border transition cursor-pointer shadow-2xs ${
+                              isPaid
+                                ? 'border-slate-300 bg-white hover:bg-slate-100 text-stone-700'
+                                : 'border-emerald-600 bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95'
+                            }`}
+                            title={isPaid ? 'Estornar baixa deste pagamento' : 'Liquidar conta a pagar'}
+                          >
+                            {isPaid ? (
+                              <>
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Estornar</span>
+                              </>
+                            ) : (
+                              <>
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                <span>Liquidar</span>
+                              </>
+                            )}
+                          </button>
+
+                          {/* Comprovante / NF */}
+                          {onViewReceipt && (exp.receiptUrl || exp.invoiceNumber) && (
+                            <button
+                              type="button"
+                              id={`btn-comprovante-${exp.id}`}
+                              onClick={() => onViewReceipt(exp)}
+                              className="p-1.5 text-stone-600 hover:text-sky-700 hover:bg-sky-50 rounded-lg transition cursor-pointer border border-slate-200"
+                              title="Ver Comprovante / NF"
+                            >
+                              <Paperclip className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
+                          {/* Editar */}
+                          {onEditExpense && (
+                            <button
+                              type="button"
+                              id={`btn-editar-${exp.id}`}
+                              onClick={() => onEditExpense(exp)}
+                              className="p-1.5 text-stone-600 hover:text-sky-700 hover:bg-sky-50 rounded-lg transition cursor-pointer border border-slate-200"
+                              title="Editar Lançamento"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
+                          {/* Excluir Lançamento Financeiro */}
+                          <button
+                            type="button"
+                            id={`btn-excluir-${exp.id}`}
+                            onClick={() => handleDeleteClick(exp)}
+                            className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition cursor-pointer border border-rose-200"
+                            title="Excluir Lançamento Financeiro"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-black font-medium text-xs">
+                  <td colSpan={6} className="py-6 text-center text-black font-medium text-xs">
                     Nenhuma conta a pagar encontrada para os filtros selecionados.
                   </td>
                 </tr>

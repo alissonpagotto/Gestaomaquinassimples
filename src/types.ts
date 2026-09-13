@@ -86,6 +86,7 @@ export interface Expense {
   paidByEmployeeName?: string; // Nome do funcionário que realizou o pagamento
   bankAccountId?: string; // ID da conta bancária de onde o saldo foi debitado
   bankAccountName?: string; // Nome da conta bancária debitada
+  creditSupplier?: string; // Fornecedor / Instituição do Crédito informada na baixa
   corporateCardId?: string; // ID do cartão corporativo vinculado
   corporateCardName?: string; // Nome/Identificador do cartão corporativo
   paymentAuthenticationCode?: string; // Código de autenticação / comprovante
