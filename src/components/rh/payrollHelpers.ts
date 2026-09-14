@@ -10,6 +10,14 @@ export interface CommissionItemBreakdown {
   role: string;
   amount: number;
   description: string;
+  formattedLine: string;
+  serviceType?: string;
+  vehiclePrefix?: string;
+  workName?: string;
+  loads?: number;
+  totalM3?: number;
+  hours?: number;
+  hourlyRate?: number;
 }
 
 export interface EmployeeMonthCommissions {
@@ -17,6 +25,61 @@ export interface EmployeeMonthCommissions {
   count: number;
   breakdown: CommissionItemBreakdown[];
 }
+
+/**
+ * Formata a linha de conferência operacional no padrão do resumo de custos da operação:
+ * "[Tipo_Serviço] [Prefixo_Veículo] ([Nome_Trabalho]) — [Qtd_Cargas] Cargas ([Qtd_m³] m³) — Cobrança por Horas: [Qtd_Horas]h x R$ [Valor_Hora]/h — Total: R$ [Valor_Total]"
+ * 
+ * Exemplos esperados:
+ * - "Transp. AKU (Nilton Par) — 16 Cargas (576.0 m³) — Cobrança por Horas: 12h x R$ 60,00/h — Total: R$ 720,00"
+ * - "Comissão Trator (DIEGO TRATO) — Cobrança por Horas: 11h x R$ 61,36/h — Total: R$ 675,00"
+ */
+export const formatCommissionItemLine = (item: {
+  serviceType: string;
+  vehiclePrefix?: string;
+  workName: string;
+  loads?: number;
+  totalM3?: number;
+  hours?: number;
+  hourlyRate?: number;
+  totalAmount: number;
+}): string => {
+  const parts: string[] = [];
+
+  // 1. [Tipo_Serviço] [Prefixo_Veículo] ([Nome_Trabalho])
+  const prefix = item.vehiclePrefix && item.vehiclePrefix.trim() ? ` ${item.vehiclePrefix.trim()}` : '';
+  const head = `${item.serviceType.trim()}${prefix} (${(item.workName || 'Operação').trim()})`;
+  parts.push(head);
+
+  // 2. [Qtd_Cargas] Cargas ([Qtd_m³] m³) (se houver transporte de cargas)
+  if (typeof item.loads === 'number' && item.loads > 0) {
+    const m3Formatted = (item.totalM3 || 0).toFixed(1);
+    parts.push(`${item.loads} Cargas (${m3Formatted} m³)`);
+  }
+
+  // 3. Cobrança por Horas: [Qtd_Horas]h x R$ [Valor_Hora]/h
+  const hours = item.hours || 0;
+  const rate = item.hourlyRate && item.hourlyRate > 0
+    ? item.hourlyRate
+    : (hours > 0 && item.totalAmount > 0 ? item.totalAmount / hours : 0);
+
+  if (hours > 0 && rate > 0) {
+    const hoursFormatted = hours % 1 === 0 ? hours.toFixed(0) : hours.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+    const rateFormatted = rate.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    parts.push(`Cobrança por Horas: ${hoursFormatted}h x R$ ${rateFormatted}/h`);
+  } else if (item.hourlyRate && item.hourlyRate > 0 && item.totalAmount > 0) {
+    const derivedHours = item.totalAmount / item.hourlyRate;
+    const hoursFormatted = derivedHours % 1 === 0 ? derivedHours.toFixed(0) : derivedHours.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+    const rateFormatted = item.hourlyRate.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    parts.push(`Cobrança por Horas: ${hoursFormatted}h x R$ ${rateFormatted}/h`);
+  }
+
+  // 4. Total: R$ [Valor_Total]
+  const totalFormatted = (item.totalAmount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  parts.push(`Total: R$ ${totalFormatted}`);
+
+  return parts.join(' — ');
+};
 
 /**
  * Extrai a competência (MM/YYYY) de uma Ordem de Serviço de Silagem.
@@ -108,6 +171,21 @@ export const getEmployeeMonthCommissions = (
       }
 
       if (amount > 0) {
+        const roundedAmount = Number(amount.toFixed(2));
+        const hours = service.forageDrumHours || service.forageEngineHours || 0;
+        const hourlyRate = service.forageCommissionRate || (hours > 0 ? roundedAmount / hours : 0);
+        const workName = service.clientName || service.farmName || 'Operação';
+        const vehiclePrefix = service.forageHarvesterName ? service.forageHarvesterName.trim() : '';
+        const serviceType = 'Comissão Ensiladeira';
+        const formattedLine = formatCommissionItemLine({
+          serviceType,
+          vehiclePrefix,
+          workName,
+          hours,
+          hourlyRate,
+          totalAmount: roundedAmount,
+        });
+
         breakdown.push({
           serviceId: service.id,
           orderNumber: service.orderNumber,
@@ -115,8 +193,14 @@ export const getEmployeeMonthCommissions = (
           farmName: service.farmName,
           date: serviceDisplayDate,
           role: 'Operador Ensiladeira (Principal)',
-          amount: Number(amount.toFixed(2)),
-          description: `${osIdentificador} - Operação da Forrageira (${service.forageHarvesterName || 'Ensiladeira'})`,
+          amount: roundedAmount,
+          description: formattedLine,
+          formattedLine,
+          serviceType,
+          vehiclePrefix,
+          workName,
+          hours,
+          hourlyRate,
         });
       }
     }
@@ -139,6 +223,21 @@ export const getEmployeeMonthCommissions = (
       }
 
       if (amount > 0) {
+        const roundedAmount = Number(amount.toFixed(2));
+        const hours = service.forageDrumHours || service.forageEngineHours || 0;
+        const hourlyRate = employee.commissionPerHour || (hours > 0 ? roundedAmount / hours : 0);
+        const workName = service.clientName || service.farmName || 'Operação';
+        const vehiclePrefix = service.forageHarvesterName ? service.forageHarvesterName.trim() : '';
+        const serviceType = 'Comissão 2º Op. Ensiladeira';
+        const formattedLine = formatCommissionItemLine({
+          serviceType,
+          vehiclePrefix,
+          workName,
+          hours,
+          hourlyRate,
+          totalAmount: roundedAmount,
+        });
+
         breakdown.push({
           serviceId: service.id,
           orderNumber: service.orderNumber,
@@ -146,8 +245,14 @@ export const getEmployeeMonthCommissions = (
           farmName: service.farmName,
           date: serviceDisplayDate,
           role: 'Operador Ensiladeira (2º Operador)',
-          amount: Number(amount.toFixed(2)),
-          description: `${osIdentificador} - Apoio Ensiladeira (${service.forageHarvesterName || 'Forrageira'})`,
+          amount: roundedAmount,
+          description: formattedLine,
+          formattedLine,
+          serviceType,
+          vehiclePrefix,
+          workName,
+          hours,
+          hourlyRate,
         });
       }
     }
@@ -169,6 +274,22 @@ export const getEmployeeMonthCommissions = (
       }
 
       if (amount > 0) {
+        const roundedAmount = Number(amount.toFixed(2));
+        let hours = service.tractorOperatorHours || service.tractorHours || 0;
+        const hourlyRate = service.tractorOperatorCommissionRate || (hours > 0 ? roundedAmount / hours : 0);
+        if (hours === 0 && hourlyRate > 0 && roundedAmount > 0) {
+          hours = Math.round((roundedAmount / hourlyRate) * 100) / 100;
+        }
+        const workName = service.clientName || service.farmName || service.tractorName || 'Operação';
+        const serviceType = 'Comissão Trator';
+        const formattedLine = formatCommissionItemLine({
+          serviceType,
+          workName,
+          hours,
+          hourlyRate,
+          totalAmount: roundedAmount,
+        });
+
         breakdown.push({
           serviceId: service.id,
           orderNumber: service.orderNumber,
@@ -176,8 +297,13 @@ export const getEmployeeMonthCommissions = (
           farmName: service.farmName,
           date: serviceDisplayDate,
           role: 'Operador Trator / Compactação (Principal)',
-          amount: Number(amount.toFixed(2)),
-          description: `${osIdentificador} - Compactação do Silo (${service.tractorName || 'Trator'})`,
+          amount: roundedAmount,
+          description: formattedLine,
+          formattedLine,
+          serviceType,
+          workName,
+          hours,
+          hourlyRate,
         });
       }
     }
@@ -200,6 +326,22 @@ export const getEmployeeMonthCommissions = (
       }
 
       if (amount > 0) {
+        const roundedAmount = Number(amount.toFixed(2));
+        let hours = service.tractorOperatorHours || service.tractorHours || 0;
+        const hourlyRate = employee.commissionPerHour || (hours > 0 ? roundedAmount / hours : 0);
+        if (hours === 0 && hourlyRate > 0 && roundedAmount > 0) {
+          hours = Math.round((roundedAmount / hourlyRate) * 100) / 100;
+        }
+        const workName = service.clientName || service.farmName || service.tractorName || 'Operação';
+        const serviceType = 'Comissão 2º Op. Trator';
+        const formattedLine = formatCommissionItemLine({
+          serviceType,
+          workName,
+          hours,
+          hourlyRate,
+          totalAmount: roundedAmount,
+        });
+
         breakdown.push({
           serviceId: service.id,
           orderNumber: service.orderNumber,
@@ -207,8 +349,13 @@ export const getEmployeeMonthCommissions = (
           farmName: service.farmName,
           date: serviceDisplayDate,
           role: 'Operador Trator / Compactação (2º Operador)',
-          amount: Number(amount.toFixed(2)),
-          description: `${osIdentificador} - Apoio Compactação (${service.tractorName || 'Trator'})`,
+          amount: roundedAmount,
+          description: formattedLine,
+          formattedLine,
+          serviceType,
+          workName,
+          hours,
+          hourlyRate,
         });
       }
     }
@@ -227,6 +374,28 @@ export const getEmployeeMonthCommissions = (
           (Boolean(truck.primaryDriverName) && truck.primaryDriverName!.trim().toLowerCase() === empName);
 
         if (isDriver && typeof truck.driverCommission === 'number' && truck.driverCommission > 0) {
+          const roundedAmount = Number(truck.driverCommission.toFixed(2));
+          const loads = truck.tripLoads ?? (truck as any).loads ?? 0;
+          const totalM3 = truck.totalM3 ?? ((truck.capacityM3 || 0) * (loads || 0));
+          let hours = truck.truckHours ?? truck.driverHours ?? 0;
+          const hourlyRate = truck.driverCommissionRate ?? truck.truckHourlyRate ?? (hours > 0 ? roundedAmount / hours : 0);
+          if (hours === 0 && hourlyRate > 0 && roundedAmount > 0) {
+            hours = Math.round((roundedAmount / hourlyRate) * 100) / 100;
+          }
+          const vehiclePrefix = (truck.plate || truck.truckName || `Caminhão #${index + 1}`).trim();
+          const workName = service.clientName || service.farmName || 'Operação';
+          const serviceType = 'Transp.';
+          const formattedLine = formatCommissionItemLine({
+            serviceType,
+            vehiclePrefix,
+            workName,
+            loads,
+            totalM3,
+            hours,
+            hourlyRate,
+            totalAmount: roundedAmount,
+          });
+
           breakdown.push({
             serviceId: service.id,
             orderNumber: service.orderNumber,
@@ -234,8 +403,16 @@ export const getEmployeeMonthCommissions = (
             farmName: service.farmName,
             date: serviceDisplayDate,
             role: 'Motorista Transporte (Frota Própria)',
-            amount: Number(truck.driverCommission.toFixed(2)),
-            description: `${osIdentificador} - Transporte Silagem (${truck.truckName || truck.plate || `Caminhão #${index + 1}`})`,
+            amount: roundedAmount,
+            description: formattedLine,
+            formattedLine,
+            serviceType,
+            vehiclePrefix,
+            workName,
+            loads,
+            totalM3,
+            hours,
+            hourlyRate,
           });
         }
       });
@@ -248,6 +425,19 @@ export const getEmployeeMonthCommissions = (
 
     if (isGenericOperator && !isPrimaryForage && !isPrimaryTractor) {
       if (typeof service.driverCostAllocated === 'number' && service.driverCostAllocated > 0) {
+        const roundedAmount = Number(service.driverCostAllocated.toFixed(2));
+        const hours = service.tractorHours || service.forageDrumHours || 0;
+        const hourlyRate = hours > 0 ? roundedAmount / hours : 0;
+        const workName = service.clientName || service.farmName || 'Operação';
+        const serviceType = 'Comissão Operação';
+        const formattedLine = formatCommissionItemLine({
+          serviceType,
+          workName,
+          hours,
+          hourlyRate,
+          totalAmount: roundedAmount,
+        });
+
         breakdown.push({
           serviceId: service.id,
           orderNumber: service.orderNumber,
@@ -255,8 +445,13 @@ export const getEmployeeMonthCommissions = (
           farmName: service.farmName,
           date: serviceDisplayDate,
           role: 'Operador de Campo',
-          amount: Number(service.driverCostAllocated.toFixed(2)),
-          description: `${osIdentificador} - Operação de Campo`,
+          amount: roundedAmount,
+          description: formattedLine,
+          formattedLine,
+          serviceType,
+          workName,
+          hours,
+          hourlyRate,
         });
       }
     }

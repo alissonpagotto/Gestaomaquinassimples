@@ -252,6 +252,9 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
       const commData = getEmployeeMonthCommissions(empId, currentMonthRef, internalServices, employees);
       setCommissionAmount(commData.total);
       setCommissionsInfo(commData);
+      if (commData.count > 0) {
+        setShowCommissionBreakdown(true);
+      }
     }
   };
 
@@ -273,7 +276,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
       setOtherDiscounts(payroll.otherDiscounts || 0);
       setPayrollStatus(payroll.status);
       setNotes(payroll.notes || '');
-      setShowCommissionBreakdown(false);
+      setShowCommissionBreakdown(commData.count > 0);
     } else {
       setEditingPayroll(null);
       setCommissionsInfo(null);
@@ -752,10 +755,10 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                 </select>
               </div>
 
-              {/* Grid de Proventos com fundo branco */}
-              <div className="p-3.5 bg-white border border-stone-300 rounded-xl space-y-3 shadow-xs">
+              {/* Grid de Proventos com fundo azul de destaque */}
+              <div className="p-3.5 bg-blue-50/60 dark:bg-stone-900/90 border border-blue-200 dark:border-stone-700 rounded-xl space-y-3 shadow-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-black uppercase text-black block tracking-wider">
+                  <span className="text-[11px] font-black uppercase text-blue-950 dark:text-blue-300 block tracking-wider">
                     Proventos (Vencimentos)
                   </span>
                   {selectedEmployeeId && (
@@ -773,7 +776,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
                   <div>
-                    <label className="block text-[11px] font-bold text-black mb-1">
+                    <label className="block text-[11px] font-bold text-black dark:text-stone-200 mb-1">
                       Salário Base (R$)
                     </label>
                     <input
@@ -781,12 +784,12 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                       step="0.01"
                       value={baseSalary || ''}
                       onChange={(e) => setBaseSalary(parseFloat(e.target.value) || 0)}
-                      className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-bold outline-none focus:ring-1 focus:ring-[#0963cb]"
+                      className="w-full p-2 border border-stone-300 rounded-lg bg-white dark:bg-stone-800 text-black dark:text-white font-bold outline-none focus:ring-1 focus:ring-[#0963cb]"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-black mb-1">
+                    <label className="block text-[11px] font-bold text-black dark:text-stone-200 mb-1">
                       Horas Extras / Safra (R$)
                     </label>
                     <input
@@ -794,11 +797,11 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                       step="0.01"
                       value={overtimeAmount || ''}
                       onChange={(e) => setOvertimeAmount(parseFloat(e.target.value) || 0)}
-                      className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
+                      className="w-full p-2 border border-stone-300 rounded-lg bg-white dark:bg-stone-800 text-black dark:text-white font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-black mb-1">
+                    <label className="block text-[11px] font-bold text-black dark:text-stone-200 mb-1">
                       Bônus / Insalubridade (R$)
                     </label>
                     <input
@@ -806,12 +809,12 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                       step="0.01"
                       value={bonusAmount || ''}
                       onChange={(e) => setBonusAmount(parseFloat(e.target.value) || 0)}
-                      className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
+                      className="w-full p-2 border border-stone-300 rounded-lg bg-white dark:bg-stone-800 text-black dark:text-white font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
                     />
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="block text-[11px] font-bold text-black truncate">
+                      <label className="block text-[11px] font-bold text-black dark:text-stone-200 truncate">
                         Comissões Silagem (R$)
                       </label>
                       {commissionsInfo && commissionsInfo.breakdown.length > 0 && (
@@ -830,7 +833,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                       step="0.01"
                       value={commissionAmount || ''}
                       onChange={(e) => setCommissionAmount(parseFloat(e.target.value) || 0)}
-                      className="w-full p-2 border border-emerald-300 rounded-lg bg-emerald-50/50 text-emerald-900 font-bold outline-none focus:ring-1 focus:ring-emerald-600"
+                      className="w-full p-2 border border-emerald-300 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-300 font-bold outline-none focus:ring-1 focus:ring-emerald-600"
                       title="Comissões apuradas automaticamente no fechamento de cortes e ordens de silagem"
                     />
                   </div>
@@ -838,20 +841,23 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
 
                 {/* Detalhamento das comissões apuradas no mês */}
                 {commissionsInfo && commissionsInfo.breakdown.length > 0 && showCommissionBreakdown && (
-                  <div className="mt-2 p-2.5 bg-emerald-50/80 border border-emerald-200 rounded-lg space-y-1.5 text-xs">
-                    <div className="flex items-center justify-between font-bold text-emerald-950">
-                      <span>Ordens de Serviço Integradas ({commissionsInfo.referenceMonth})</span>
-                      <span>Total: {formatCurrencyBRL(commissionsInfo.total)}</span>
+                  <div className="mt-2.5 p-3 bg-white/95 dark:bg-stone-800/95 border border-blue-200 dark:border-stone-700 rounded-lg space-y-2 text-xs shadow-2xs">
+                    <div className="flex items-center justify-between font-bold text-blue-950 dark:text-blue-200 border-b border-blue-100 dark:border-stone-700 pb-1.5">
+                      <span className="flex items-center space-x-1.5">
+                        <FileText className="w-3.5 h-3.5 text-[#0963cb]" />
+                        <span>Ordens de Serviço Integradas ({commissionsInfo.referenceMonth})</span>
+                      </span>
+                      <span className="font-extrabold text-[#0963cb] dark:text-sky-400 font-['Outfit']">
+                        Total: {formatCurrencyBRL(commissionsInfo.total)}
+                      </span>
                     </div>
-                    <div className="max-h-36 overflow-y-auto space-y-1 divide-y divide-emerald-200/60">
+                    <div className="max-h-48 overflow-y-auto space-y-1.5 pr-0.5">
                       {commissionsInfo.breakdown.map((b, idx) => (
-                        <div key={idx} className="pt-1 flex items-center justify-between text-[11px] text-emerald-900">
-                          <span className="truncate pr-2">
-                            <strong>{b.serviceCode}</strong> - {b.clientName} ({b.roleLabel})
-                          </span>
-                          <span className="font-bold whitespace-nowrap font-['Outfit']">
-                            {formatCurrencyBRL(b.amount)}
-                          </span>
+                        <div 
+                          key={idx} 
+                          className="p-2 bg-blue-50/40 dark:bg-stone-900/60 rounded border border-blue-100/90 dark:border-stone-700 text-xs text-stone-900 dark:text-stone-100 font-medium leading-relaxed"
+                        >
+                          {b.formattedLine || b.description}
                         </div>
                       ))}
                     </div>
