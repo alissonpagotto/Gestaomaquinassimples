@@ -54,7 +54,7 @@ import { parseCurrencyToFloat, maskCurrencyBRLInput, formatCurrencyBRLOnBlur } f
 // Cadastro Unificado de Cliente (Modal Completo Oficial "Novo Produtor Rural / Pecuarista")
 import { ClientModal } from '../crm/ClientModal';
 import { TractorBlock } from './TractorBlock';
-import { TruckFleetSection } from './TruckFleetSection';
+import { TruckFleetSection, calculateTruckFreightCommission } from './TruckFleetSection';
 import { DRESummaryBlock, TruckExpenseDetail } from './DRESummaryBlock';
 import { 
   ServiceDocumentPreview, 
@@ -898,12 +898,9 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       // Adicional KM individual do caminhão
       const additionalKmCost = truck.totalAdditionalKm ?? ((truck.additionalKm || 0) * (truck.ratePerKm || 0));
 
-      // Comissão individual do Motorista do caminhão (Livre, Horas ou Cargas)
-      const mode = truck.driverCommissionMode || 'horas';
-      const baseComm = mode === 'livre'
-        ? (typeof truck.driverCommissionBase === 'number' ? truck.driverCommissionBase : (typeof truck.driverHours === 'number' ? truck.driverHours : 0))
-        : mode === 'cargas' ? loads : (typeof truck.driverHours === 'number' ? truck.driverHours : 0);
-      const driverCommissionCost = truck.driverCommission ?? Number((baseComm * (truck.driverCommissionRate || 0)).toFixed(2));
+      // Comissão individual do Motorista de Frete (4 modalidades: Por KM, Por Hora, Por Tonelada/Carga ou Por Viagem)
+      const commResult = calculateTruckFreightCommission(truck.driverCommissionMode, truck, pesoPorM3);
+      const driverCommissionCost = typeof truck.driverCommission === 'number' ? truck.driverCommission : commResult.total;
 
       // Total Composto = Rateio + Adicional KM + Comissão do Motorista
       const totalCost = rateioCost + additionalKmCost + driverCommissionCost;
@@ -924,7 +921,7 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
         truckHourlyRate: truck.truckHourlyRate,
       };
     });
-  }, [trucks, totalVolumeGeralM3, valorDistribuicaoFrotas, unidadeArea]);
+  }, [trucks, totalVolumeGeralM3, valorDistribuicaoFrotas, unidadeArea, pesoPorM3]);
 
   // =========================================================================
   // GESTÃO OPERACIONAL DE COMBUSTÍVEL E ALIMENTAÇÃO (DRE)

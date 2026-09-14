@@ -243,6 +243,7 @@ export interface Machinery {
   financialInstitution?: string; // Banco ou Instituição Financeira
   installmentsGenerated?: boolean; // Indicador se as parcelas já foram incluídas no Contas a Pagar
   purchaseInstallmentRows?: any[]; // Linhas detalhadas de parcelas confirmadas no modal de compra/financiamento
+  purchaseInstallmentIntervalDays?: number; // Intervalo de dias selecionado (ex: 30 = Mensal, 90 = Trimestral, 180 = Semestral, 365 = Anual)
 
   // 4. Controle Patrimonial, Impostos & Taxas (FIPE, IPVA & Licenciamento)
   fipeValue?: number; // Valor Comercial Tabela FIPE (R$)
@@ -540,6 +541,8 @@ export interface ServiceMealExpense {
   amount: number | '';
 }
 
+export type FreightCommissionMode = 'km' | 'horas' | 'tonelada_carga' | 'toneladas' | 'cargas' | 'viagem' | 'livre';
+
 export interface ServiceTruckItem {
   id: string;
   machineryId?: string;
@@ -551,7 +554,7 @@ export interface ServiceTruckItem {
   secondaryDriverId?: string;
   secondaryDriverName?: string;
   capacityM3?: number;
-  tripLoads?: number; // Nº de Cargas
+  tripLoads?: number; // Nº de Cargas / Viagens
   totalM3?: number; // Calculado (Capacidade x Cargas)
   driverHours?: number; // Horas motorista
   driverHourSource?: 'tambor' | 'motor' | 'manual'; // 'Usar Tambor' / 'Usar Motor'
@@ -561,10 +564,10 @@ export interface ServiceTruckItem {
   truckHours?: number; // Horas Trabalhadas do Caminhão (modalidade Hectares)
   truckHourlyRate?: number; // Valor por Hora (R$) do Caminhão cobrado do cliente (modalidade Hectares)
   truckTotalCost?: number; // Custo calculado: Horas Trabalhadas * Valor por Hora
-  driverCommissionMode?: 'horas' | 'cargas' | 'livre'; // Modo de comissão do motorista
-  driverCommissionBase?: number | ''; // Base livre digitada quando modo é 'livre'
-  driverCommissionRate?: number; // R$/hora ou R$/carga
-  driverCommission?: number; // Comissão informativa do motorista
+  driverCommissionMode?: FreightCommissionMode; // Regra de Frete: 'km' | 'horas' | 'tonelada_carga' | 'viagem' | 'livre'
+  driverCommissionBase?: number | ''; // Base da comissão de frete
+  driverCommissionRate?: number; // R$/km, R$/hora, R$/ton-carga, R$/viagem
+  driverCommission?: number; // Valor total da comissão de frete do motorista
   distributedValue?: number; // Valor proporcional m³ da distribuição da frota
   ratioPercent?: number; // % de participação no volume total da frota
 }

@@ -56,7 +56,11 @@ import {
 } from './vehiclePrintTemplates';
 import { IpvaInstallmentsModal, IpvaInstallmentRow } from './IpvaInstallmentsModal';
 import { LicensingLaunchModal, LicensingLaunchData } from './LicensingLaunchModal';
-import { VehiclePurchaseInstallmentsModal, VehiclePurchaseInstallmentRow } from './VehiclePurchaseInstallmentsModal';
+import { 
+  VehiclePurchaseInstallmentsModal, 
+  VehiclePurchaseInstallmentRow,
+  detectIntervalFromInstallments
+} from './VehiclePurchaseInstallmentsModal';
 
 interface VehicleModalProps {
   isOpen: boolean;
@@ -237,6 +241,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
   const [isLicensingLaunchModalOpen, setIsLicensingLaunchModalOpen] = useState(false);
   const [isPurchaseInstallmentsModalOpen, setIsPurchaseInstallmentsModalOpen] = useState(false);
   const [savedPurchaseInstallmentRows, setSavedPurchaseInstallmentRows] = useState<VehiclePurchaseInstallmentRow[]>([]);
+  const [purchaseInstallmentIntervalDays, setPurchaseInstallmentIntervalDays] = useState<number | null>(null);
 
   // Computed IPVA Total
   const computedIpvaTotal = useMemo(() => {
@@ -601,6 +606,42 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setFirstInstallmentDueDate(editingVehicle.firstInstallmentDueDate || '');
       setFinancialInstitution(editingVehicle.financialInstitution || '');
       setGeneratePayables(!editingVehicle.installmentsGenerated);
+
+      // Carrega parcelas gravadas no veículo ou vinculadas no Contas a Pagar
+      let loadedInstallments: VehiclePurchaseInstallmentRow[] = [];
+      if (editingVehicle.purchaseInstallmentRows && editingVehicle.purchaseInstallmentRows.length > 0) {
+        loadedInstallments = editingVehicle.purchaseInstallmentRows;
+      } else if (expenses && expenses.length > 0) {
+        const matched = expenses.filter(e => 
+          e.machineryId === editingVehicle.id && 
+          (e.category === 'Financiamento de Veículos / Frotas' || e.description?.includes('Compra/Financiamento') || e.description?.includes('Financiamento'))
+        ).sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''));
+
+        if (matched.length > 0) {
+          loadedInstallments = matched.map((exp, idx) => {
+            const match = exp.description.match(/Parcela\s+(\d+)/i);
+            const num = match ? match[1].padStart(2, '0') : String(idx + 1).padStart(2, '0');
+            return {
+              id: exp.id || `vinst_${idx}`,
+              number: num,
+              amount: exp.amount,
+              daysInterval: 0,
+              dueDate: exp.dueDate,
+              paymentMethodCode: '04',
+              paymentMethodLabel: '04 - Financiamento Bancário / CDC',
+              creditAccount: '2.1.2.01 - Financiamentos Bancários a Pagar',
+              debitAccount: '1.2.3.01 - Ativo Imobilizado: Veículos da Frota',
+              observations: exp.notes || exp.description,
+              documentFileUrl: exp.receiptUrl,
+              documentFileName: exp.receiptName,
+            };
+          });
+        }
+      }
+
+      setSavedPurchaseInstallmentRows(loadedInstallments);
+      const effectiveInterval = editingVehicle.purchaseInstallmentIntervalDays ?? detectIntervalFromInstallments(loadedInstallments);
+      setPurchaseInstallmentIntervalDays(effectiveInterval);
       
       // 4. Controle Patrimonial, Impostos & Taxas
       setFipeValue(editingVehicle.fipeValue !== undefined ? formatarMoeda(Math.round(editingVehicle.fipeValue * 100)) : '');
@@ -685,6 +726,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setFinancialInstitution('');
       setGeneratePayables(true);
       setInstallmentsCreatedFeedback(false);
+      setSavedPurchaseInstallmentRows([]);
+      setPurchaseInstallmentIntervalDays(null);
 
       // 4. Controle Patrimonial, Impostos & Taxas
       setFipeValue('');
@@ -704,7 +747,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setNotes('');
       setActiveTab('dados');
     }
-  }, [editingVehicle, isOpen, employees]);
+  }, [editingVehicle, isOpen, employees, expenses]);
 
   // Active employees available for driver/operator assignment
   const activeEmployees = useMemo(() => {
@@ -873,7 +916,10 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
   };
 
   // Gravar Lançamentos das Parcelas de Compra / Financiamento diretamente no Contas a Pagar
-  const handleConfirmPurchaseInstallments = (instList: VehiclePurchaseInstallmentRow[]) => {
+  const handleConfirmPurchaseInstallments = (
+    instList: VehiclePurchaseInstallmentRow[],
+    intervalDays: number | null = null
+  ) => {
     if (!onAddExpense) {
       alert('Módulo financeiro indisponível para lançamento direto.');
       return;
@@ -922,6 +968,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     });
 
     setSavedPurchaseInstallmentRows(instList);
+    setPurchaseInstallmentIntervalDays(intervalDays);
     setInstallmentsCount(String(totalLines));
     if (instList[0]) {
       setInstallmentValue(formatarMoeda(Math.round(instList[0].amount * 100)));
@@ -1047,6 +1094,12 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       firstInstallmentDueDate: isFinanced ? firstInstallmentDueDate : undefined,
       financialInstitution: isFinanced ? financialInstitution.trim() : undefined,
       installmentsGenerated: editingVehicle?.installmentsGenerated || willGenerateInstallments,
+      purchaseInstallmentRows: savedPurchaseInstallmentRows.length > 0 
+        ? savedPurchaseInstallmentRows 
+        : (editingVehicle?.purchaseInstallmentRows || undefined),
+      purchaseInstallmentIntervalDays: purchaseInstallmentIntervalDays !== null 
+        ? purchaseInstallmentIntervalDays 
+        : (editingVehicle?.purchaseInstallmentIntervalDays || undefined),
 
       // 4. Controle Patrimonial, Impostos & Taxas
       fipeValue: fipeValue ? desformatarMoeda(fipeValue) : undefined,
@@ -2695,7 +2748,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
         baseDate={purchaseDate || new Date().toISOString().split('T')[0]}
         firstDueDate={firstInstallmentDueDate || undefined}
         initialInstallmentsCount={Math.max(1, parseInt(installmentsCount, 10) || 1)}
-        existingInstallments={savedPurchaseInstallmentRows.length > 0 ? savedPurchaseInstallmentRows : undefined}
+        existingInstallments={savedPurchaseInstallmentRows.length > 0 ? savedPurchaseInstallmentRows : (editingVehicle?.purchaseInstallmentRows || undefined)}
+        initialIntervalDays={purchaseInstallmentIntervalDays ?? editingVehicle?.purchaseInstallmentIntervalDays ?? null}
         supplierName={purchaseSupplier.trim() || ownerName.trim()}
         invoiceNumber={purchaseInvoiceNumber.trim()}
         financialInstitution={financialInstitution.trim()}

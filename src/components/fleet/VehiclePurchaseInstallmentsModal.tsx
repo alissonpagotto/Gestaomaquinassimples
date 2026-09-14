@@ -14,6 +14,7 @@ import {
   Truck,
   CreditCard
 } from 'lucide-react';
+import { useConfirm } from '../../context/ConfirmContext';
 import { formatCurrencyBRL } from '../../lib/storage';
 import { formatarMoeda, desformatarMoeda } from '../../lib/formatters';
 
@@ -42,10 +43,11 @@ export interface VehiclePurchaseInstallmentsModalProps {
   firstDueDate?: string; // Data do 1º Vencimento vinda da tela anterior
   initialInstallmentsCount?: number;
   existingInstallments?: VehiclePurchaseInstallmentRow[];
+  initialIntervalDays?: number | null; // Intervalo salvo (30, 90, 180, 365)
   supplierName?: string;
   invoiceNumber?: string;
   financialInstitution?: string;
-  onConfirmAndSave: (installments: VehiclePurchaseInstallmentRow[]) => void;
+  onConfirmAndSave: (installments: VehiclePurchaseInstallmentRow[], intervalDays: number | null) => void;
 }
 
 // Opções de Meio de Pagamento com código contábil/fiscal
@@ -172,6 +174,65 @@ function calculateDaysBetween(startDateStr: string, endDateStr: string): number 
 }
 
 /**
+ * Função utilitária para detectar intervalo (30, 90, 180, 365) a partir das parcelas existentes
+ */
+export function detectIntervalFromInstallments(rows?: VehiclePurchaseInstallmentRow[]): number | null {
+  if (!rows || rows.length < 2) {
+    if (rows && rows.length === 1 && rows[0].daysInterval) {
+      if (rows[0].daysInterval >= 350) return 365;
+      if (rows[0].daysInterval >= 170 && rows[0].daysInterval <= 190) return 180;
+      if (rows[0].daysInterval >= 80 && rows[0].daysInterval <= 100) return 90;
+      if (rows[0].daysInterval >= 25 && rows[0].daysInterval <= 35) return 30;
+    }
+    return null;
+  }
+
+  try {
+    const d1Str = rows[0].dueDate;
+    const d2Str = rows[1].dueDate;
+    if (!d1Str || !d2Str) return null;
+
+    const p1 = d1Str.split('-');
+    const p2 = d2Str.split('-');
+    if (p1.length === 3 && p2.length === 3) {
+      const y1 = parseInt(p1[0], 10);
+      const m1 = parseInt(p1[1], 10);
+      const d1 = parseInt(p1[2], 10);
+
+      const y2 = parseInt(p2[0], 10);
+      const m2 = parseInt(p2[1], 10);
+      const d2 = parseInt(p2[2], 10);
+
+      const date1 = new Date(y1, m1 - 1, d1);
+      const date2 = new Date(y2, m2 - 1, d2);
+      const diffDays = Math.round((date2.getTime() - date1.getTime()) / (1000 * 60 * 60 * 24));
+      const monthDiff = (y2 * 12 + m2) - (y1 * 12 + m1);
+
+      // Anual (1 ano / ~365 dias)
+      if (monthDiff === 12 || (diffDays >= 350 && diffDays <= 370)) {
+        return 365;
+      }
+      // Semestral (6 meses / ~180 dias)
+      if (monthDiff === 6 || (diffDays >= 170 && diffDays <= 190)) {
+        return 180;
+      }
+      // Trimestral (3 meses / ~90 dias)
+      if (monthDiff === 3 || (diffDays >= 80 && diffDays <= 100)) {
+        return 90;
+      }
+      // Mensal (1 mês / ~30 dias)
+      if (monthDiff === 1 || (diffDays >= 25 && diffDays <= 35)) {
+        return 30;
+      }
+    }
+  } catch (e) {
+    console.error('Erro ao detectar intervalo das parcelas:', e);
+  }
+
+  return null;
+}
+
+/**
  * Componente controlado de entrada monetária em tempo real com máscara BRL
  */
 const MoneyCellInput: React.FC<{
@@ -215,47 +276,60 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
   firstDueDate,
   initialInstallmentsCount = 1,
   existingInstallments,
+  initialIntervalDays,
   supplierName,
   invoiceNumber,
   financialInstitution,
   onConfirmAndSave,
 }) => {
+  const { confirm } = useConfirm();
   const [installments, setInstallments] = useState<VehiclePurchaseInstallmentRow[]>([]);
   const [installmentsCountInput, setInstallmentsCountInput] = useState<number>(initialInstallmentsCount || 1);
-  const [selectedInterval, setSelectedInterval] = useState<number | null>(30);
+  const [selectedInterval, setSelectedInterval] = useState<number | null>(initialIntervalDays ?? 30);
   const [firstDueDateInput, setFirstDueDateInput] = useState<string>('');
   const [activeFileRowId, setActiveFileRowId] = useState<string | null>(null);
   const [previewFile, setPreviewFile] = useState<{ name: string; url: string } | null>(null);
   const [validationError, setValidationError] = useState<string>('');
+  const [hasSavedInstallmentsLock, setHasSavedInstallmentsLock] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const effectiveBaseDate = baseDate || new Date().toISOString().split('T')[0];
 
-  // Inicialização e geração inicial
+  // Inicialização e bloqueio estrito de reset
   useEffect(() => {
     if (!isOpen) return;
 
+    // 1. Persistência Estrita das Parcelas Salvas (Bloqueio de Reset):
+    // Se os dados já existirem, renderize exatamente os valores salvos. É estritamente proibido rodar recálculo na abertura.
     if (existingInstallments && existingInstallments.length > 0) {
       setInstallments(existingInstallments);
       setInstallmentsCountInput(existingInstallments.length);
-      setSelectedInterval(null);
+
+      // 2. Salvar e Destacar o Botão de Período Selecionado:
+      const activeInterval = initialIntervalDays ?? detectIntervalFromInstallments(existingInstallments);
+      setSelectedInterval(activeInterval);
+
       setFirstDueDateInput(existingInstallments[0].dueDate || '');
       setValidationError('');
+      setHasSavedInstallmentsLock(true);
       return;
     }
 
+    // Se NÃO existirem parcelas gravadas ainda:
+    setHasSavedInstallmentsLock(false);
     const count = Math.max(1, initialInstallmentsCount || 1);
     setInstallmentsCountInput(count);
 
-    // Herda inicialmente o 1º Vencimento informado na tela anterior ou calcula +30 dias
     const initialFirst = firstDueDate || addDaysToDate(effectiveBaseDate, 30);
     setFirstDueDateInput(initialFirst);
-    generateInitialInstallments(count, initialFirst);
+    const defaultInterval = initialIntervalDays ?? 30;
+    setSelectedInterval(defaultInterval);
+    generateInitialInstallments(count, initialFirst, defaultInterval);
     setValidationError('');
-  }, [isOpen, purchaseValue, initialInstallmentsCount, firstDueDate]);
+  }, [isOpen, existingInstallments, initialIntervalDays]);
 
   // Gerador inicial das parcelas
-  const generateInitialInstallments = (count: number, customFirstDate?: string) => {
+  const generateInitialInstallments = (count: number, customFirstDate?: string, customInterval: number = 30) => {
     const total = Math.max(0, purchaseValue || 0);
     const safeCount = Math.max(1, count);
     
@@ -268,12 +342,12 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
       : PAYMENT_METHODS_OPTIONS[0];
 
     const generated: VehiclePurchaseInstallmentRow[] = [];
-    const firstDate = customFirstDate || firstDueDateInput || addDaysToDate(effectiveBaseDate, 30);
+    const firstDate = customFirstDate || firstDueDateInput || addDaysToDate(effectiveBaseDate, customInterval);
 
     for (let i = 1; i <= safeCount; i++) {
       const isLast = i === safeCount;
       const amount = isLast ? Math.round((baseAmount + diff) * 100) / 100 : baseAmount;
-      const dueDate = addCalendarInterval(firstDate, i - 1, 30);
+      const dueDate = addCalendarInterval(firstDate, i - 1, customInterval);
       const days = calculateDaysBetween(effectiveBaseDate, dueDate);
       const numberStr = String(i).padStart(2, '0');
 
@@ -294,7 +368,73 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
     }
 
     setInstallments(generated);
-    setSelectedInterval(30);
+    setSelectedInterval(customInterval);
+  };
+
+  // 3. Alerta de Confirmação para Alteração de Datas (Trava de Segurança):
+  // Exibe imediatamente pop-up com o texto exato solicitado caso haja parcelas salvas
+  const confirmRecalculationIfLocked = async (): Promise<boolean> => {
+    if (!hasSavedInstallmentsLock) return true;
+
+    const isConfirmed = await confirm({
+      title: 'Atenção: Alteração de Condições',
+      message: 'Atenção: Você está alterando as condições originais do financiamento. Isso irá recalcular e substituir todas as datas e prazos das parcelas atuais. Tem certeza que deseja prosseguir?',
+      confirmLabel: 'Sim, Confirmar',
+      cancelLabel: 'Não, Cancelar',
+      variant: 'warning',
+    });
+
+    if (isConfirmed) {
+      setHasSavedInstallmentsLock(false);
+      return true;
+    }
+    return false;
+  };
+
+  // Trava de segurança ao clicar nos botões de período (Mensal, Trimestral, Semestral, Anual)
+  const handleIntervalClick = async (daysPerPeriod: number) => {
+    if (selectedInterval === daysPerPeriod) return;
+
+    const canProceed = await confirmRecalculationIfLocked();
+    if (!canProceed) {
+      // Mantém os dados originais intactos e reverte a ação
+      return;
+    }
+
+    handleApplyInterval(daysPerPeriod);
+  };
+
+  // Trava de segurança ao alterar o campo 1º Vencimento
+  const handleFirstDueDateChange = async (newDate: string) => {
+    if (!newDate || newDate === firstDueDateInput) return;
+
+    const canProceed = await confirmRecalculationIfLocked();
+    if (!canProceed) {
+      // Reverte e mantém os dados originais intactos
+      return;
+    }
+
+    handleApplyFirstDueDate(newDate);
+  };
+
+  // Trava de segurança ao clicar em Dividir Igualmente
+  const handleEqualDivisionClick = async () => {
+    const canProceed = await confirmRecalculationIfLocked();
+    if (!canProceed) return;
+
+    handleApplyEqualDivision();
+  };
+
+  // Trava de segurança ao alterar quantidade de parcelas [-] [+]
+  const handleQuantityStep = async (nextCount: number) => {
+    const safeNext = Math.max(1, Math.min(120, nextCount));
+    if (safeNext === installmentsCountInput) return;
+
+    const canProceed = await confirmRecalculationIfLocked();
+    if (!canProceed) return;
+
+    setInstallmentsCountInput(safeNext);
+    handleApplyEqualDivision(safeNext);
   };
 
   // Recálculo inteligente em cascata a partir do 1º Vencimento (Topo -> Tabela)
@@ -468,7 +608,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
     // Se o usuário alterar a data de vencimento digitando diretamente no campo 'VENCIMENTO' da linha '01',
     // atualiza o campo do topo de forma síncrona e dispara o recálculo em cascata para as demais
     if (field === 'dueDate' && isFirstRow) {
-      handleApplyFirstDueDate(value);
+      handleFirstDueDateChange(value);
       return;
     }
 
@@ -601,7 +741,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
     }
 
     setValidationError('');
-    onConfirmAndSave(installments);
+    onConfirmAndSave(installments, selectedInterval);
   };
 
   if (!isOpen) return null;
@@ -722,11 +862,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
                 <div className="flex items-center bg-white rounded-lg border border-[#96c1e5] overflow-hidden shadow-2xs">
                   <button
                     type="button"
-                    onClick={() => {
-                      const next = Math.max(1, installmentsCountInput - 1);
-                      setInstallmentsCountInput(next);
-                      handleApplyEqualDivision(next);
-                    }}
+                    onClick={() => handleQuantityStep(installmentsCountInput - 1)}
                     className="px-2.5 py-1 text-black hover:bg-stone-100 font-black cursor-pointer"
                     title="Diminuir parcela"
                   >
@@ -739,16 +875,12 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
                     max="120"
                     value={installmentsCountInput}
                     onChange={(e) => setInstallmentsCountInput(parseInt(e.target.value, 10) || 1)}
-                    onBlur={() => handleApplyEqualDivision(installmentsCountInput)}
+                    onBlur={() => handleQuantityStep(installmentsCountInput)}
                     className="w-12 text-center text-xs font-black text-black py-1 focus:outline-hidden"
                   />
                   <button
                     type="button"
-                    onClick={() => {
-                      const next = installmentsCountInput + 1;
-                      setInstallmentsCountInput(next);
-                      handleApplyEqualDivision(next);
-                    }}
+                    onClick={() => handleQuantityStep(installmentsCountInput + 1)}
                     className="px-2.5 py-1 text-black hover:bg-stone-100 font-black cursor-pointer"
                     title="Aumentar parcela"
                   >
@@ -761,7 +893,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
               <button
                 type="button"
                 id="btn-dividir-igualmente-veiculo"
-                onClick={() => handleApplyEqualDivision()}
+                onClick={() => handleEqualDivisionClick()}
                 className="px-3 py-1.5 bg-[#0963cb] hover:bg-[#0752a8] text-white rounded-lg text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs cursor-pointer"
                 title="Dividir valor de compra igualmente entre as parcelas"
               >
@@ -778,7 +910,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
                 <button
                   type="button"
                   id="btn-intervalo-mensal-30d"
-                  onClick={() => handleApplyInterval(30)}
+                  onClick={() => handleIntervalClick(30)}
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-2xs cursor-pointer ${
                     selectedInterval === 30
                       ? 'bg-[#0963cb] text-white border border-[#0963cb]'
@@ -794,7 +926,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
                 <button
                   type="button"
                   id="btn-intervalo-trimestral-90d"
-                  onClick={() => handleApplyInterval(90)}
+                  onClick={() => handleIntervalClick(90)}
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-2xs cursor-pointer ${
                     selectedInterval === 90
                       ? 'bg-[#0963cb] text-white border border-[#0963cb]'
@@ -810,7 +942,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
                 <button
                   type="button"
                   id="btn-intervalo-semestral-6m"
-                  onClick={() => handleApplyInterval(180)}
+                  onClick={() => handleIntervalClick(180)}
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-2xs cursor-pointer ${
                     selectedInterval === 180
                       ? 'bg-[#0963cb] text-white border border-[#0963cb]'
@@ -826,7 +958,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
                 <button
                   type="button"
                   id="btn-intervalo-anual-1a"
-                  onClick={() => handleApplyInterval(365)}
+                  onClick={() => handleIntervalClick(365)}
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-2xs cursor-pointer ${
                     selectedInterval === 365
                       ? 'bg-[#0963cb] text-white border border-[#0963cb]'
@@ -855,7 +987,7 @@ export const VehiclePurchaseInstallmentsModal: React.FC<VehiclePurchaseInstallme
                   id="input-primeiro-vencimento-topo"
                   type="date"
                   value={firstDueDateInput}
-                  onChange={(e) => handleApplyFirstDueDate(e.target.value)}
+                  onChange={(e) => handleFirstDueDateChange(e.target.value)}
                   className="px-2.5 py-1.5 text-xs font-black bg-white text-black border border-[#96c1e5] rounded-lg focus:ring-2 focus:ring-[#0963cb]/30 focus:outline-hidden shadow-2xs cursor-pointer"
                   title="Data do 1º Vencimento (atualiza a parcela 01 e projeta as subsequentes em cascata)"
                 />
