@@ -22,7 +22,8 @@ import {
   SalaryAdvance,
   CompanyProfile,
   MedicalCertificateRecord,
-  AbsenceRecord 
+  AbsenceRecord,
+  ServiceOrder
 } from '../../types';
 import { 
   getStoredMedicalCertificates, 
@@ -46,6 +47,7 @@ interface RHModuleProps {
   vacations: VacationRecord[];
   leaves: LeaveRecord[];
   advances: SalaryAdvance[];
+  services?: ServiceOrder[];
   certificates?: MedicalCertificateRecord[];
   absences?: AbsenceRecord[];
   companyProfile: CompanyProfile;
@@ -76,6 +78,7 @@ export const RHModule: React.FC<RHModuleProps> = ({
   vacations,
   leaves,
   advances,
+  services,
   certificates: propCertificates,
   absences: propAbsences,
   companyProfile,
@@ -376,6 +379,7 @@ export const RHModule: React.FC<RHModuleProps> = ({
           employees={sortedEmployees}
           payrolls={payrolls}
           advances={advances}
+          services={services}
           currentMonthRef={currentMonthRef}
           onChangeMonthRef={setCurrentMonthRef}
           onSavePayrolls={onSavePayrolls}

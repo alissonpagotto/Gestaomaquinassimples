@@ -339,6 +339,10 @@ export function getStoredServices(): ServiceOrder[] {
 export function saveStoredServices(services: ServiceOrder[]): void {
   try {
     localStorage.setItem(STORAGE_KEYS.SERVICES, JSON.stringify(services));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('silagem_services_updated', { detail: services }));
+      window.dispatchEvent(new Event('storage'));
+    }
   } catch (e) {
     console.error('Failed to save services', e);
   }

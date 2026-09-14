@@ -849,6 +849,7 @@ export default function App() {
               vacations={vacations}
               leaves={leaves}
               advances={advances}
+              services={services}
               companyProfile={companyProfile}
               initialSubTab={activeTab === 'funcionarios' ? 'funcionarios' : undefined}
               onSaveEmployees={setEmployees}

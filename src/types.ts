@@ -474,6 +474,8 @@ export interface ServiceOrder {
   tractorOperatorHours?: number;
   tractorOperatorCommissionRate?: number;
   tractorOperatorCommission?: number;
+  tractorOperatorCommissionP1?: number;
+  tractorOperatorCommissionP2?: number;
 
   // Forrageira / Ensiladeira
   forageHarvesterId?: string;
@@ -490,6 +492,8 @@ export interface ServiceOrder {
   forageRatePerHour?: number;
   forageTotalAmount?: number;
   forageOperatorCommission?: number;
+  forageOperatorCommissionP1?: number;
+  forageOperatorCommissionP2?: number;
 
   // Frotas / Caminhões
   trucks?: ServiceTruckItem[];
@@ -852,6 +856,7 @@ export interface PayrollRecord {
   overtimeHours?: number;
   overtimeAmount: number; // Horas extras / diárias de safra
   bonusAmount: number; // Insalubridade, bônus safra, etc.
+  commissionAmount?: number; // Comissões variáveis apuradas no mês (silagem, colheita, horas trabalhadas ou produção)
   inssDiscount: number;
   advancesDiscount: number; // Vales e adiantamentos descontados
   otherDiscounts: number; // Faltas, atrasos, convênios

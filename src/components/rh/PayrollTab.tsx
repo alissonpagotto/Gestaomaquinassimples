@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -13,12 +13,19 @@ import {
   Users,
   Sparkles,
   Printer,
-  X
+  X,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw
 } from 'lucide-react';
-import { Employee, PayrollRecord, SalaryAdvance } from '../../types';
-import { formatCurrencyBRL, formatDateBR } from '../../lib/storage';
+import { Employee, PayrollRecord, SalaryAdvance, ServiceOrder } from '../../types';
+import { formatCurrencyBRL, formatDateBR, getStoredServices } from '../../lib/storage';
 import { useConfirm } from '../../context/ConfirmContext';
 import { ShieldAlert, ShieldCheck } from 'lucide-react';
+import { 
+  getEmployeeMonthCommissions, 
+  EmployeeMonthCommissions 
+} from './payrollHelpers';
 
 // ==========================================
 // REGRAS DE NEGÓCIO DA FOLHA DE PAGAMENTO
@@ -115,10 +122,10 @@ export const calculateAutomaticInss = (emp: Partial<Employee> | undefined, salar
 };
 
 interface PayrollTabProps {
-
   employees: Employee[];
   payrolls: PayrollRecord[];
   advances: SalaryAdvance[];
+  services?: ServiceOrder[];
   currentMonthRef: string;
   onChangeMonthRef: (month: string) => void;
   onSavePayrolls: (payrolls: PayrollRecord[]) => void;
@@ -129,6 +136,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
   employees,
   payrolls,
   advances,
+  services,
   currentMonthRef,
   onChangeMonthRef,
   onSavePayrolls,
@@ -136,6 +144,31 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
 }) => {
   const { confirm } = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Sincronização em tempo real com ordens de serviço de silagem
+  const [internalServices, setInternalServices] = useState<ServiceOrder[]>(() => services || getStoredServices());
+
+  useEffect(() => {
+    if (services) {
+      setInternalServices(services);
+    }
+  }, [services]);
+
+  useEffect(() => {
+    const handleServicesUpdate = (e: any) => {
+      if (e?.detail && Array.isArray(e.detail)) {
+        setInternalServices(e.detail);
+      } else {
+        setInternalServices(getStoredServices());
+      }
+    };
+    window.addEventListener('silagem_services_updated', handleServicesUpdate);
+    window.addEventListener('storage', handleServicesUpdate);
+    return () => {
+      window.removeEventListener('silagem_services_updated', handleServicesUpdate);
+      window.removeEventListener('storage', handleServicesUpdate);
+    };
+  }, []);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPayroll, setEditingPayroll] = useState<PayrollRecord | null>(null);
@@ -145,6 +178,9 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
   const [baseSalary, setBaseSalary] = useState<number>(0);
   const [overtimeAmount, setOvertimeAmount] = useState<number>(0);
   const [bonusAmount, setBonusAmount] = useState<number>(0);
+  const [commissionAmount, setCommissionAmount] = useState<number>(0);
+  const [commissionsInfo, setCommissionsInfo] = useState<EmployeeMonthCommissions | null>(null);
+  const [showCommissionBreakdown, setShowCommissionBreakdown] = useState(false);
   const [inssDiscount, setInssDiscount] = useState<number>(0);
   const [advancesDiscount, setAdvancesDiscount] = useState<number>(0);
   const [otherDiscounts, setOtherDiscounts] = useState<number>(0);
@@ -167,7 +203,8 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
 
   // Totais
   const totalBase = monthPayrolls.reduce((sum, p) => sum + (p.baseSalary || 0), 0);
-  const totalOvertimeBonus = monthPayrolls.reduce((sum, p) => sum + (p.overtimeAmount || 0) + (p.bonusAmount || 0), 0);
+  const totalCommissions = monthPayrolls.reduce((sum, p) => sum + (p.commissionAmount || 0), 0);
+  const totalOvertimeBonus = monthPayrolls.reduce((sum, p) => sum + (p.overtimeAmount || 0) + (p.bonusAmount || 0) + (p.commissionAmount || 0), 0);
   const totalDiscounts = monthPayrolls.reduce((sum, p) => sum + (p.inssDiscount || 0) + (p.advancesDiscount || 0) + (p.otherDiscounts || 0), 0);
   const totalNet = monthPayrolls.reduce((sum, p) => sum + (p.netSalary || 0), 0);
 
@@ -210,6 +247,11 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
       const empAdvances = advances.filter(a => a.employeeId === empId && a.referenceMonth === currentMonthRef);
       const totalEmpAdvances = empAdvances.reduce((sum, a) => sum + a.amount, 0);
       setAdvancesDiscount(totalEmpAdvances);
+
+      // INTEGRAÇÃO DE VALORES: Apuração ativa de comissões de silagem e produção no mês
+      const commData = getEmployeeMonthCommissions(empId, currentMonthRef, internalServices, employees);
+      setCommissionAmount(commData.total);
+      setCommissionsInfo(commData);
     }
   };
 
@@ -220,15 +262,24 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
       setBaseSalary(payroll.baseSalary);
       setOvertimeAmount(payroll.overtimeAmount || 0);
       setBonusAmount(payroll.bonusAmount || 0);
+      
+      // Apuração ativa das comissões do mês
+      const commData = getEmployeeMonthCommissions(payroll.employeeId, currentMonthRef, internalServices, employees);
+      setCommissionsInfo(commData);
+      setCommissionAmount(payroll.commissionAmount !== undefined ? payroll.commissionAmount : commData.total);
+
       setInssDiscount(payroll.inssDiscount || 0);
       setAdvancesDiscount(payroll.advancesDiscount || 0);
       setOtherDiscounts(payroll.otherDiscounts || 0);
       setPayrollStatus(payroll.status);
       setNotes(payroll.notes || '');
+      setShowCommissionBreakdown(false);
     } else {
       setEditingPayroll(null);
+      setCommissionsInfo(null);
+      setShowCommissionBreakdown(false);
       // Selecionar primeiro funcionário ativo NÃO terceirizado
-      const firstActive = employees.find(e => e.status === 'ativo' && !isThirdPartyDriver(e));
+      const firstActive = employees.find(e => e.status === 'ativo' && !isThirdPartyDriver(e) && !isBrokerEmployee(e));
       if (firstActive) {
         handleSelectEmployee(firstActive.id);
       } else {
@@ -236,6 +287,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
         setBaseSalary(0);
         setInssDiscount(0);
         setAdvancesDiscount(0);
+        setCommissionAmount(0);
       }
       setOvertimeAmount(0);
       setBonusAmount(0);
@@ -251,7 +303,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
     const emp = employees.find(e => e.id === selectedEmployeeId);
     if (!emp) return;
 
-    const netSalary = Math.max(0, (baseSalary + overtimeAmount + bonusAmount) - (inssDiscount + advancesDiscount + otherDiscounts));
+    const netSalary = Math.max(0, (baseSalary + overtimeAmount + bonusAmount + commissionAmount) - (inssDiscount + advancesDiscount + otherDiscounts));
 
     if (editingPayroll) {
       const updated = payrolls.map(p => p.id === editingPayroll.id ? {
@@ -263,6 +315,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
         baseSalary,
         overtimeAmount,
         bonusAmount,
+        commissionAmount,
         inssDiscount,
         advancesDiscount,
         otherDiscounts,
@@ -281,6 +334,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
         baseSalary,
         overtimeAmount,
         bonusAmount,
+        commissionAmount,
         inssDiscount,
         advancesDiscount,
         otherDiscounts,
@@ -299,15 +353,36 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
   // 1. Motoristas com vínculo "Terceirizado" NÃO entram na folha (acerto gerido pelo Financeiro)
   // 2. Colaboradores com função "Agenciador" NÃO entram na folha (comissões e repasses geridos exclusivamente pelo Financeiro > Acertos Agenciadores)
   // 3. Desconto de INSS calculado UNICAMENTE para funcionários "Registrado" (CLT)
+  // 4. Integração de Valores: Comissões apuradas nas ordens de serviço do mês somadas automaticamente em Proventos (+)
   const handleBatchGenerate = () => {
     const activeEmployees = employees.filter(e => e.status === 'ativo' && !isThirdPartyDriver(e) && !isBrokerEmployee(e));
     const existingEmpIds = new Set(monthPayrolls.map(p => p.employeeId));
+
+    // Atualiza folhas pendentes do mês com eventuais novas comissões apuradas nas ordens de serviço
+    const updatedPayrolls = payrolls.map(p => {
+      if (p.referenceMonth !== currentMonthRef || p.status !== 'pendente') return p;
+      const emp = employees.find(e => e.id === p.employeeId);
+      if (!emp || isThirdPartyDriver(emp) || isBrokerEmployee(emp)) return p;
+
+      const commData = getEmployeeMonthCommissions(emp.id, currentMonthRef, internalServices, employees);
+      const newComm = commData.total;
+      if (p.commissionAmount !== newComm) {
+        const net = Math.max(0, (p.baseSalary + (p.overtimeAmount || 0) + (p.bonusAmount || 0) + newComm) - (p.inssDiscount + p.advancesDiscount + p.otherDiscounts));
+        let updatedNotes = p.notes || '';
+        if (newComm > 0 && !updatedNotes.includes('Comissões')) {
+          updatedNotes = updatedNotes ? `${updatedNotes} • Comissões: ${formatCurrencyBRL(newComm)}` : `Comissões: ${formatCurrencyBRL(newComm)}`;
+        }
+        return {
+          ...p,
+          commissionAmount: newComm,
+          netSalary: net,
+          notes: updatedNotes,
+        };
+      }
+      return p;
+    });
+
     const missing = activeEmployees.filter(e => !existingEmpIds.has(e.id));
-
-    if (missing.length === 0) {
-      return;
-    }
-
     const newRecords: PayrollRecord[] = missing.map(emp => {
       const salary = emp.salary || emp.baseSalary || 3500;
       
@@ -316,7 +391,15 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
       
       const empAdvances = advances.filter(a => a.employeeId === emp.id && a.referenceMonth === currentMonthRef);
       const advTotal = empAdvances.reduce((sum, a) => sum + a.amount, 0);
-      const net = Math.max(0, salary - inss - advTotal);
+
+      // INTEGRAÇÃO DE VALORES: Apuração ativa de comissões apuradas no mês
+      const commData = getEmployeeMonthCommissions(emp.id, currentMonthRef, internalServices, employees);
+      const commTotal = commData.total;
+      const net = Math.max(0, (salary + commTotal) - inss - advTotal);
+
+      const initialNote = commTotal > 0 
+        ? `Comissões apuradas: ${formatCurrencyBRL(commTotal)} (${commData.count} OS de silagem)` 
+        : '';
 
       return {
         id: `pay_${Date.now()}_${emp.id}`,
@@ -327,16 +410,22 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
         baseSalary: salary,
         overtimeAmount: 0,
         bonusAmount: 0,
+        commissionAmount: commTotal,
         inssDiscount: inss,
         advancesDiscount: advTotal,
         otherDiscounts: 0,
         netSalary: net,
         status: 'pendente',
+        notes: initialNote,
         createdAt: new Date().toISOString(),
       };
     });
 
-    onSavePayrolls([...newRecords, ...payrolls]);
+    if (newRecords.length > 0) {
+      onSavePayrolls([...newRecords, ...updatedPayrolls]);
+    } else {
+      onSavePayrolls(updatedPayrolls);
+    }
   };
 
   const handleToggleStatus = (id: string) => {
@@ -370,7 +459,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
   };
 
 
-  const calculatedModalNet = Math.max(0, (baseSalary + overtimeAmount + bonusAmount) - (inssDiscount + advancesDiscount + otherDiscounts));
+  const calculatedModalNet = Math.max(0, (baseSalary + overtimeAmount + bonusAmount + commissionAmount) - (inssDiscount + advancesDiscount + otherDiscounts));
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -410,7 +499,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
             type="button"
             onClick={handleBatchGenerate}
             className="flex-1 sm:flex-none inline-flex items-center justify-center space-x-1.5 px-3 py-1.5 border border-emerald-400 dark:border-emerald-700 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-950 dark:text-emerald-300 font-bold text-xs rounded-lg hover:bg-emerald-600 hover:text-white transition cursor-pointer"
-            title="Gera folhas automáticas para todos os colaboradores ativos"
+            title="Gera folhas automáticas com proventos de comissões integradas para todos os colaboradores ativos"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>Gerar Folha em Lote</span>
@@ -441,6 +530,11 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
           <span className="text-sm sm:text-base font-black text-black dark:text-emerald-400 font-['Outfit']">
             +{formatCurrencyBRL(totalOvertimeBonus)}
           </span>
+          {totalCommissions > 0 && (
+            <span className="text-[10px] text-black/80 dark:text-emerald-300 font-bold block truncate" title={`Comissões apuradas no mês: ${formatCurrencyBRL(totalCommissions)}`}>
+              (inclui {formatCurrencyBRL(totalCommissions)} em comissões)
+            </span>
+          )}
         </div>
         <div className="crm-card bg-[#87AFE3] dark:bg-stone-900 border border-blue-200/80 dark:border-stone-800 rounded-xl p-2.5 shadow-xs text-black dark:text-white">
           <span className="text-[11px] font-black text-black dark:text-stone-300 block uppercase">Total Deduções</span>
@@ -461,7 +555,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
         <div className="flex items-center space-x-2 text-black dark:text-stone-200">
           <ShieldCheck className="w-4 h-4 text-[#0963cb] shrink-0" />
           <span>
-            <strong className="text-black dark:text-white">Filtro de Terceirizados & INSS CLT:</strong> Motoristas e vínculos <strong>Terceirizados</strong> são geridos exclusivamente pelo Financeiro. O cálculo automático de <strong>INSS</strong> aplica-se unicamente a funcionários <strong>Registrado (CLT)</strong>.
+            <strong className="text-black dark:text-white">Integração de Comissões & Regras de Vínculo:</strong> Comissões apuradas em ordens de serviço de silagem e produção são somadas automaticamente em <strong className="text-black dark:text-white">Proventos (+)</strong> de colaboradores internos. Motoristas <strong className="text-black dark:text-white">Terceirizados</strong> e <strong className="text-black dark:text-white">Agenciadores</strong> têm repasses geridos exclusivamente pelo Financeiro. Cálculo automático de <strong className="text-black dark:text-white">INSS</strong> restrito ao regime CLT.
           </span>
         </div>
       </div>
@@ -548,7 +642,12 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                     </td>
 
                     <td className="py-2 px-3 text-right font-bold text-emerald-900 dark:text-emerald-400 text-xs font-['Outfit']">
-                      {formatCurrencyBRL((item.overtimeAmount || 0) + (item.bonusAmount || 0))}
+                      <div>{formatCurrencyBRL((item.overtimeAmount || 0) + (item.bonusAmount || 0) + (item.commissionAmount || 0))}</div>
+                      {(item.commissionAmount || 0) > 0 && (
+                        <div className="text-[10px] text-emerald-950 dark:text-emerald-300 font-bold" title="Comissões apuradas nas ordens de serviço de silagem e produção">
+                          +{formatCurrencyBRL(item.commissionAmount || 0)} comissão
+                        </div>
+                      )}
                     </td>
 
                     <td className="py-2 px-3 text-right font-bold text-rose-900 dark:text-rose-400 text-xs font-['Outfit']">
@@ -655,10 +754,24 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
 
               {/* Grid de Proventos com fundo branco */}
               <div className="p-3.5 bg-white border border-stone-300 rounded-xl space-y-3 shadow-xs">
-                <span className="text-[11px] font-black uppercase text-black block tracking-wider">
-                  Proventos (Vencimentos)
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black uppercase text-black block tracking-wider">
+                    Proventos (Vencimentos)
+                  </span>
+                  {selectedEmployeeId && (
+                    <button
+                      type="button"
+                      onClick={() => handleSelectEmployee(selectedEmployeeId)}
+                      className="inline-flex items-center space-x-1 text-[10px] font-bold text-[#0963cb] hover:underline cursor-pointer"
+                      title="Recalcular comissões e descontos com base nas ordens de serviço do mês"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>Sincronizar Comissões / Vales</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
                   <div>
                     <label className="block text-[11px] font-bold text-black mb-1">
                       Salário Base (R$)
@@ -696,7 +809,54 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                       className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
                     />
                   </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-bold text-black truncate">
+                        Comissões Silagem (R$)
+                      </label>
+                      {commissionsInfo && commissionsInfo.breakdown.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowCommissionBreakdown(!showCommissionBreakdown)}
+                          className="text-[10px] font-bold text-[#0963cb] flex items-center space-x-0.5 cursor-pointer hover:underline"
+                        >
+                          <span>{commissionsInfo.count} OS</span>
+                          {showCommissionBreakdown ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={commissionAmount || ''}
+                      onChange={(e) => setCommissionAmount(parseFloat(e.target.value) || 0)}
+                      className="w-full p-2 border border-emerald-300 rounded-lg bg-emerald-50/50 text-emerald-900 font-bold outline-none focus:ring-1 focus:ring-emerald-600"
+                      title="Comissões apuradas automaticamente no fechamento de cortes e ordens de silagem"
+                    />
+                  </div>
                 </div>
+
+                {/* Detalhamento das comissões apuradas no mês */}
+                {commissionsInfo && commissionsInfo.breakdown.length > 0 && showCommissionBreakdown && (
+                  <div className="mt-2 p-2.5 bg-emerald-50/80 border border-emerald-200 rounded-lg space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between font-bold text-emerald-950">
+                      <span>Ordens de Serviço Integradas ({commissionsInfo.referenceMonth})</span>
+                      <span>Total: {formatCurrencyBRL(commissionsInfo.total)}</span>
+                    </div>
+                    <div className="max-h-36 overflow-y-auto space-y-1 divide-y divide-emerald-200/60">
+                      {commissionsInfo.breakdown.map((b, idx) => (
+                        <div key={idx} className="pt-1 flex items-center justify-between text-[11px] text-emerald-900">
+                          <span className="truncate pr-2">
+                            <strong>{b.serviceCode}</strong> - {b.clientName} ({b.roleLabel})
+                          </span>
+                          <span className="font-bold whitespace-nowrap font-['Outfit']">
+                            {formatCurrencyBRL(b.amount)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Grid de Deduções com fundo branco */}

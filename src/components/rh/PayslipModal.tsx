@@ -26,7 +26,7 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
     window.print();
   };
 
-  const totalEarnings = payroll.baseSalary + payroll.overtimeAmount + payroll.bonusAmount;
+  const totalEarnings = payroll.baseSalary + (payroll.overtimeAmount || 0) + (payroll.bonusAmount || 0) + (payroll.commissionAmount || 0);
   const totalDiscounts = payroll.inssDiscount + payroll.advancesDiscount + payroll.otherDiscounts;
 
   return (
@@ -143,6 +143,20 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
                     <td className="py-2 px-3 text-center text-stone-500">--</td>
                     <td className="py-2 px-3 text-right font-medium text-emerald-600 dark:text-emerald-400">
                       {formatCurrencyBRL(payroll.bonusAmount)}
+                    </td>
+                    <td className="py-2 px-3 text-right text-stone-400">-</td>
+                  </tr>
+                )}
+
+                {(payroll.commissionAmount || 0) > 0 && (
+                  <tr>
+                    <td className="py-2 px-3 text-stone-400">035</td>
+                    <td className="py-2 px-3 font-semibold text-stone-800 dark:text-stone-200">
+                      Comissões Variáveis de Silagem / Produção
+                    </td>
+                    <td className="py-2 px-3 text-center text-stone-500">--</td>
+                    <td className="py-2 px-3 text-right font-medium text-emerald-600 dark:text-emerald-400">
+                      {formatCurrencyBRL(payroll.commissionAmount || 0)}
                     </td>
                     <td className="py-2 px-3 text-right text-stone-400">-</td>
                   </tr>

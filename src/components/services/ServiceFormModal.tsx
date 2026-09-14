@@ -1113,6 +1113,8 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       tractorOperatorHours: typeof qtdBaseComissao === 'number' ? qtdBaseComissao : undefined,
       tractorOperatorCommissionRate: typeof taxaComissaoOperador === 'number' ? Number(taxaComissaoOperador.toFixed(2)) : undefined,
       tractorOperatorCommission: Number((comissaoTratorP1 + comissaoTratorP2).toFixed(2)),
+      tractorOperatorCommissionP1: Number(comissaoTratorP1.toFixed(2)),
+      tractorOperatorCommissionP2: Number(comissaoTratorP2.toFixed(2)),
 
       // Forrageira
       forageHarvesterId: forrageiraId,
@@ -1129,6 +1131,8 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       forageRatePerHour: typeof valorHoraForrageira === 'number' ? valorHoraForrageira : undefined,
       forageTotalAmount: subtotalForrageira,
       forageOperatorCommission: Number((comissaoForrageiraP1 + comissaoForrageiraP2).toFixed(2)),
+      forageOperatorCommissionP1: Number(comissaoForrageiraP1.toFixed(2)),
+      forageOperatorCommissionP2: Number(comissaoForrageiraP2.toFixed(2)),
 
       // Frotas
       trucks: updatedTrucks,

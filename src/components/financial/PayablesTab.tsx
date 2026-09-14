@@ -18,7 +18,8 @@ import {
   Check,
   Edit3,
   Trash2,
-  Paperclip
+  Paperclip,
+  X
 } from 'lucide-react';
 import { Expense, BankAccount, Employee, PaymentMethod } from '../../types';
 import { formatCurrencyBRL, formatDateBR } from '../../lib/storage';
@@ -296,6 +297,52 @@ export const PayablesTab: React.FC<PayablesTabProps> = ({
               </button>
             );
           })}
+
+          {/* Divisor sutil */}
+          <div className="h-4 w-px bg-slate-300 mx-0.5 shrink-0 hidden md:block" />
+
+          {/* Filtro por Intervalo de Datas (De: / Até:) */}
+          <div className="flex items-center space-x-1.5 shrink-0">
+            <div className="flex items-center space-x-1 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200 text-xs">
+              <span className="text-[11px] font-black text-black">De:</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  if (selectedMonthKey) setSelectedMonthKey(null);
+                }}
+                className="bg-transparent text-xs text-black font-semibold outline-none cursor-pointer"
+                title="Filtrar a partir desta data"
+              />
+            </div>
+            <div className="flex items-center space-x-1 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200 text-xs">
+              <span className="text-[11px] font-black text-black">Até:</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  if (selectedMonthKey) setSelectedMonthKey(null);
+                }}
+                className="bg-transparent text-xs text-black font-semibold outline-none cursor-pointer"
+                title="Filtrar até esta data"
+              />
+            </div>
+            {(startDate || endDate) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setStartDate('');
+                  setEndDate('');
+                }}
+                className="p-1 text-slate-600 hover:text-rose-600 hover:bg-slate-200 rounded transition cursor-pointer"
+                title="Limpar intervalo de datas"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center space-x-2 w-full sm:w-auto">
