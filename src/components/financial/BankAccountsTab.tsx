@@ -224,7 +224,7 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
   return (
     <div className="space-y-5">
       {/* Header & Total Balance */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-5 text-black">
+      <div className="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-4 text-black">
         <div className="space-y-1.5">
           <div className="flex items-center space-x-2">
             <span className="text-xs font-black text-black uppercase tracking-wider">
@@ -311,7 +311,15 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className={`grid gap-3 ${
+          accounts.length === 1 
+            ? 'grid-cols-1 max-w-md' 
+            : accounts.length === 2 
+              ? 'grid-cols-1 sm:grid-cols-2' 
+              : accounts.length === 3 
+                ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' 
+                : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+        }`}>
           {accounts.map((acc) => {
             const hasOverdraft = (acc.overdraftLimit || 0) > 0;
             const totalAccAvailable = (acc.balance || 0) + (acc.overdraftLimit || 0);
@@ -320,28 +328,28 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
               <div
                 key={acc.id}
                 id={`card-conta-${acc.id}`}
-                className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4 hover:border-slate-300 transition text-black"
+                className="bg-white border border-slate-200 rounded-xl p-3 sm:p-3.5 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-slate-300 hover:shadow-xs transition text-black"
               >
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center space-x-3 truncate">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center space-x-2.5 truncate min-w-0">
                       <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-2xs font-black shrink-0 overflow-hidden"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-2xs font-black shrink-0 overflow-hidden"
                         style={{ backgroundColor: acc.color || '#009688' }}
                       >
                         {acc.accountType === 'caixa_fisico' ? (
-                          <Wallet className="w-5 h-5" />
+                          <Wallet className="w-4 h-4" />
                         ) : (
-                          <BankLogoIcon code={acc.bankCode} name={acc.bankName} size={24} className="text-white" />
+                          <BankLogoIcon code={acc.bankCode} name={acc.bankName} size={18} className="text-white" />
                         )}
                       </div>
-                      <div className="truncate">
-                        <h4 className="font-black text-black text-sm truncate">
+                      <div className="truncate min-w-0">
+                        <h4 className="font-extrabold text-black text-xs sm:text-[13px] leading-tight truncate">
                           {acc.name}
                         </h4>
-                        <div className="flex items-center space-x-1.5 text-xs text-stone-600 font-bold truncate">
+                        <div className="flex items-center space-x-1 text-[10px] text-stone-500 font-semibold truncate leading-tight mt-0.5">
                           {acc.bankCode && (
-                            <span className="px-1.5 py-0.2 rounded text-[10px] font-black font-mono bg-stone-100 text-stone-700 border border-stone-200">
+                            <span className="px-1 py-0.2 rounded text-[9px] font-bold font-mono bg-stone-100 text-stone-600 border border-stone-200">
                               {acc.bankCode}
                             </span>
                           )}
@@ -350,103 +358,108 @@ export const BankAccountsTab: React.FC<BankAccountsTabProps> = ({
                       </div>
                     </div>
 
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-black border border-slate-200 shrink-0">
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-stone-700 border border-slate-200 shrink-0 leading-none">
                       {getAccountTypeLabel(acc.accountType)}
                     </span>
                   </div>
 
-                  {/* Card de Saldo */}
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                  {/* Card de Saldo Compacto */}
+                  <div className="p-2 sm:p-2.5 bg-slate-50/80 rounded-lg border border-slate-200/80 space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black text-black uppercase tracking-wider">
+                      <span className="text-[9px] font-extrabold text-stone-500 uppercase tracking-wider">
                         {hasOverdraft ? 'Saldo Total Disponível' : 'Saldo em Conta'}
                       </span>
                       {hasOverdraft && (
-                        <span className="text-[9px] font-black uppercase text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                          + Limite Incluso
+                        <span className="text-[8.5px] font-black uppercase text-emerald-800 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200">
+                          + Limite
                         </span>
                       )}
                     </div>
 
-                    <div className={`text-xl font-black font-['Outfit'] ${totalAccAvailable >= 0 ? 'text-black' : 'text-rose-600'}`}>
+                    <div className={`text-base sm:text-lg font-black font-['Outfit'] leading-tight ${totalAccAvailable >= 0 ? 'text-black' : 'text-rose-600'}`}>
                       {formatCurrencyBRL(hasOverdraft ? totalAccAvailable : acc.balance)}
                     </div>
 
                     {hasOverdraft && (
-                      <div className="text-[11px] text-stone-600 font-semibold border-t border-slate-200 pt-1.5 flex justify-between items-center">
+                      <div className="text-[9.5px] sm:text-[10px] text-stone-600 font-medium border-t border-slate-200/70 pt-1 flex justify-between items-center leading-tight">
                         <span>Saldo Próprio: <strong className={acc.balance < 0 ? 'text-rose-600' : 'text-stone-900'}>{formatCurrencyBRL(acc.balance)}</strong></span>
                         <span>Limite: <strong className="text-emerald-800">{formatCurrencyBRL(acc.overdraftLimit || 0)}</strong></span>
                       </div>
                     )}
                   </div>
-
-                  {/* Dados Adicionais: Agência, Conta com Dígito e PIX */}
-                  <div className="space-y-1.5 text-xs text-black pt-1 font-medium">
-                    {(acc.agency || acc.accountNumber) && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-stone-500 font-semibold">Ag / Conta:</span>
-                        <span className="font-bold font-mono text-black">
-                          {acc.agency ? `Ag: ${acc.agency}` : ''} 
-                          {acc.agency && acc.accountNumber ? ' | ' : ''}
-                          {acc.accountNumber ? `CC: ${acc.accountNumber}${acc.accountDigit ? `-${acc.accountDigit}` : ''}` : ''}
-                        </span>
-                      </div>
-                    )}
-
-                    {acc.pixKey && (
-                      <div className="flex justify-between items-center gap-2">
-                        <span className="text-stone-500 font-semibold shrink-0">
-                          PIX {acc.pixKeyType ? `(${acc.pixKeyType.toUpperCase()})` : ''}:
-                        </span>
-                        <span className="font-mono text-[11px] font-bold text-emerald-900 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 truncate" title={acc.pixKey}>
-                          {acc.pixKey}
-                        </span>
-                      </div>
-                    )}
-                    {/* Cartões Corporativos Vinculados */}
-                    {acc.corporateCards && acc.corporateCards.length > 0 && (
-                      <div className="flex justify-between items-center gap-2 pt-1 border-t border-slate-100">
-                        <span className="text-purple-800 font-semibold flex items-center gap-1">
-                          <CreditCard className="w-3 h-3 text-purple-600" />
-                          <span>{acc.corporateCards.length} {acc.corporateCards.length === 1 ? 'Cartão' : 'Cartões'}:</span>
-                        </span>
-                        <span className="font-mono text-[10px] font-bold text-purple-900 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
-                          {formatCurrencyBRL(acc.corporateCards.reduce((s, c) => s + (c.usedLimit || 0), 0))} util.
-                        </span>
-                      </div>
-                    )}
-                  </div>
                 </div>
 
-                {/* Rodapé do Card com Ações */}
-                <div className="flex items-center justify-between pt-3 border-t border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenStatement(acc.id)}
-                    className="inline-flex items-center space-x-1.5 text-xs font-bold text-[#0963cb] hover:text-blue-800 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition cursor-pointer"
-                    title="Ver Extrato da Conta"
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>Ver Extrato</span>
-                  </button>
+                {/* Dados da Base e Ações Integradas */}
+                <div className="pt-2 border-t border-slate-100 space-y-2">
+                  {/* Dados de Ag/Conta e PIX compactos */}
+                  {((acc.agency || acc.accountNumber) || acc.pixKey || (acc.corporateCards && acc.corporateCards.length > 0)) && (
+                    <div className="space-y-1 text-[10px] text-stone-600 leading-tight">
+                      {(acc.agency || acc.accountNumber) && (
+                        <div className="flex justify-between items-center gap-1">
+                          <span className="text-stone-400 font-semibold text-[9.5px]">Ag/Conta:</span>
+                          <span className="font-bold font-mono text-stone-800 text-[10.5px] truncate">
+                            {acc.agency ? `Ag: ${acc.agency}` : ''} 
+                            {acc.agency && acc.accountNumber ? ' | ' : ''}
+                            {acc.accountNumber ? `CC: ${acc.accountNumber}${acc.accountDigit ? `-${acc.accountDigit}` : ''}` : ''}
+                          </span>
+                        </div>
+                      )}
 
-                  <div className="flex items-center space-x-1">
+                      {acc.pixKey && (
+                        <div className="flex justify-between items-center gap-1">
+                          <span className="text-stone-400 font-semibold text-[9.5px] shrink-0">
+                            PIX{acc.pixKeyType ? ` (${acc.pixKeyType.toUpperCase()})` : ''}:
+                          </span>
+                          <span className="font-mono text-[9.5px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 truncate max-w-[160px]" title={acc.pixKey}>
+                            {acc.pixKey}
+                          </span>
+                        </div>
+                      )}
+
+                      {acc.corporateCards && acc.corporateCards.length > 0 && (
+                        <div className="flex justify-between items-center gap-1">
+                          <span className="text-purple-700 font-semibold text-[9.5px] flex items-center gap-1">
+                            <CreditCard className="w-2.5 h-2.5 text-purple-600" />
+                            <span>{acc.corporateCards.length} {acc.corporateCards.length === 1 ? 'Cartão' : 'Cartões'}:</span>
+                          </span>
+                          <span className="font-mono text-[9px] font-bold text-purple-900 bg-purple-50 px-1 py-0.2 rounded border border-purple-200">
+                            {formatCurrencyBRL(acc.corporateCards.reduce((s, c) => s + (c.usedLimit || 0), 0))} util.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Barra de Ações Integrada */}
+                  <div className="flex items-center justify-between pt-1">
                     <button
                       type="button"
-                      onClick={() => handleOpenModal(acc)}
-                      className="p-1.5 text-stone-700 hover:text-[#0963cb] hover:bg-sky-50 rounded-lg transition cursor-pointer"
-                      title="Editar Conta"
+                      onClick={() => handleOpenStatement(acc.id)}
+                      className="inline-flex items-center space-x-1 text-[11px] font-bold text-[#0963cb] hover:text-blue-800 hover:bg-blue-50/80 px-2 py-1 rounded-md transition cursor-pointer active:scale-95"
+                      title="Ver Extrato da Conta"
                     >
-                      <Edit2 className="w-4 h-4" />
+                      <FileText className="w-3 h-3" />
+                      <span>Ver Extrato</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(acc.id)}
-                      className="p-1.5 text-stone-700 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                      title="Excluir Conta"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+
+                    <div className="flex items-center space-x-0.5">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenModal(acc)}
+                        className="p-1 text-stone-500 hover:text-[#0963cb] hover:bg-sky-50 rounded-md transition cursor-pointer"
+                        title="Editar Conta"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(acc.id)}
+                        className="p-1 text-stone-500 hover:text-rose-600 hover:bg-rose-50 rounded-md transition cursor-pointer"
+                        title="Excluir Conta"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
