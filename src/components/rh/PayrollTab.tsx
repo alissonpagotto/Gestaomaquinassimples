@@ -318,7 +318,43 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
   const [showAbsencesBreakdown, setShowAbsencesBreakdown] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Ação de Impressão da Folha com dados do modal (Holerite com Logomarca e Assinatura)
+  // Ação de Impressão Isolada do Recibo Branco (Holerite Oficial)
+  const handlePrintIsolated = () => {
+    const reciboElement = document.getElementById('recibo-holerite-branco');
+    if (!reciboElement) return;
+
+    const printWindow = window.open('', '_blank', 'width=900,height=1000');
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Imprimir Holerite</title>
+            <link rel="stylesheet" href="${window.location.origin}/src/index.css">
+            <style>
+              body { background: white; color: black; padding: 20px; font-family: sans-serif; }
+              @media print {
+                body { padding: 0; margin: 0; background: white; }
+                .print\\:hidden { display: none !important; }
+              }
+            </style>
+          </head>
+          <body>
+            ${reciboElement.innerHTML}
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
+      }, 500);
+    }
+  };
+
+  // Prepara os dados atuais do modal e dispara a impressão isolada
   const handlePrintCurrentModalPayroll = () => {
     const emp = employees.find(e => e.id === selectedEmployeeId);
     if (!emp) {
@@ -350,6 +386,11 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
       createdAt: editingPayroll?.createdAt || new Date().toISOString(),
     };
     setModalPayslipPayroll(draft);
+
+    // Aguarda o React renderizar o elemento #recibo-holerite-branco e dispara a impressão isolada
+    setTimeout(() => {
+      handlePrintIsolated();
+    }, 150);
   };
 
   // Filtered Payrolls - Exclusão estrita de Terceirizados (gerenciados pelo Financeiro)
@@ -978,16 +1019,6 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
               <div className="flex items-center space-x-2">
                 <button
                   type="button"
-                  onClick={handlePrintCurrentModalPayroll}
-                  disabled={!selectedEmployeeId}
-                  className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition cursor-pointer disabled:opacity-40 shadow-2xs"
-                  title="Imprimir Folha de Pagamento (Holerite com Logomarca da Empresa)"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Imprimir Folha</span>
-                </button>
-                <button
-                  type="button"
                   onClick={() => setIsModalOpen(false)}
                   className="p-1 text-white hover:bg-white/20 rounded-lg transition cursor-pointer"
                 >
@@ -1366,56 +1397,41 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                       {formatMoneyBRL(calculatedModalNet)}
                     </span>
                   </div>
-
-                  {/* Botão de Impressão Rápida no Card de Situação */}
-                  <button
-                    type="button"
-                    onClick={handlePrintCurrentModalPayroll}
-                    disabled={!selectedEmployeeId}
-                    className="w-full mt-0.5 py-1.5 px-3 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#0963cb] text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer disabled:opacity-40 shadow-2xs"
-                    title="Gerar e imprimir holerite oficial com logomarca"
-                  >
-                    <Printer className="w-3.5 h-3.5 text-[#0963cb]" />
-                    <span>Imprimir Folha de Pagamento</span>
-                  </button>
                 </div>
               </div>
 
-              {/* Observações Internas */}
-              <div className="p-2 bg-white border border-stone-300 rounded-lg shadow-2xs">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1.5">
-                  <label className="font-bold text-black text-xs shrink-0 sm:w-44">
-                    Observações Internas (Opcional):
+              {/* Observações Internas e Ações do Rodapé */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 border-t border-black/15 shrink-0">
+                {/* Campo de Observações Internas */}
+                <div className="flex-1 min-w-0 p-1.5 bg-white border border-stone-300 rounded-lg shadow-2xs flex items-center gap-2">
+                  <label className="font-bold text-black text-xs shrink-0">
+                    Observações:
                   </label>
                   <input
                     type="text"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Ex: Pagamento agendado, observações da safra..."
-                    className="w-full p-1.5 border border-stone-300 rounded-lg bg-white text-black outline-none focus:ring-1 focus:ring-[#0963cb] text-xs font-medium"
+                    placeholder="Ex: Pagamento agendado, observações..."
+                    className="w-full p-1 bg-transparent text-black outline-none text-xs font-medium"
                   />
                 </div>
-              </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-black/15 shrink-0">
-                <div className="flex items-center space-x-2">
+                {/* Botões de Ação com Botão Único 'Imprimir Folha' entre Observações e Cancelar */}
+                <div className="flex items-center space-x-2 shrink-0 justify-end">
                   <button
                     type="button"
                     onClick={handlePrintCurrentModalPayroll}
                     disabled={!selectedEmployeeId}
-                    className="px-3 py-1.5 rounded-lg bg-white border border-stone-300 text-stone-800 hover:bg-stone-50 font-bold transition shadow-xs cursor-pointer text-xs flex items-center space-x-1.5 disabled:opacity-40"
-                    title="Imprimir Folha de Pagamento (Holerite com Logomarca e Assinaturas)"
+                    className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-300 text-stone-700 font-bold transition shadow-2xs cursor-pointer text-xs disabled:opacity-40"
+                    title="Imprimir Holerite Oficial (Recibo Limpo em PDF)"
                   >
-                    <Printer className="w-3.5 h-3.5 text-[#0963cb]" />
+                    <Printer className="w-3.5 h-3.5 text-stone-600" />
                     <span>Imprimir Folha</span>
                   </button>
-                </div>
-                <div className="flex items-center space-x-2.5">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-1.5 rounded-lg bg-white border border-stone-300 text-stone-700 font-bold hover:bg-stone-50 cursor-pointer transition text-xs"
+                    className="px-4 py-1.5 rounded-lg bg-white border border-stone-300 text-stone-700 font-bold hover:bg-stone-50 cursor-pointer transition text-xs shadow-2xs"
                   >
                     Cancelar
                   </button>

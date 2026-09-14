@@ -213,7 +213,7 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
         </div>
 
         {/* Printable Holerite Content */}
-        <div className="p-6 sm:p-8 space-y-5 text-stone-900 dark:text-stone-100 bg-white dark:bg-stone-900 print:p-2" id="printable-payslip">
+        <div className="p-6 sm:p-8 space-y-5 text-stone-900 dark:text-stone-100 bg-white dark:bg-stone-900 print:p-2" id="recibo-holerite-branco">
           
           {/* ========================================================================= */}
           {/* CABEÇALHO PADRÃO ORDEM DE SERVIÇO (2 COLUNAS JUSTIFY-BETWEEN)             */}

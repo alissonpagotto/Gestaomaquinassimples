@@ -304,6 +304,7 @@
   }
 
   /* Recibo de pagamento branco limpo e profissional */
+  #recibo-holerite-branco,
   #printable-payslip {
     background: #ffffff !important;
     background-color: #ffffff !important;
