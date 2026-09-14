@@ -165,8 +165,8 @@ export const TruckFleetSection: React.FC<TruckFleetSectionProps> = ({
 
   return (
     <div 
-      className="border border-slate-300 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 rounded-xl p-4 space-y-4 w-full max-w-full overflow-hidden"
-      style={{ backgroundColor: '#5c82e0' }}
+      className="border border-slate-300 dark:border-slate-700 rounded-xl p-4 space-y-4 w-full max-w-full overflow-hidden bg-[#4e98dd]"
+      style={{ backgroundColor: '#4e98dd' }}
     >
       
       {/* Cabeçalho da Seção de Frotas */}
