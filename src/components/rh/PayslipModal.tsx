@@ -31,9 +31,9 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
   allEmployees,
   commissionsInfo,
 }) => {
-  if (!isOpen || !payroll) return null;
-
   useEffect(() => {
+    if (!isOpen || !payroll) return;
+
     document.body.classList.add('has-payslip-open');
     const handleBeforePrint = () => {
       document.body.classList.add('printing-payslip');
@@ -51,22 +51,7 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
       window.removeEventListener('beforeprint', handleBeforePrint);
       window.removeEventListener('afterprint', handleAfterPrint);
     };
-  }, []);
-
-  const handlePrint = (e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    document.body.classList.add('printing-payslip');
-    window.focus();
-    setTimeout(() => {
-      window.print();
-    }, 30);
-  };
-
-  const totalEarnings = payroll.baseSalary + (payroll.overtimeAmount || 0) + (payroll.bonusAmount || 0) + (payroll.commissionAmount || 0);
-  const totalDiscounts = payroll.inssDiscount + payroll.advancesDiscount + payroll.otherDiscounts;
+  }, [isOpen, payroll]);
 
   // Dados Institucionais da Empresa
   const tradeName =
@@ -101,18 +86,18 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
 
   // Identificação do Documento (Lado Direito)
   const docNumber = useMemo(() => {
-    if (!payroll.referenceMonth) return '01';
+    if (!payroll?.referenceMonth) return '01';
     const formattedRef = payroll.referenceMonth.includes('/')
       ? payroll.referenceMonth.split('/').reverse().join('/')
       : payroll.referenceMonth;
     return `HOL-${formattedRef}`;
-  }, [payroll.referenceMonth]);
+  }, [payroll?.referenceMonth]);
 
   const issueDate = useMemo(() => {
-    if (payroll.paymentDate) return formatDateBR(payroll.paymentDate);
+    if (payroll?.paymentDate) return formatDateBR(payroll.paymentDate);
     const today = new Date().toISOString().split('T')[0];
     return formatDateBR(today);
-  }, [payroll.paymentDate]);
+  }, [payroll?.paymentDate]);
 
   const contractRegime = useMemo(() => {
     const type = employee?.registrationType || employee?.contractType;
@@ -132,24 +117,27 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
 
   // 1. Apuração detalhada das Ordens de Serviço / Comissões
   const resolvedCommissions = useMemo(() => {
+    if (!payroll) return { totalCommission: 0, servicesCount: 0, breakdown: [] };
     if (commissionsInfo) return commissionsInfo;
     const srvs = services || getStoredServices();
     const emps = allEmployees || (employee ? [employee] : []);
     return getEmployeeMonthCommissions(payroll.employeeId, payroll.referenceMonth, srvs, emps);
-  }, [commissionsInfo, services, allEmployees, employee, payroll.employeeId, payroll.referenceMonth]);
+  }, [commissionsInfo, services, allEmployees, employee, payroll?.employeeId, payroll?.referenceMonth]);
 
   // 2. Apuração detalhada dos Vales / Adiantamentos
   const resolvedAdvances = useMemo(() => {
+    if (!payroll) return [];
     const list = advances || getStoredSalaryAdvances();
     return list.filter(
       a => a.employeeId === payroll.employeeId &&
            a.referenceMonth === payroll.referenceMonth &&
            (a.status as string) !== 'cancelado'
     );
-  }, [advances, payroll.employeeId, payroll.referenceMonth]);
+  }, [advances, payroll?.employeeId, payroll?.referenceMonth]);
 
   // 3. Apuração detalhada das Faltas e Ocorrências
   const resolvedAbsences = useMemo(() => {
+    if (!payroll) return [];
     const list = absences || getStoredAbsences();
     return list.filter(a => {
       if (a.employeeId !== payroll.employeeId) return false;
@@ -162,7 +150,25 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
       }
       return false;
     });
-  }, [absences, payroll.employeeId, payroll.referenceMonth]);
+  }, [absences, payroll?.employeeId, payroll?.referenceMonth]);
+
+  const handlePrint = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    document.body.classList.add('printing-payslip');
+    window.focus();
+    setTimeout(() => {
+      window.print();
+    }, 30);
+  };
+
+  // Safe early exit AFTER all hooks are called
+  if (!isOpen || !payroll) return null;
+
+  const totalEarnings = payroll.baseSalary + (payroll.overtimeAmount || 0) + (payroll.bonusAmount || 0) + (payroll.commissionAmount || 0);
+  const totalDiscounts = payroll.inssDiscount + payroll.advancesDiscount + payroll.otherDiscounts;
 
   // Verifica se há qualquer lançamento detalhado ou observação para exibir a seção de conferência
   const hasDetailedBreakdown = 
