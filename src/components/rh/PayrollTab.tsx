@@ -16,16 +16,115 @@ import {
   X,
   ChevronDown,
   ChevronUp,
-  RefreshCw
+  RefreshCw,
+  Calendar,
+  CreditCard,
+  Landmark,
+  Building2,
+  ShieldAlert,
+  ShieldCheck
 } from 'lucide-react';
 import { Employee, PayrollRecord, SalaryAdvance, ServiceOrder } from '../../types';
-import { formatCurrencyBRL, formatDateBR, getStoredServices } from '../../lib/storage';
+import { formatCurrencyBRL, formatDateBR, getStoredServices, getStoredCompanyProfile } from '../../lib/storage';
 import { useConfirm } from '../../context/ConfirmContext';
-import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import { 
   getEmployeeMonthCommissions, 
-  EmployeeMonthCommissions 
+  EmployeeMonthCommissions,
+  formatMoneyBRL,
+  parseMoneyToFloat,
+  formatCPF,
+  formatEmployeeAdmissionDate,
+  formatEmployeeBankDeposit
 } from './payrollHelpers';
+import { PayslipModal } from './PayslipModal';
+
+// ==========================================
+// COMPONENTE DE INPUT MONETÁRIO BRL (R$ 0.000,00)
+// ==========================================
+interface BrlCurrencyInputProps {
+  id?: string;
+  label: string;
+  value: number;
+  onChange: (val: number) => void;
+  className?: string;
+  inputClassName?: string;
+  readOnly?: boolean;
+  required?: boolean;
+  title?: string;
+  headerRight?: React.ReactNode;
+}
+
+const BrlCurrencyInput: React.FC<BrlCurrencyInputProps> = ({
+  id,
+  label,
+  value,
+  onChange,
+  className = '',
+  inputClassName = '',
+  readOnly = false,
+  required = false,
+  title,
+  headerRight,
+}) => {
+  const displayVal = formatMoneyBRL(value);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (readOnly) return;
+    const num = parseMoneyToFloat(e.target.value);
+    onChange(num);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    if (readOnly) return;
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').trim();
+    if (!pasted) return;
+
+    if (pasted.includes(',') && pasted.includes('.')) {
+      const normalized = pasted.replace(/[^\d.,]/g, '').replace(/\./g, '').replace(',', '.');
+      const val = parseFloat(normalized);
+      onChange(isNaN(val) ? 0 : Number(val.toFixed(2)));
+    } else if (pasted.includes(',')) {
+      const normalized = pasted.replace(/[^\d,]/g, '').replace(',', '.');
+      const val = parseFloat(normalized);
+      onChange(isNaN(val) ? 0 : Number(val.toFixed(2)));
+    } else if (pasted.includes('.')) {
+      const normalized = pasted.replace(/[^\d.]/g, '');
+      const val = parseFloat(normalized);
+      onChange(isNaN(val) ? 0 : Number(val.toFixed(2)));
+    } else {
+      const clean = pasted.replace(/\D/g, '');
+      const val = parseInt(clean, 10);
+      onChange(isNaN(val) ? 0 : Number((val / 100).toFixed(2)));
+    }
+  };
+
+  return (
+    <div className={className}>
+      <div className="flex items-center justify-between mb-1">
+        <label htmlFor={id} className="block text-[11px] font-bold text-black dark:text-stone-200 truncate">
+          {label}
+        </label>
+        {headerRight}
+      </div>
+      <div className="relative">
+        <input
+          id={id}
+          type="text"
+          inputMode="numeric"
+          value={displayVal}
+          onChange={handleChange}
+          onPaste={handlePaste}
+          onFocus={(e) => e.target.select()}
+          readOnly={readOnly}
+          required={required}
+          title={title}
+          className={`w-full p-2.5 border border-stone-300 rounded-lg bg-white dark:bg-stone-800 text-black dark:text-white font-bold outline-none focus:ring-1 focus:ring-[#0963cb] text-xs sm:text-sm ${inputClassName}`}
+        />
+      </div>
+    </div>
+  );
+};
 
 // ==========================================
 // REGRAS DE NEGÓCIO DA FOLHA DE PAGAMENTO
@@ -172,6 +271,8 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPayroll, setEditingPayroll] = useState<PayrollRecord | null>(null);
+  const [modalPayslipPayroll, setModalPayslipPayroll] = useState<PayrollRecord | null>(null);
+  const companyProfile = getStoredCompanyProfile();
 
   // Form State
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
@@ -186,6 +287,40 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
   const [otherDiscounts, setOtherDiscounts] = useState<number>(0);
   const [payrollStatus, setPayrollStatus] = useState<'pendente' | 'pago'>('pendente');
   const [notes, setNotes] = useState('');
+
+  // Ação de Impressão da Folha com dados do modal (Holerite com Logomarca e Assinatura)
+  const handlePrintCurrentModalPayroll = () => {
+    const emp = employees.find(e => e.id === selectedEmployeeId);
+    if (!emp) {
+      alert('Por favor, selecione um colaborador primeiro.');
+      return;
+    }
+    const currentNet = Math.max(
+      0,
+      (baseSalary + overtimeAmount + bonusAmount + commissionAmount) -
+        (inssDiscount + advancesDiscount + otherDiscounts)
+    );
+    const draft: PayrollRecord = {
+      id: editingPayroll?.id || `pay_draft_${Date.now()}`,
+      employeeId: emp.id,
+      employeeName: emp.name,
+      employeeRole: emp.role,
+      referenceMonth: currentMonthRef,
+      baseSalary: baseSalary,
+      overtimeHours: editingPayroll?.overtimeHours || 0,
+      overtimeAmount: overtimeAmount,
+      bonusAmount: bonusAmount,
+      commissionAmount: commissionAmount,
+      inssDiscount: inssDiscount,
+      advancesDiscount: advancesDiscount,
+      otherDiscounts: otherDiscounts,
+      netSalary: currentNet,
+      status: payrollStatus,
+      notes: notes,
+      createdAt: editingPayroll?.createdAt || new Date().toISOString(),
+    };
+    setModalPayslipPayroll(draft);
+  };
 
   // Filtered Payrolls - Exclusão estrita de Terceirizados (gerenciados pelo Financeiro)
   const monthPayrolls = payrolls.filter(p => {
@@ -720,13 +855,25 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                   {editingPayroll ? 'Editar Folha de Pagamento' : 'Lançar Folha de Pagamento'} ({currentMonthRef})
                 </h3>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="p-1 text-white hover:bg-white/20 rounded-lg transition cursor-pointer"
-              >
-                <X className="w-5 h-5 text-white" />
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={handlePrintCurrentModalPayroll}
+                  disabled={!selectedEmployeeId}
+                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition cursor-pointer disabled:opacity-40 shadow-2xs"
+                  title="Imprimir Folha de Pagamento (Holerite com Logomarca da Empresa)"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Imprimir Folha</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="p-1 text-white hover:bg-white/20 rounded-lg transition cursor-pointer"
+                >
+                  <X className="w-5 h-5 text-white" />
+                </button>
+              </div>
             </div>
 
             <form onSubmit={handleSaveModal} className="p-5 sm:p-6 space-y-4 text-xs bg-[#b0d2ed] overflow-y-auto flex-1">
@@ -783,7 +930,54 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                 </div>
               </div>
 
-              {/* Grid de Proventos com fundo azul de destaque */}
+              {/* Enriquecimento do Cabeçalho do Funcionário: Admissão, CPF e Banco para Depósito */}
+              {selectedEmployeeId && (() => {
+                const selectedEmployee = employees.find(e => e.id === selectedEmployeeId);
+                if (!selectedEmployee) return null;
+                return (
+                  <div className="p-3 bg-white border border-stone-300 rounded-xl shadow-2xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      <div className="flex items-center space-x-2.5 p-2 bg-stone-50 rounded-lg border border-stone-200">
+                        <Calendar className="w-4 h-4 text-[#0963cb] shrink-0" />
+                        <div className="truncate">
+                          <span className="text-[10px] font-bold text-stone-500 uppercase block tracking-wider">
+                            Data de Admissão:
+                          </span>
+                          <span className="font-bold text-stone-900">
+                            {formatEmployeeAdmissionDate(selectedEmployee.admissionDate)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2.5 p-2 bg-stone-50 rounded-lg border border-stone-200">
+                        <CreditCard className="w-4 h-4 text-[#0963cb] shrink-0" />
+                        <div className="truncate">
+                          <span className="text-[10px] font-bold text-stone-500 uppercase block tracking-wider">
+                            CPF:
+                          </span>
+                          <span className="font-bold text-stone-900">
+                            {formatCPF(selectedEmployee.cpf)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2.5 p-2 bg-stone-50 rounded-lg border border-stone-200">
+                        <Landmark className="w-4 h-4 text-[#0963cb] shrink-0" />
+                        <div className="truncate">
+                          <span className="text-[10px] font-bold text-stone-500 uppercase block tracking-wider">
+                            Banco para Depósito:
+                          </span>
+                          <span className="font-bold text-stone-900 truncate block" title={formatEmployeeBankDeposit(selectedEmployee)}>
+                            {formatEmployeeBankDeposit(selectedEmployee)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Grid de Proventos com fundo azul de destaque e Máscara BRL em Tempo Real */}
               <div className="p-4 bg-blue-50/70 dark:bg-stone-900/90 border border-blue-200 dark:border-stone-700 rounded-xl space-y-3 shadow-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black uppercase text-blue-950 dark:text-blue-300 block tracking-wider">
@@ -803,49 +997,33 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-black dark:text-stone-200 mb-1">
-                      Salário Base (R$)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={baseSalary || ''}
-                      onChange={(e) => setBaseSalary(parseFloat(e.target.value) || 0)}
-                      className="w-full p-2.5 border border-stone-300 rounded-lg bg-white dark:bg-stone-800 text-black dark:text-white font-bold outline-none focus:ring-1 focus:ring-[#0963cb]"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-black dark:text-stone-200 mb-1">
-                      Horas Extras / Safra (R$)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={overtimeAmount || ''}
-                      onChange={(e) => setOvertimeAmount(parseFloat(e.target.value) || 0)}
-                      className="w-full p-2.5 border border-stone-300 rounded-lg bg-white dark:bg-stone-800 text-black dark:text-white font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-black dark:text-stone-200 mb-1">
-                      Bônus / Insalubridade (R$)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={bonusAmount || ''}
-                      onChange={(e) => setBonusAmount(parseFloat(e.target.value) || 0)}
-                      className="w-full p-2.5 border border-stone-300 rounded-lg bg-white dark:bg-stone-800 text-black dark:text-white font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-[11px] font-bold text-black dark:text-stone-200 truncate">
-                        Comissões Silagem (R$)
-                      </label>
-                      {commissionsInfo && commissionsInfo.breakdown.length > 0 && (
+                  <BrlCurrencyInput
+                    id="baseSalary"
+                    label="Salário Base"
+                    value={baseSalary}
+                    onChange={setBaseSalary}
+                    required
+                  />
+                  <BrlCurrencyInput
+                    id="overtimeAmount"
+                    label="Horas Extras / Safra"
+                    value={overtimeAmount}
+                    onChange={setOvertimeAmount}
+                  />
+                  <BrlCurrencyInput
+                    id="bonusAmount"
+                    label="Bônus / Insalubridade"
+                    value={bonusAmount}
+                    onChange={setBonusAmount}
+                  />
+                  <BrlCurrencyInput
+                    id="commissionAmount"
+                    label="Comissões Silagem"
+                    value={commissionAmount}
+                    onChange={setCommissionAmount}
+                    inputClassName="border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-300 focus:ring-emerald-600"
+                    headerRight={
+                      commissionsInfo && commissionsInfo.breakdown.length > 0 ? (
                         <button
                           type="button"
                           onClick={() => setShowCommissionBreakdown(!showCommissionBreakdown)}
@@ -854,17 +1032,10 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                           <span>{commissionsInfo.count} OS</span>
                           {showCommissionBreakdown ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                         </button>
-                      )}
-                    </div>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={commissionAmount || ''}
-                      onChange={(e) => setCommissionAmount(parseFloat(e.target.value) || 0)}
-                      className="w-full p-2.5 border border-emerald-300 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-300 font-bold outline-none focus:ring-1 focus:ring-emerald-600"
-                      title="Comissões apuradas automaticamente no fechamento de cortes e ordens de silagem"
-                    />
-                  </div>
+                      ) : null
+                    }
+                    title="Comissões apuradas automaticamente no fechamento de cortes e ordens de silagem"
+                  />
                 </div>
 
                 {/* Detalhamento das comissões apuradas no mês */}
@@ -895,48 +1066,30 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
 
               {/* Grid 2 Colunas: Deduções (Esquerda) + Situação & Salário Líquido (Direita) */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
-                {/* Deduções */}
+                {/* Deduções com Máscara BRL */}
                 <div className="lg:col-span-7 p-4 bg-white border border-stone-300 rounded-xl space-y-3 shadow-xs">
                   <span className="text-xs font-black uppercase text-black tracking-wider block">
                     Deduções (Descontos & Vales)
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                    <div>
-                      <label className="block text-[11px] font-bold text-black mb-1">
-                        INSS (R$)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={inssDiscount || ''}
-                        onChange={(e) => setInssDiscount(parseFloat(e.target.value) || 0)}
-                        className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-black mb-1">
-                        Vales / Adiantamentos (R$)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={advancesDiscount || ''}
-                        onChange={(e) => setAdvancesDiscount(parseFloat(e.target.value) || 0)}
-                        className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-black mb-1">
-                        Outros Descontos / Faltas (R$)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={otherDiscounts || ''}
-                        onChange={(e) => setOtherDiscounts(parseFloat(e.target.value) || 0)}
-                        className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
-                      />
-                    </div>
+                    <BrlCurrencyInput
+                      id="inssDiscount"
+                      label="INSS"
+                      value={inssDiscount}
+                      onChange={setInssDiscount}
+                    />
+                    <BrlCurrencyInput
+                      id="advancesDiscount"
+                      label="Vales / Adiantamentos"
+                      value={advancesDiscount}
+                      onChange={setAdvancesDiscount}
+                    />
+                    <BrlCurrencyInput
+                      id="otherDiscounts"
+                      label="Outros Descontos / Faltas"
+                      value={otherDiscounts}
+                      onChange={setOtherDiscounts}
+                    />
                   </div>
                 </div>
 
@@ -976,9 +1129,21 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                       <span className="text-xs font-bold text-stone-800">Salário Líquido</span>
                     </div>
                     <span className="text-xl sm:text-2xl font-black text-[#0963cb] font-['Outfit']">
-                      {formatCurrencyBRL(calculatedModalNet)}
+                      {formatMoneyBRL(calculatedModalNet)}
                     </span>
                   </div>
+
+                  {/* Botão de Impressão Rápida no Card de Situação */}
+                  <button
+                    type="button"
+                    onClick={handlePrintCurrentModalPayroll}
+                    disabled={!selectedEmployeeId}
+                    className="w-full mt-1 py-2 px-3 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#0963cb] text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer disabled:opacity-40 shadow-2xs"
+                    title="Gerar e imprimir holerite oficial com logomarca"
+                  >
+                    <Printer className="w-4 h-4 text-[#0963cb]" />
+                    <span>Imprimir Folha de Pagamento</span>
+                  </button>
                 </div>
               </div>
 
@@ -999,25 +1164,48 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-black/15 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-white border border-stone-300 text-stone-700 font-bold hover:bg-stone-50 cursor-pointer transition text-xs"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2 rounded-lg bg-[#0963cb] hover:bg-[#0852a8] text-white font-bold transition shadow-xs cursor-pointer text-xs"
-                >
-                  Salvar Folha de Pagamento
-                </button>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-black/15 shrink-0">
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={handlePrintCurrentModalPayroll}
+                    disabled={!selectedEmployeeId}
+                    className="px-3.5 py-2 rounded-lg bg-white border border-stone-300 text-stone-800 hover:bg-stone-50 font-bold transition shadow-xs cursor-pointer text-xs flex items-center space-x-1.5 disabled:opacity-40"
+                    title="Imprimir Folha de Pagamento (Holerite com Logomarca e Assinaturas)"
+                  >
+                    <Printer className="w-4 h-4 text-[#0963cb]" />
+                    <span>Imprimir Folha</span>
+                  </button>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 rounded-lg bg-white border border-stone-300 text-stone-700 font-bold hover:bg-stone-50 cursor-pointer transition text-xs"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2 rounded-lg bg-[#0963cb] hover:bg-[#0852a8] text-white font-bold transition shadow-xs cursor-pointer text-xs"
+                  >
+                    Salvar Folha de Pagamento
+                  </button>
+                </div>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* Modal de Impressão do Holerite Padronizado */}
+      <PayslipModal
+        payroll={modalPayslipPayroll}
+        employee={employees.find(e => e.id === modalPayslipPayroll?.employeeId)}
+        companyProfile={companyProfile}
+        isOpen={!!modalPayslipPayroll}
+        onClose={() => setModalPayslipPayroll(null)}
+      />
 
     </div>
   );

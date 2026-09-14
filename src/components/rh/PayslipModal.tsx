@@ -4,6 +4,7 @@ import { PayrollRecord, Employee, CompanyProfile } from '../../types';
 import { formatCurrencyBRL, formatDateBR } from '../../lib/storage';
 import { PrintReportHeader } from '../common/PrintReportHeader';
 import { PrintReportFooter } from '../common/PrintReportFooter';
+import { formatCPF, formatEmployeeAdmissionDate, formatEmployeeBankDeposit } from './payrollHelpers';
 
 interface PayslipModalProps {
   payroll: PayrollRecord | null;
@@ -30,7 +31,7 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
   const totalDiscounts = payroll.inssDiscount + payroll.advancesDiscount + payroll.otherDiscounts;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:static">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:fixed print:inset-0 print:z-[9999]">
       <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150 print:max-h-none print:shadow-none print:border-none print:rounded-none print:w-full">
         
         {/* Modal Action Header (Non-printable) */}
@@ -65,7 +66,7 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
         {/* Printable Holerite Content */}
         <div className="p-6 sm:p-8 space-y-5 text-stone-900 dark:text-stone-100 bg-white dark:bg-stone-900 print:p-2" id="printable-payslip">
           
-          {/* Cabeçalho Corporativo Padronizado */}
+          {/* Cabeçalho Corporativo Padronizado com Logomarca */}
           <PrintReportHeader
             companyProfile={companyProfile}
             reportTitle="DEMONSTRATIVO DE PAGAMENTO DE SALÁRIO (HOLERITE)"
@@ -73,9 +74,9 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
             documentTypeBadge={`REF: ${payroll.referenceMonth}`}
           />
 
-          {/* Dados do Empregado */}
+          {/* Dados Cadastrais do Empregado Enriquecidos */}
           <div className="border border-stone-300 dark:border-stone-700 rounded-xl p-4 bg-stone-50/50 dark:bg-stone-800/30">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 text-xs">
               <div>
                 <span className="text-stone-500 block text-[11px] font-bold">Colaborador:</span>
                 <span className="font-bold text-stone-900 dark:text-stone-100">{payroll.employeeName}</span>
@@ -85,14 +86,32 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
                 <span className="font-medium text-stone-800 dark:text-stone-200">{payroll.employeeRole}</span>
               </div>
               <div>
-                <span className="text-stone-500 block text-[11px] font-bold">Admissão:</span>
+                <span className="text-stone-500 block text-[11px] font-bold">CPF:</span>
                 <span className="font-medium text-stone-800 dark:text-stone-200">
-                  {employee?.admissionDate ? formatDateBR(employee.admissionDate) : '01/03/2023'}
+                  {formatCPF(employee?.cpf)}
+                </span>
+              </div>
+              <div>
+                <span className="text-stone-500 block text-[11px] font-bold">Data de Admissão:</span>
+                <span className="font-medium text-stone-800 dark:text-stone-200">
+                  {formatEmployeeAdmissionDate(employee?.admissionDate)}
                 </span>
               </div>
               <div>
                 <span className="text-stone-500 block text-[11px] font-bold">Mês Referência:</span>
                 <span className="font-bold text-[#0963cb]">{payroll.referenceMonth}</span>
+              </div>
+              <div>
+                <span className="text-stone-500 block text-[11px] font-bold">Regime / Vínculo:</span>
+                <span className="font-medium text-stone-800 dark:text-stone-200">
+                  {employee?.contractType || 'CLT'}
+                </span>
+              </div>
+              <div className="sm:col-span-3 lg:col-span-2">
+                <span className="text-stone-500 block text-[11px] font-bold">Banco para Depósito:</span>
+                <span className="font-bold text-stone-800 dark:text-stone-200 truncate block" title={formatEmployeeBankDeposit(employee)}>
+                  {formatEmployeeBankDeposit(employee)}
+                </span>
               </div>
             </div>
           </div>

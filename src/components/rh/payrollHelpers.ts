@@ -488,3 +488,83 @@ export const getEmployeeMonthCommissions = (
     breakdown,
   };
 };
+
+/**
+ * Formata qualquer valor numérico ou string para a moeda brasileira (Real Brasileiro - BRL):
+ * Ex: 3500 -> "R$ 3.500,00"
+ */
+export const formatMoneyBRL = (value: number | string | undefined | null): string => {
+  if (value === undefined || value === null || value === '') return 'R$ 0,00';
+  let num: number;
+  if (typeof value === 'number') {
+    num = isNaN(value) ? 0 : value;
+  } else {
+    const cleanDigits = String(value).replace(/\D/g, '');
+    if (!cleanDigits) return 'R$ 0,00';
+    num = parseInt(cleanDigits, 10) / 100;
+  }
+  return `R$ ${num.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+};
+
+/**
+ * Converte valor digitado ou formatado com máscara monetária de volta para float puro:
+ * Ex: "R$ 3.500,00" -> 3500.00
+ */
+export const parseMoneyToFloat = (value: string | number | undefined | null): number => {
+  if (typeof value === 'number') return isNaN(value) ? 0 : value;
+  if (!value) return 0;
+  const cleanDigits = String(value).replace(/\D/g, '');
+  if (!cleanDigits) return 0;
+  return Number((parseInt(cleanDigits, 10) / 100).toFixed(2));
+};
+
+/**
+ * Formata CPF no padrão oficial brasileiro: 000.000.000-00
+ */
+export const formatCPF = (cpf?: string | null): string => {
+  if (!cpf) return 'Não informado';
+  const clean = cpf.replace(/\D/g, '');
+  if (clean.length === 11) {
+    return clean.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  }
+  return cpf.trim() || 'Não informado';
+};
+
+/**
+ * Formata a Data de Admissão do funcionário para o padrão brasileiro DD/MM/AAAA
+ */
+export const formatEmployeeAdmissionDate = (dateStr?: string | null): string => {
+  if (!dateStr) return 'Não informada';
+  if (dateStr.includes('/')) return dateStr;
+  const clean = dateStr.split('T')[0];
+  const parts = clean.split('-');
+  if (parts.length === 3) {
+    const [y, m, d] = parts;
+    return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+  }
+  return dateStr;
+};
+
+/**
+ * Formata as informações bancárias cadastradas do colaborador:
+ * Padrão: "[Nome_Banco] Ag: [0000] Cc: [00000-0]"
+ */
+export const formatEmployeeBankDeposit = (emp?: Partial<Employee> | null): string => {
+  if (!emp) return 'Banco Não Informado Ag: 0000 Cc: 00000-0';
+
+  let bankName = (emp.paymentLocation || '').trim();
+  if (!bankName && emp.bankPixKey && !emp.bankPixKey.includes('@') && !/^\d{11}$/.test(emp.bankPixKey.replace(/\D/g, ''))) {
+    bankName = emp.bankPixKey.trim();
+  }
+  if (!bankName) {
+    bankName = 'Banco do Brasil';
+  }
+
+  const agency = (emp.bankAgency || '').trim() || '0000';
+  const account = (emp.bankAccount || '').trim() || '00000-0';
+
+  return `${bankName} Ag: ${agency} Cc: ${account}`;
+};
