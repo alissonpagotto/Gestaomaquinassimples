@@ -364,7 +364,6 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
       setTimeout(() => {
         printWindow.focus();
         printWindow.print();
-        printWindow.close();
       }, 600);
     }
   };
