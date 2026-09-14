@@ -124,6 +124,115 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
     };
   };
 
+  // Helper para identificar a Categoria do Veículo e formatar a tag visual verde/destaque
+  const getVehicleCategoryTag = (vehicle: Machinery) => {
+    const raw = (vehicle.categoryType || '').trim();
+    const detailed = (vehicle.vehicleTypeDetailed || '').trim();
+    const trailerType = (vehicle.trailerType || '').trim();
+    const compType = vehicle.compositionType || '';
+
+    // Se possui reboque detalhado
+    if (trailerType && (raw.toLowerCase().includes('reboque') || compType === 'reboque')) {
+      return {
+        label: `REBOQUE ${trailerType.toUpperCase()}`,
+        style: 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950/70 dark:text-emerald-200 border-emerald-300/90 dark:border-emerald-700'
+      };
+    }
+
+    // Se o tipo detalhado foi informado no cadastro
+    if (detailed) {
+      const detUpper = detailed.toUpperCase();
+      const detLower = detailed.toLowerCase();
+      if (detLower.includes('caminh') || detLower.includes('caçamba') || detLower.includes('cacamba') || detLower.includes('basculante') || detLower.includes('graneleiro')) {
+        const fullLabel = detUpper.includes('CAMINHÃO') ? detUpper : `CAMINHÃO ${detUpper}`;
+        return {
+          label: fullLabel,
+          style: 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950/70 dark:text-emerald-200 border-emerald-300/90 dark:border-emerald-700'
+        };
+      }
+      if (detLower.includes('reboque') || detLower.includes('carreta') || detLower.includes('cocho')) {
+        const fullLabel = detUpper.includes('REBOQUE') ? detUpper : `REBOQUE ${detUpper}`;
+        return {
+          label: fullLabel,
+          style: 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950/70 dark:text-emerald-200 border-emerald-300/90 dark:border-emerald-700'
+        };
+      }
+      return {
+        label: detUpper,
+        style: 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950/70 dark:text-emerald-200 border-emerald-300/90 dark:border-emerald-700'
+      };
+    }
+
+    // Identificação por tipo principal cadastrado
+    const catLower = raw.toLowerCase();
+    if (catLower.includes('caminh') || catLower === 'caminhao') {
+      if (catLower.includes('basculante') || catLower.includes('graneleiro') || catLower.includes('silagem') || catLower.includes('caçamba') || catLower.includes('cacamba')) {
+        return {
+          label: 'CAMINHÃO CAÇAMBA',
+          style: 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950/70 dark:text-emerald-200 border-emerald-300/90 dark:border-emerald-700'
+        };
+      }
+      return {
+        label: 'CAMINHÃO CAÇAMBA',
+        style: 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950/70 dark:text-emerald-200 border-emerald-300/90 dark:border-emerald-700'
+      };
+    }
+    if (catLower.includes('ensilad') || catLower.includes('forrageir') || catLower.includes('colhedor') || catLower === 'forrageira') {
+      return {
+        label: 'FORRAGEIRA',
+        style: 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950/70 dark:text-emerald-200 border-emerald-300/90 dark:border-emerald-700'
+      };
+    }
+    if (catLower.includes('trator') || catLower === 'trator') {
+      return {
+        label: 'TRATOR AGRÍCOLA',
+        style: 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950/70 dark:text-emerald-200 border-emerald-300/90 dark:border-emerald-700'
+      };
+    }
+    if (catLower.includes('reboque') || compType === 'reboque' || catLower.includes('carreta')) {
+      return {
+        label: 'REBOQUE COCHO',
+        style: 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950/70 dark:text-emerald-200 border-emerald-300/90 dark:border-emerald-700'
+      };
+    }
+    if (catLower.includes('cavalo')) {
+      return {
+        label: 'CAVALO MECÂNICO',
+        style: 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950/70 dark:text-emerald-200 border-emerald-300/90 dark:border-emerald-700'
+      };
+    }
+    if (catLower.includes('utilit') || catLower === 'utilitario') {
+      return {
+        label: 'VEÍCULO UTILITÁRIO',
+        style: 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950/70 dark:text-emerald-200 border-emerald-300/90 dark:border-emerald-700'
+      };
+    }
+    if (catLower.includes('onibus') || catLower.includes('ônibus') || catLower.includes('van')) {
+      return {
+        label: 'ÔNIBUS / VAN',
+        style: 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950/70 dark:text-emerald-200 border-emerald-300/90 dark:border-emerald-700'
+      };
+    }
+    if (catLower.includes('implemento')) {
+      return {
+        label: 'IMPLEMENTO AGRÍCOLA',
+        style: 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950/70 dark:text-emerald-200 border-emerald-300/90 dark:border-emerald-700'
+      };
+    }
+
+    if (raw) {
+      return {
+        label: raw.toUpperCase(),
+        style: 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950/70 dark:text-emerald-200 border-emerald-300/90 dark:border-emerald-700'
+      };
+    }
+
+    return {
+      label: 'EQUIPAMENTO',
+      style: 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950/70 dark:text-emerald-200 border-emerald-300/90 dark:border-emerald-700'
+    };
+  };
+
   const filteredVehicles = useMemo(() => {
     return machineries.filter((m) => {
       const matchSearch =
@@ -488,19 +597,30 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
       {/* Vehicles Table View */}
       {viewMode === 'table' ? (
         <div className="crm-card bg-[#87AFE3] dark:bg-stone-900 rounded-2xl border border-blue-200/80 dark:border-stone-800 overflow-hidden shadow-xs text-black dark:text-white">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs sm:text-sm">
+          <div className="w-full overflow-x-auto lg:overflow-x-hidden">
+            <table className="w-full text-left text-xs sm:text-sm table-fixed">
+              <colgroup>
+                <col className="w-[11%]" />
+                <col className="w-[18%]" />
+                <col className="w-[11%]" />
+                <col className="w-[11%]" />
+                <col className="w-[10%]" />
+                <col className="w-[11%]" />
+                <col className="w-[10%]" />
+                <col className="w-[9%]" />
+                <col className="w-[9%]" />
+              </colgroup>
               <thead className="bg-[#87AFE3] dark:bg-stone-900 text-xs font-black text-black dark:text-white uppercase tracking-wider border-b-2 border-blue-200/80 dark:border-stone-800">
                 <tr>
-                  <th className="py-3 px-4 text-black dark:text-white font-black">CÓDIGO/FROTA & PLACA</th>
-                  <th className="py-3 px-4 text-black dark:text-white font-black">TIPO & MODELO</th>
-                  <th className="py-3 px-4 text-black dark:text-white font-black">PROPRIEDADE & TITULAR</th>
-                  <th className="py-3 px-4 text-black dark:text-white font-black">PESOS (TARA/LOTAÇÃO/PBT)</th>
-                  <th className="py-3 px-4 text-black dark:text-white font-black">HORÍMETRO/KM</th>
-                  <th className="py-3 px-4 text-black dark:text-white font-black">OPERADOR ATUAL / MOTORISTAS</th>
-                  <th className="py-3 px-4 text-black dark:text-white font-black">CUSTO DE MANUTENÇÃO & TOTAL</th>
-                  <th className="py-3 px-4 text-black dark:text-white font-black">STATUS</th>
-                  <th className="py-3 px-4 text-right text-black dark:text-white font-black">AÇÕES</th>
+                  <th className="py-2.5 px-2 xl:px-2.5 text-black dark:text-white font-black truncate">CÓDIGO / FROTA</th>
+                  <th className="py-2.5 px-2 xl:px-2.5 text-black dark:text-white font-black truncate">TIPO & MODELO</th>
+                  <th className="py-2.5 px-2 xl:px-2.5 text-black dark:text-white font-black truncate">PROPRIEDADE</th>
+                  <th className="py-2.5 px-2 xl:px-2.5 text-black dark:text-white font-black truncate">PESOS & CARGA</th>
+                  <th className="py-2.5 px-2 xl:px-2.5 text-black dark:text-white font-black truncate">HORÍMETRO / KM</th>
+                  <th className="py-2.5 px-2 xl:px-2.5 text-black dark:text-white font-black truncate">MOTORISTA</th>
+                  <th className="py-2.5 px-2 xl:px-2.5 text-black dark:text-white font-black truncate">CUSTO TOTAL</th>
+                  <th className="py-2.5 px-2 xl:px-2.5 text-black dark:text-white font-black truncate">STATUS</th>
+                  <th className="py-2.5 px-2 xl:px-2.5 text-right text-black dark:text-white font-black truncate">AÇÕES</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-blue-200/60 dark:divide-stone-800/60 font-medium bg-[#87AFE3] dark:bg-stone-900 text-black dark:text-white">
@@ -527,19 +647,20 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                     const pbt = (vehicle.taraWeightKg && vehicle.capacityLoadKg)
                       ? (vehicle.taraWeightKg + vehicle.capacityLoadKg)
                       : vehicle.grossWeightKg;
+                    const categoryTag = getVehicleCategoryTag(vehicle);
 
                     return (
                       <tr key={vehicle.id} className="hover:bg-stone-50/70 dark:hover:bg-stone-800/40 transition">
                         
                         {/* Identificação / Placa / Nº Série */}
-                        <td className="py-3 px-4">
+                        <td className="py-2.5 px-2 xl:px-2.5 align-top">
                           <div className="flex flex-col space-y-1">
                             {vehicle.fleetNumber && (
                               <span className="inline-flex items-center text-[10px] font-black text-[#000000] dark:text-blue-200 bg-blue-100 dark:bg-blue-900/60 border border-blue-300 dark:border-blue-700 px-1.5 py-0.5 rounded w-fit">
                                 Frota: {vehicle.fleetNumber}
                               </span>
                             )}
-                            <span className="font-black text-[#000000] dark:text-stone-100 font-mono text-xs px-2.5 py-1 bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-md w-fit shadow-2xs">
+                            <span className="font-black text-[#000000] dark:text-stone-100 font-mono text-xs px-2 py-0.5 bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-md w-fit shadow-2xs">
                               {vehicle.licensePlateOrSerial || '--'}
                             </span>
                             {vehicle.serialNumber && (
@@ -548,55 +669,54 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                               </span>
                             )}
                             {vehicle.renavam && (
-                              <span className="text-[10px] text-[#000000] dark:text-stone-400 font-mono font-medium">
-                                RENAVAM: {vehicle.renavam}
+                              <span className="text-[10px] text-[#000000] dark:text-stone-400 font-mono font-medium truncate">
+                                REN: {vehicle.renavam}
                               </span>
                             )}
                           </div>
                         </td>
 
-                        {/* Veículo & Composição */}
-                        <td className="py-3 px-4">
-                          <div className="font-bold text-stone-900 dark:text-stone-100 uppercase">
+                        {/* Veículo & Composição com Categoria em Destaque */}
+                        <td className="py-2.5 px-2 xl:px-2.5 align-top">
+                          {/* 3. Tag de Categoria do Veículo (logo acima do modelo e ano) */}
+                          <div className="mb-1">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border shadow-2xs ${categoryTag.style}`}>
+                              {categoryTag.label}
+                            </span>
+                          </div>
+
+                          <div className="font-bold text-stone-900 dark:text-stone-100 uppercase text-xs sm:text-sm leading-tight break-words">
                             {(vehicle.model || vehicle.name || '').toUpperCase()}
                           </div>
-                          <div className="text-[11px] text-stone-600 dark:text-stone-400 flex items-center space-x-1.5 mt-0.5 uppercase">
+                          <div className="text-[11px] text-stone-700 dark:text-stone-300 flex flex-wrap items-center gap-1 mt-0.5 uppercase">
                             <span className="font-semibold">{(vehicle.brand || 'Agrícola').toUpperCase()}</span>
-                            {vehicle.year && <span className="normal-case">• Ano {vehicle.year}</span>}
-                            {vehicle.vehicleTypeDetailed && (
-                              <span className="font-semibold text-sky-800 dark:text-sky-300">
-                                • {vehicle.vehicleTypeDetailed.toUpperCase()}
-                              </span>
-                            )}
+                            {vehicle.year && <span className="normal-case font-medium">• Ano {vehicle.year}</span>}
                           </div>
 
                           {/* Badges de Composição e Reboque Vinculado */}
-                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          <div className="mt-1 flex flex-wrap items-center gap-1">
                             {isCavalo && (
-                              <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 uppercase">
-                                🚛 Cavalo Mecânico
+                              <span className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 uppercase">
+                                🚛 Cavalo
                               </span>
                             )}
                             {isReboque && (
-                              <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 uppercase">
-                                🛞 Reboque{vehicle.trailerType ? `: ${vehicle.trailerType.toUpperCase()}` : ''}{vehicle.trailerAxlesCount ? ` (${vehicle.trailerAxlesCount} ${vehicle.trailerAxlesCount === 1 ? 'eixo' : 'eixos'})` : ''}
+                              <span className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 uppercase">
+                                🛞 Reboque{vehicle.trailerType ? `: ${vehicle.trailerType.toUpperCase()}` : ''}
                               </span>
                             )}
                             {hasCoupledTrailer && (
-                              <div className="inline-flex items-center space-x-1 text-[10.5px] font-extrabold px-2.5 py-0.5 rounded-md bg-sky-50 text-sky-950 dark:bg-sky-950/70 dark:text-sky-200 border border-sky-300 dark:border-sky-800 shadow-2xs">
+                              <div className="inline-flex flex-wrap items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-sky-50 text-sky-950 dark:bg-sky-950/70 dark:text-sky-200 border border-sky-300 dark:border-sky-800 shadow-2xs">
                                 <span>🔗</span>
                                 <span className="font-bold text-sky-900 dark:text-sky-300">Reboque:</span>
                                 {trailerPlateDisplay && (
-                                  <span className="font-mono bg-white dark:bg-stone-900 px-1.5 py-0.2 rounded border border-sky-200 dark:border-sky-800 text-[#000000] dark:text-sky-100 font-black uppercase">
+                                  <span className="font-mono bg-white dark:bg-stone-900 px-1 py-0.2 rounded border border-sky-200 dark:border-sky-800 text-[#000000] dark:text-sky-100 font-black uppercase">
                                     {trailerPlateDisplay.toUpperCase()}
                                   </span>
                                 )}
                                 {trailerModelDisplay && (
-                                  <span className="font-semibold text-stone-800 dark:text-stone-300 uppercase">• {trailerModelDisplay.toUpperCase()}</span>
-                                )}
-                                {(vehicle.trailerCapacityLoadKg !== undefined && vehicle.trailerCapacityLoadKg > 0) && (
-                                  <span className="text-[10px] text-stone-600 dark:text-stone-400 font-semibold">
-                                    ({vehicle.trailerCapacityLoadKg.toLocaleString('pt-BR')} kg{vehicle.trailerCapacityM3 ? ` / ${vehicle.trailerCapacityM3} m³` : ''})
+                                  <span className="font-semibold text-stone-800 dark:text-stone-300 uppercase truncate max-w-[100px]">
+                                    {trailerModelDisplay.toUpperCase()}
                                   </span>
                                 )}
                               </div>
@@ -605,12 +725,12 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                         </td>
 
                         {/* Propriedade & Titular (No Nome de Quem) */}
-                        <td className="py-3 px-4">
+                        <td className="py-2.5 px-2 xl:px-2.5 align-top break-words">
                           <div className="space-y-1">
                             {(() => {
                               const badge = getOwnershipBadge(vehicle.ownership);
                               return (
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border text-[#000000] dark:text-inherit ${badge.className}`}>
+                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border text-[#000000] dark:text-inherit ${badge.className}`}>
                                   {badge.label}
                                 </span>
                               );
@@ -618,16 +738,16 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                             
                             {vehicle.ownerName ? (
                               <div className="text-xs">
-                                <div className="font-bold text-[#000000] dark:text-stone-200 leading-tight">
+                                <div className="font-bold text-[#000000] dark:text-stone-200 leading-tight break-words">
                                   {vehicle.ownerName}
                                 </div>
                                 {vehicle.ownerDocument && (
-                                  <div className="text-[10px] text-stone-600 dark:text-stone-400 font-mono font-medium">
+                                  <div className="text-[10px] text-stone-600 dark:text-stone-400 font-mono font-medium truncate">
                                     Doc: {vehicle.ownerDocument}
                                   </div>
                                 )}
                                 {vehicle.secondaryOwnerName && (
-                                  <div className="text-[10px] text-stone-700 dark:text-stone-400 font-medium">
+                                  <div className="text-[10px] text-stone-700 dark:text-stone-400 font-medium truncate">
                                     Sócio: {vehicle.secondaryOwnerName}
                                   </div>
                                 )}
@@ -641,28 +761,28 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                         </td>
 
                         {/* Pesos: Tara, Lotação e PBT */}
-                        <td className="py-3 px-4">
+                        <td className="py-2.5 px-2 xl:px-2.5 align-top">
                           <div className="space-y-0.5 text-xs text-[#000000] dark:text-stone-200">
                             {vehicle.taraWeightKg ? (
-                              <div>
+                              <div className="truncate">
                                 <span className="text-stone-700 dark:text-stone-400 text-[10px] uppercase font-bold">Tara:</span>{' '}
                                 <strong className="font-mono text-[#000000] dark:text-stone-100">{vehicle.taraWeightKg.toLocaleString('pt-BR')} kg</strong>
                               </div>
                             ) : null}
                             {vehicle.capacityLoadKg ? (
-                              <div>
-                                <span className="text-stone-700 dark:text-stone-400 text-[10px] uppercase font-bold">Lotação:</span>{' '}
+                              <div className="truncate">
+                                <span className="text-stone-700 dark:text-stone-400 text-[10px] uppercase font-bold">Lot:</span>{' '}
                                 <strong className="font-mono text-[#000000] dark:text-stone-100">{vehicle.capacityLoadKg.toLocaleString('pt-BR')} kg</strong>
                               </div>
                             ) : null}
                             {vehicle.capacityM3 ? (
-                              <div className="font-bold">
+                              <div className="font-bold truncate">
                                 <span className="text-stone-700 dark:text-stone-400 text-[10px] uppercase font-bold">Vol:</span>{' '}
                                 <strong className="font-mono text-[#000000] dark:text-sky-300 font-black">{vehicle.capacityM3} m³</strong>
                               </div>
                             ) : null}
                             {pbt ? (
-                              <div className="font-bold">
+                              <div className="font-bold truncate">
                                 <span className="text-stone-700 dark:text-stone-400 text-[10px] uppercase font-bold">PBT:</span>{' '}
                                 <span className="font-mono text-[#000000] dark:text-stone-100 font-bold">{pbt.toLocaleString('pt-BR')} kg</span>
                               </div>
@@ -674,17 +794,17 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                         </td>
 
                         {/* Horímetro / KM com Ação de Leitura Rápida */}
-                        <td className="py-3 px-4">
+                        <td className="py-2.5 px-2 xl:px-2.5 align-top">
                           <div className="space-y-0.5 font-mono text-xs">
                             {vehicle.hourMeter !== undefined && vehicle.hourMeter > 0 && (
-                              <div className="font-bold text-[#000000] dark:text-amber-400 flex items-center space-x-1">
-                                <Clock className="w-3 h-3 text-[#000000] dark:text-amber-400" />
+                              <div className="font-bold text-[#000000] dark:text-amber-400 flex items-center space-x-1 truncate">
+                                <Clock className="w-3 h-3 text-[#000000] dark:text-amber-400 shrink-0" />
                                 <span className="text-[#000000] dark:text-amber-400">{vehicle.hourMeter.toLocaleString('pt-BR')} h</span>
                               </div>
                             )}
                             {vehicle.currentKm !== undefined && vehicle.currentKm > 0 && (
-                              <div className="font-bold text-[#000000] dark:text-emerald-400 flex items-center space-x-1">
-                                <Gauge className="w-3 h-3 text-[#000000] dark:text-emerald-400" />
+                              <div className="font-bold text-[#000000] dark:text-emerald-400 flex items-center space-x-1 truncate">
+                                <Gauge className="w-3 h-3 text-[#000000] dark:text-emerald-400 shrink-0" />
                                 <span className="text-[#000000] dark:text-emerald-400">{vehicle.currentKm.toLocaleString('pt-BR')} km</span>
                               </div>
                             )}
@@ -703,13 +823,13 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                         </td>
 
                         {/* Motoristas Atribuídos */}
-                        <td className="py-3 px-4 max-w-[180px]">
+                        <td className="py-2.5 px-2 xl:px-2.5 align-top break-words">
                           {driversList.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
                               {driversList.map((drv, idx) => (
                                 <span
                                   key={idx}
-                                  className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 rounded-md"
+                                  className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 rounded break-words"
                                 >
                                   👤 {drv}
                                 </span>
@@ -721,8 +841,8 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                         </td>
 
                         {/* Custos Acumulados */}
-                        <td className="py-3 px-4">
-                          <div className="font-bold text-[#000000] dark:text-stone-100 font-['Outfit'] text-sm">
+                        <td className="py-2.5 px-2 xl:px-2.5 align-top">
+                          <div className="font-bold text-[#000000] dark:text-stone-100 font-['Outfit'] text-xs sm:text-sm">
                             {formatCurrencyBRL(totalCost)}
                           </div>
                           <div className="text-[10px] text-[#000000] dark:text-stone-400 font-semibold">
@@ -731,8 +851,8 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                         </td>
 
                         {/* Status */}
-                        <td className="py-3 px-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                        <td className="py-2.5 px-2 xl:px-2.5 align-top">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
                             vehicle.status === 'operacional'
                               ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200'
                               : vehicle.status === 'em_manutencao'
@@ -742,23 +862,22 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                               : 'bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300 border border-stone-300'
                           }`}>
                             {vehicle.status === 'operacional' ? 'Operacional' :
-                             vehicle.status === 'em_manutencao' ? 'Em Manutenção' :
+                             vehicle.status === 'em_manutencao' ? 'Manutenção' :
                              vehicle.status === 'parado' ? 'Parado' : 'Disponível'}
                           </span>
                         </td>
 
                         {/* Ações */}
-                        <td className="py-3 px-4 text-right">
+                        <td className="py-2.5 px-2 xl:px-2.5 text-right align-top">
                           <div className="flex items-center justify-end space-x-1">
                             
                             {/* Histórico & Lucro do Veículo */}
                             <button
                               onClick={() => onOpenHistory(vehicle)}
-                              title="Acessar Histórico, Proventos & Lucro do Veículo (Pesquisa por Pedido)"
-                              className="px-2 py-1.5 text-pink-600 hover:text-pink-700 bg-pink-50 hover:bg-pink-100 dark:bg-pink-950/70 dark:text-pink-300 dark:hover:bg-pink-900/80 rounded-lg border border-pink-300 dark:border-pink-800 transition cursor-pointer flex items-center space-x-1 shadow-2xs hover:scale-105"
+                              title="Acessar Histórico, Proventos & Lucro do Veículo"
+                              className="p-1.5 text-pink-600 hover:text-pink-700 bg-pink-50 hover:bg-pink-100 dark:bg-pink-950/70 dark:text-pink-300 dark:hover:bg-pink-900/80 rounded-lg border border-pink-300 dark:border-pink-800 transition cursor-pointer shadow-2xs hover:scale-105"
                             >
                               <TrendingUp className="w-3.5 h-3.5 text-pink-600 dark:text-pink-400" />
-                              <span className="text-[10px] font-black uppercase tracking-wider hidden xl:inline">Histórico</span>
                             </button>
 
                             {/* Abastecimento */}
@@ -767,7 +886,7 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                               title="Lançar Abastecimento"
                               className="p-1.5 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/60 rounded-lg transition cursor-pointer"
                             >
-                              <Fuel className="w-4 h-4" />
+                              <Fuel className="w-3.5 h-3.5" />
                             </button>
 
                             {/* Oficina */}
@@ -776,7 +895,7 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                               title="Lançar Manutenção"
                               className="p-1.5 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 rounded-lg transition cursor-pointer"
                             >
-                              <Wrench className="w-4 h-4" />
+                              <Wrench className="w-3.5 h-3.5" />
                             </button>
 
                             {/* Editar */}
@@ -785,7 +904,7 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                               title="Editar Veículo"
                               className="p-1.5 text-stone-600 hover:text-stone-900 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition cursor-pointer"
                             >
-                              <Edit3 className="w-4 h-4" />
+                              <Edit3 className="w-3.5 h-3.5" />
                             </button>
 
                             {/* Excluir */}
@@ -794,7 +913,7 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                               title="Excluir Veículo"
                               className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded-lg transition cursor-pointer"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
 
                           </div>
@@ -876,8 +995,20 @@ export const FleetVehiclesView: React.FC<FleetVehiclesViewProps> = ({
                     </div>
                   )}
 
+                  {/* Category Tag */}
+                  {(() => {
+                    const catTag = getVehicleCategoryTag(vehicle);
+                    return (
+                      <div className="mt-2.5">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border shadow-2xs ${catTag.style}`}>
+                          {catTag.label}
+                        </span>
+                      </div>
+                    );
+                  })()}
+
                   {/* Title & Brand */}
-                  <div className="mt-2.5 flex items-start justify-between">
+                  <div className="mt-1.5 flex items-start justify-between">
                     <div>
                       <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 uppercase">
                         {(vehicle.model || vehicle.name || '').toUpperCase()}

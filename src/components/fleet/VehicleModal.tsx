@@ -40,7 +40,8 @@ import {
   saveStoredVehicleSystemCategories,
   getStoredVehicleOwnershipRegimes,
   saveStoredVehicleOwnershipRegimes,
-  getStoredCompanyProfile
+  getStoredCompanyProfile,
+  getStoredMachineries
 } from '../../lib/storage';
 import { calculateVehicleConsumptionMetrics } from '../../lib/fleetMetrics';
 import { VehicleCategoriesModal } from './VehicleCategoriesModal';
@@ -114,6 +115,22 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     const norm = (categoryType || '').trim().toLowerCase();
     return norm === 'reboque' || norm === 'transbordo / reboque / carreta';
   }, [categoryType]);
+
+  // Validação Estrita de Número de Frota (Proibido Repetir):
+  // O sistema verifica se o número digitado já existe no banco de dados para outro veículo ativo.
+  const isFleetNumberDuplicate = useMemo(() => {
+    const trimmed = fleetNumber.trim().toLowerCase();
+    if (!trimmed) return false;
+    const allVehicles = machineries && machineries.length > 0 ? machineries : getStoredMachineries();
+    return allVehicles.some((m) => {
+      // Ignora o próprio veículo em caso de edição
+      if (editingVehicle && m.id === editingVehicle.id) return false;
+      // Ignora veículos com status inativo
+      if ((m as any).status === 'inativo') return false;
+      const otherFleet = (m.fleetNumber || '').trim().toLowerCase();
+      return otherFleet === trimmed;
+    });
+  }, [fleetNumber, machineries, editingVehicle]);
 
   const [status, setStatus] = useState<Machinery['status']>('disponivel');
   const [ownership, setOwnership] = useState<string>('Próprio');
@@ -983,6 +1000,10 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isFleetNumberDuplicate) {
+      alert('Este número de frota já está cadastrado em outro veículo. Escolha um número exclusivo.');
+      return;
+    }
     if (!plate.trim() && !serialNumber.trim() && !fleetNumber.trim()) {
       alert('Por favor, informe ao menos a Placa, o Nº de Série ou o Nº da Frota do veículo.');
       return;
@@ -1317,9 +1338,22 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                     type="text"
                     value={fleetNumber}
                     onChange={(e) => setFleetNumber(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-[#000000] text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-[#0963cb] shadow-xs"
-                    style={{ backgroundColor: '#ffffff', color: '#000000' }}
+                    className={`w-full px-3.5 py-2 rounded-xl border text-[#000000] text-sm font-bold uppercase focus:outline-none shadow-xs transition-colors ${
+                      isFleetNumberDuplicate
+                        ? 'border-rose-500 ring-2 ring-rose-500/40 bg-rose-50/50 focus:border-rose-600 focus:ring-rose-500'
+                        : 'border-stone-300 bg-white focus:ring-2 focus:ring-[#0963cb]'
+                    }`}
+                    style={{ backgroundColor: isFleetNumberDuplicate ? '#fff5f5' : '#ffffff', color: '#000000' }}
+                    placeholder="Ex: 10"
                   />
+                  {isFleetNumberDuplicate && (
+                    <div className="mt-1.5 flex items-start space-x-1 text-rose-600">
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                      <p className="text-xs font-bold leading-tight">
+                        Este número de frota já está cadastrado em outro veículo. Escolha um número exclusivo.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* 3º: Nº de Série (Chassi / Fabricante) */}
@@ -2660,8 +2694,14 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-xl bg-[#0963cb] hover:bg-[#074ea3] text-white text-xs sm:text-sm font-bold shadow-md transition flex items-center space-x-2 cursor-pointer active:scale-95"
-                style={{ backgroundColor: '#0963cb', color: '#ffffff' }}
+                disabled={isFleetNumberDuplicate}
+                className={`px-6 py-2.5 rounded-xl text-white text-xs sm:text-sm font-bold shadow-md transition flex items-center space-x-2 ${
+                  isFleetNumberDuplicate
+                    ? 'bg-stone-400 opacity-60 cursor-not-allowed'
+                    : 'bg-[#0963cb] hover:bg-[#074ea3] cursor-pointer active:scale-95'
+                }`}
+                style={isFleetNumberDuplicate ? { backgroundColor: '#9ca3af', color: '#ffffff' } : { backgroundColor: '#0963cb', color: '#ffffff' }}
+                title={isFleetNumberDuplicate ? 'Corrija o número de frota duplicado para salvar' : undefined}
               >
                 <Save className="w-4 h-4 text-white" />
                 <span>Salvar Veículo</span>
