@@ -1,8 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { X, Printer, Download, CheckCircle2, User, Building, Calendar, DollarSign, FileText, CreditCard, CalendarX, AlertCircle } from 'lucide-react';
 import { PayrollRecord, Employee, CompanyProfile, SalaryAdvance, AbsenceRecord, ServiceOrder } from '../../types';
 import { formatCurrencyBRL, formatDateBR, getStoredServices, getStoredAbsences, getStoredSalaryAdvances } from '../../lib/storage';
-import { PrintReportHeader } from '../common/PrintReportHeader';
 import { PrintReportFooter } from '../common/PrintReportFooter';
 import { formatCPF, formatEmployeeAdmissionDate, formatEmployeeBankDeposit, getEmployeeMonthCommissions, EmployeeMonthCommissions } from './payrollHelpers';
 
@@ -34,12 +33,96 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
 }) => {
   if (!isOpen || !payroll) return null;
 
+  // Listeners para garantir impressão limpa e completa
+  useEffect(() => {
+    const handleBeforePrint = () => {
+      document.body.classList.add('printing-payslip');
+    };
+    const handleAfterPrint = () => {
+      document.body.classList.remove('printing-payslip');
+    };
+
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    return () => {
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+      document.body.classList.remove('printing-payslip');
+    };
+  }, []);
+
   const handlePrint = () => {
-    window.print();
+    document.body.classList.add('printing-payslip');
+    setTimeout(() => {
+      window.print();
+    }, 50);
   };
 
   const totalEarnings = payroll.baseSalary + (payroll.overtimeAmount || 0) + (payroll.bonusAmount || 0) + (payroll.commissionAmount || 0);
   const totalDiscounts = payroll.inssDiscount + payroll.advancesDiscount + payroll.otherDiscounts;
+
+  // Dados Institucionais da Empresa
+  const tradeName =
+    companyProfile?.tradeName ||
+    companyProfile?.companyName ||
+    companyProfile?.corporateName ||
+    'SILAGEM ZÉ BUSCA-PÉ';
+
+  const corporateName =
+    companyProfile?.corporateName && companyProfile.corporateName !== tradeName
+      ? companyProfile.corporateName
+      : null;
+
+  const cnpj = companyProfile?.cnpjCpf || (companyProfile as any)?.cnpj || '';
+
+  const fullCompanyAddress = useMemo(() => {
+    const parts: string[] = [];
+    if (companyProfile?.address) {
+      let addr = companyProfile.address;
+      if (companyProfile.number) addr += `, nº ${companyProfile.number}`;
+      if (companyProfile.neighborhood) addr += ` - Bairro ${companyProfile.neighborhood}`;
+      parts.push(addr);
+    }
+    if (companyProfile?.city) {
+      parts.push(`${companyProfile.city}${companyProfile.state ? `/${companyProfile.state}` : ''}`);
+    }
+    if (companyProfile?.zipCode) {
+      parts.push(`CEP: ${companyProfile.zipCode}`);
+    }
+    return parts.join(' • ');
+  }, [companyProfile]);
+
+  // Identificação do Documento (Lado Direito)
+  const docNumber = useMemo(() => {
+    if (!payroll.referenceMonth) return '01';
+    const formattedRef = payroll.referenceMonth.includes('/')
+      ? payroll.referenceMonth.split('/').reverse().join('/')
+      : payroll.referenceMonth;
+    return `HOL-${formattedRef}`;
+  }, [payroll.referenceMonth]);
+
+  const issueDate = useMemo(() => {
+    if (payroll.paymentDate) return formatDateBR(payroll.paymentDate);
+    const today = new Date().toISOString().split('T')[0];
+    return formatDateBR(today);
+  }, [payroll.paymentDate]);
+
+  const contractRegime = useMemo(() => {
+    const type = employee?.registrationType || employee?.contractType;
+    if (!type) return 'CLT (REGISTRADO)';
+    const upper = type.toUpperCase().trim();
+    if (upper === 'CLT' || upper === 'FUNCIONÁRIO') {
+      return 'CLT (REGISTRADO)';
+    }
+    if (upper.includes('DIARISTA') || upper.includes('SAFRISTA')) {
+      return 'DIARISTA / SAFRISTA';
+    }
+    if (upper.includes('PRESTADOR')) {
+      return 'PRESTADOR DE SERVIÇO';
+    }
+    return upper;
+  }, [employee]);
 
   // 1. Apuração detalhada das Ordens de Serviço / Comissões
   const resolvedCommissions = useMemo(() => {
@@ -83,8 +166,14 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
     Boolean(payroll.notes && payroll.notes.trim());
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:fixed print:inset-0 print:z-[9999]">
-      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150 print:max-h-none print:shadow-none print:border-none print:rounded-none print:w-full">
+    <div 
+      id="printable-payslip-overlay"
+      className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:fixed print:inset-0 print:z-[9999]"
+    >
+      <div 
+        id="printable-payslip-card"
+        className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150 print:max-h-none print:shadow-none print:border-none print:rounded-none print:w-full"
+      >
         
         {/* Modal Action Header (Non-printable) */}
         <div className="print:hidden flex items-center justify-between px-5 py-3.5 bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-800">
@@ -118,13 +207,96 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
         {/* Printable Holerite Content */}
         <div className="p-6 sm:p-8 space-y-5 text-stone-900 dark:text-stone-100 bg-white dark:bg-stone-900 print:p-2" id="printable-payslip">
           
-          {/* Cabeçalho Corporativo Padronizado com Logomarca */}
-          <PrintReportHeader
-            companyProfile={companyProfile}
-            reportTitle="DEMONSTRATIVO DE PAGAMENTO DE SALÁRIO (HOLERITE)"
-            reportSubtitle={`Colaborador: ${payroll.employeeName} • Função: ${payroll.employeeRole}`}
-            documentTypeBadge={`REF: ${payroll.referenceMonth}`}
-          />
+          {/* ========================================================================= */}
+          {/* CABEÇALHO PADRÃO ORDEM DE SERVIÇO (2 COLUNAS JUSTIFY-BETWEEN)             */}
+          {/* ========================================================================= */}
+          <div className="flex items-start justify-between border-b-2 border-slate-900 dark:border-stone-700 pb-3 mb-2 gap-4">
+            {/* LADO ESQUERDO: Dados da Empresa (Logo + Nome Marcante + Badge + Dados Cadastrais) */}
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              {/* Ícone / Logo quadrado da empresa */}
+              <div className="w-14 h-14 min-w-[56px] max-w-[56px] rounded-lg border border-slate-200 dark:border-stone-700 bg-slate-50 dark:bg-stone-800 flex items-center justify-center overflow-hidden p-1 shrink-0 shadow-2xs">
+                {companyProfile?.logoUrl ? (
+                  <img
+                    src={companyProfile.logoUrl}
+                    alt={tradeName}
+                    className="max-w-full max-h-full object-contain"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-blue-50 dark:bg-stone-800 flex flex-col items-center justify-center text-[#0963cb] dark:text-blue-400 p-0.5 rounded">
+                    <Building className="w-6 h-6 stroke-[1.8]" />
+                    <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">ERP</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Dados Institucionais */}
+              <div className="space-y-0.5 flex-1 min-w-0">
+                {/* Nome principal em negrito marcante + Badge descritiva cinza/azul clara */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-stone-100 uppercase truncate font-['Outfit']">
+                    {tradeName}
+                  </h1>
+                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded border shrink-0 bg-blue-50 text-[#0963cb] border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/60 tracking-wider">
+                    DEMONSTRATIVO DE SALÁRIO
+                  </span>
+                </div>
+
+                {/* Razão Social */}
+                {corporateName && (
+                  <p className="text-[11px] text-slate-700 dark:text-stone-300 font-semibold truncate">
+                    Razão Social: <span className="text-slate-900 dark:text-stone-100 font-bold">{corporateName}</span>
+                  </p>
+                )}
+
+                {/* Informações cadastrais em fonte pequena (text-xs) e cor cinza escura */}
+                <div className="text-xs text-slate-600 dark:text-stone-400 leading-tight space-y-0.5 pt-0.5">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    {cnpj && (
+                      <span>
+                        <strong className="text-slate-800 dark:text-stone-200">CNPJ/CPF:</strong> {cnpj}
+                      </span>
+                    )}
+                    {companyProfile?.stateRegistration && (
+                      <span>
+                        • <strong className="text-slate-800 dark:text-stone-200">IE:</strong> {companyProfile.stateRegistration}
+                      </span>
+                    )}
+                    {companyProfile?.phone && (
+                      <span>
+                        • <strong className="text-slate-800 dark:text-stone-200">Contato:</strong> {companyProfile.phone}
+                      </span>
+                    )}
+                    {companyProfile?.email && (
+                      <span>
+                        • <strong className="text-slate-800 dark:text-stone-200">E-mail:</strong> {companyProfile.email}
+                      </span>
+                    )}
+                  </div>
+                  {fullCompanyAddress && (
+                    <div className="truncate text-[11px] text-slate-500 dark:text-stone-400">
+                      <strong className="text-slate-700 dark:text-stone-300">Endereço:</strong> {fullCompanyAddress}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* LADO DIREITO: Identificação do Documento */}
+            <div className="text-right space-y-0.5 shrink-0 min-w-[170px] pt-0.5">
+              <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-stone-100 tracking-tight uppercase font-['Outfit']">
+                RECIBO DE PAGAMENTO Nº {docNumber}
+              </p>
+              <p className="text-xs text-slate-600 dark:text-stone-400">
+                Data da Emissão: <strong className="text-slate-900 dark:text-stone-100">{issueDate}</strong>
+              </p>
+              <p className="text-xs text-slate-600 dark:text-stone-400">
+                Referência: <strong className="text-[#0963cb] dark:text-blue-400 font-bold">{payroll.referenceMonth}</strong>
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-stone-400">
+                Regime: <strong className="text-slate-800 dark:text-stone-200 uppercase">{contractRegime}</strong>
+              </p>
+            </div>
+          </div>
 
           {/* Dados Cadastrais do Empregado Enriquecidos */}
           <div className="border border-stone-300 dark:border-stone-700 rounded-xl p-4 bg-stone-50/50 dark:bg-stone-800/30">
