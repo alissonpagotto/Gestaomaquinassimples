@@ -540,6 +540,7 @@ export interface ServiceTruckItem {
   id: string;
   machineryId?: string;
   truckName?: string;
+  ownership?: string; // 'proprio' | 'terceirizado' | 'alugado' | 'arrendado'
   plate?: string;
   primaryDriverId?: string;
   primaryDriverName?: string;
@@ -803,6 +804,11 @@ export interface ThirdPartySettlement {
   machineryPlateOrName?: string;
   phone?: string;
   notes?: string;
+  orderId?: string; // Pedido de silagem / OS vinculado
+  truckId?: string; // ID do caminhão no pedido
+  orderNumber?: string;
+  orderClientName?: string;
+  createdAt?: string;
 }
 
 export interface BrokerSettlement {

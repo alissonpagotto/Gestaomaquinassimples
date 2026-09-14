@@ -1,4 +1,4 @@
-import { Machinery, Employee } from '../../types';
+import { Machinery, Employee, ServiceTruckItem } from '../../types';
 
 export const isForrageira = (m: Machinery): boolean => {
   const cat = (m.categoryType || '').toLowerCase();
@@ -113,10 +113,80 @@ export const formatTruckOptionLabel = (m: Machinery): string => {
   const nameOrModel = (m.name || m.model || 'Caminhão').toUpperCase();
   const brand = m.brand ? ` (${m.brand.toUpperCase()})` : '';
   const cap = m.capacityM3 && m.capacityM3 > 0 ? ` [${m.capacityM3} m³]` : '';
+  const ownLower = (m.ownership || '').toLowerCase();
+  const ownBadge = (ownLower === 'terceirizado' || ownLower.includes('terceir') || ownLower.includes('terceiro'))
+    ? ' [DE TERCEIRO]'
+    : '';
   if (plate) {
-    return `${plate} — ${nameOrModel}${brand}${cap}`;
+    return `${plate} — ${nameOrModel}${brand}${cap}${ownBadge}`;
   }
-  return `${nameOrModel}${brand}${cap}`;
+  return `${nameOrModel}${brand}${cap}${ownBadge}`;
+};
+
+export const isThirdPartyTruck = (
+  truck: Partial<ServiceTruckItem>,
+  machineries: Machinery[] = [],
+  employees: Employee[] = []
+): boolean => {
+  if (!truck) return false;
+
+  // 1. Verificação explícita da propriedade gravada no caminhão
+  const ownDirect = ((truck as any).ownership || '').toLowerCase().trim();
+  if (ownDirect === 'terceirizado' || ownDirect.includes('terceir') || ownDirect.includes('terceiro')) {
+    return true;
+  }
+
+  // 2. Busca na frota / maquinários cadastrados
+  const mach = machineries.find((m) => m.id === truck.machineryId);
+  if (mach) {
+    const machOwn = (mach.ownership || '').toLowerCase().trim();
+    if (machOwn === 'terceirizado' || machOwn.includes('terceir') || machOwn.includes('terceiro')) {
+      return true;
+    }
+    const machName = (mach.name || '').toLowerCase();
+    const machModel = (mach.model || '').toLowerCase();
+    const machNotes = (mach.notes || '').toLowerCase();
+    const machOwner = (mach.ownerName || '').toLowerCase();
+    if (
+      machName.includes('terceir') ||
+      machModel.includes('terceir') ||
+      machNotes.includes('terceir') ||
+      machOwner.includes('terceir')
+    ) {
+      return true;
+    }
+  }
+
+  // 3. Nome do caminhão digitado ou selecionado
+  const nameToCheck = (truck.truckName || '').toLowerCase();
+  if (nameToCheck.includes('terceir') || nameToCheck.includes('terceiro')) {
+    return true;
+  }
+
+  // 4. Motorista vinculado (se for colaborador classificado como terceirizado ou freteiro)
+  const driver = employees.find(
+    (e) => e.id === truck.primaryDriverId || e.name.toLowerCase() === (truck.primaryDriverName || '').toLowerCase()
+  );
+  if (driver) {
+    const contract = (driver.contractType || '').toLowerCase().trim();
+    const regType = (driver.registrationType || '').toLowerCase().trim();
+    const role = (driver.role || '').toLowerCase().trim();
+    if (
+      contract.includes('terceir') ||
+      regType.includes('terceir') ||
+      role.includes('terceir') ||
+      role.includes('freteiro')
+    ) {
+      return true;
+    }
+  }
+
+  const driverName = (truck.primaryDriverName || '').toLowerCase();
+  if (driverName.includes('terceir') || driverName.includes('freteiro')) {
+    return true;
+  }
+
+  return false;
 };
 
 export const isBrokerEmployee = (emp?: Partial<Employee>): boolean => {

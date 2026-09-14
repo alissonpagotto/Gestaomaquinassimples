@@ -755,6 +755,10 @@ export function getStoredSettlements(): ThirdPartySettlement[] {
 export function saveStoredSettlements(settlements: ThirdPartySettlement[]): void {
   try {
     localStorage.setItem(STORAGE_KEYS.SETTLEMENTS, JSON.stringify(settlements));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('silagem_settlements_updated', { detail: settlements }));
+      window.dispatchEvent(new Event('storage'));
+    }
   } catch (e) {
     console.error('Failed to save settlements', e);
   }

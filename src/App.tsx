@@ -398,6 +398,19 @@ export default function App() {
   useEffect(() => { saveStoredMaintenanceLogs(maintenanceLogs); }, [maintenanceLogs]);
   useEffect(() => { saveStoredCompanyProfile(companyProfile); }, [companyProfile]);
 
+  // Keep third-party settlements state fresh across component interactions
+  useEffect(() => {
+    const handleSettlementsUpdate = () => {
+      setSettlements(getStoredSettlements());
+    };
+    window.addEventListener('silagem_settlements_updated', handleSettlementsUpdate);
+    window.addEventListener('storage', handleSettlementsUpdate);
+    return () => {
+      window.removeEventListener('silagem_settlements_updated', handleSettlementsUpdate);
+      window.removeEventListener('storage', handleSettlementsUpdate);
+    };
+  }, []);
+
   // Reload everything when imported from backup
   const handleDataReload = () => {
     setExpenses(getStoredExpenses());

@@ -16,7 +16,14 @@ import {
 } from 'lucide-react';
 import { ServiceTruckItem, Machinery, Employee } from '../../types';
 import { formatCurrencyBRL } from '../../lib/storage';
-import { isCaminhao, findLinkedOperator, formatEmployeeOptionLabel, formatMachineryOptionLabel, formatTruckOptionLabel } from './serviceHelpers';
+import { 
+  isCaminhao, 
+  findLinkedOperator, 
+  formatEmployeeOptionLabel, 
+  formatMachineryOptionLabel, 
+  formatTruckOptionLabel,
+  isThirdPartyTruck
+} from './serviceHelpers';
 
 interface TruckFleetSectionProps {
   trucks: ServiceTruckItem[];
@@ -115,6 +122,7 @@ export const TruckFleetSection: React.FC<TruckFleetSectionProps> = ({
     onUpdateTruck(truckId, {
       machineryId: mach.id,
       truckName: mach.name || mach.model || 'Caminhão',
+      ownership: mach.ownership || 'proprio',
       plate: mach.licensePlateOrSerial ? mach.licensePlateOrSerial.trim().toUpperCase() : '',
       capacityM3: capacity,
       tripLoads: loads,
@@ -324,6 +332,11 @@ export const TruckFleetSection: React.FC<TruckFleetSectionProps> = ({
                       <span className="text-xs font-bold text-gray-900 dark:text-white">
                         {truck.truckName || 'Selecione o veículo abaixo'}
                       </span>
+                      {isThirdPartyTruck(truck, machineries, employees) && (
+                        <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-200 rounded border border-amber-300 dark:border-amber-700 font-extrabold text-[10px] tracking-wider uppercase shadow-2xs">
+                          DE TERCEIRO
+                        </span>
+                      )}
                     </div>
                   </div>
 

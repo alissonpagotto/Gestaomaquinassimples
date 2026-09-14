@@ -251,6 +251,8 @@ export const ThirdPartySettlementsTab: React.FC<ThirdPartySettlementsTabProps> =
       s.thirdPartyName.toLowerCase().includes(q) ||
       s.role.toLowerCase().includes(q) ||
       s.description.toLowerCase().includes(q) ||
+      (s.orderNumber && s.orderNumber.toLowerCase().includes(q)) ||
+      (s.orderClientName && s.orderClientName.toLowerCase().includes(q)) ||
       (s.machineryPlateOrName && s.machineryPlateOrName.toLowerCase().includes(q));
 
     return matchesStatus && matchesMonth && matchesSearch;
@@ -453,8 +455,15 @@ export const ThirdPartySettlementsTab: React.FC<ThirdPartySettlementsTabProps> =
                     </td>
 
                     <td className="py-2 px-3">
-                      <div className="font-bold text-black text-xs">
-                        {item.thirdPartyName}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-black text-xs">
+                          {item.thirdPartyName}
+                        </span>
+                        {item.orderNumber && (
+                          <span className="px-1.5 py-0.2 rounded bg-blue-50 border border-blue-200 text-blue-800 text-[10px] font-bold font-mono">
+                            OS #{item.orderNumber}
+                          </span>
+                        )}
                       </div>
                       <div className="text-[11px] text-black/75 font-medium">
                         {item.description}

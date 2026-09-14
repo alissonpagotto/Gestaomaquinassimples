@@ -40,9 +40,16 @@ import {
   CompanyProfile,
   ServiceFuelEntry,
   ServiceMealExpense,
-  BrokerSettlement
+  BrokerSettlement,
+  ThirdPartySettlement
 } from '../../types';
-import { formatCurrencyBRL, getStoredBrokerSettlements, saveStoredBrokerSettlements } from '../../lib/storage';
+import { 
+  formatCurrencyBRL, 
+  getStoredBrokerSettlements, 
+  saveStoredBrokerSettlements,
+  getStoredSettlements,
+  saveStoredSettlements
+} from '../../lib/storage';
 import { parseCurrencyToFloat, maskCurrencyBRLInput, formatCurrencyBRLOnBlur } from '../../lib/formatters';
 // Cadastro Unificado de Cliente (Modal Completo Oficial "Novo Produtor Rural / Pecuarista")
 import { ClientModal } from '../crm/ClientModal';
@@ -61,7 +68,8 @@ import {
   findLinkedOperator, 
   formatEmployeeOptionLabel,
   formatMachineryOptionLabel,
-  isBrokerEmployee
+  isBrokerEmployee,
+  isThirdPartyTruck
 } from './serviceHelpers';
 
 export type ServiceTabType = 'corte' | 'colheita' | 'trator' | 'maquina' | 'orcamento' | 'venda';
@@ -1205,6 +1213,118 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       } catch (err) {
         console.error('Erro ao salvar lançamento em Acertos Agenciadores:', err);
       }
+    }
+
+    // =========================================================================
+    // LANÇAMENTO FINANCEIRO AUTOMATIZADO EM ACERTOS TERCEIROS (FRETES / CAMINHÕES)
+    // =========================================================================
+    try {
+      const storedSettlements = getStoredSettlements();
+
+      // Identifica os caminhões classificados como "DE TERCEIRO"
+      const thirdPartyTrucks = updatedTrucks.filter((truck) =>
+        isThirdPartyTruck(truck, machineries, employees)
+      );
+
+      const currentThirdPartyIds = new Set(thirdPartyTrucks.map((t) => t.id));
+
+      // Preserva lançamentos de outras OSs e apenas da OS atual os que ainda pertencem a caminhões de terceiros ou já estão pagos
+      let nextSettlements = storedSettlements.filter((s) => {
+        if (s.orderId === newService.id && s.role === 'Freteiro / Caminhão') {
+          if (s.status === 'pago') return true; // Preserva registros já quitados
+          return currentThirdPartyIds.has(s.truckId || '');
+        }
+        return true;
+      });
+
+      for (const t of thirdPartyTrucks) {
+        // Encontra o detalhe calculado para este caminhão no DRE
+        const truckDetail = trucksExpenseDetails.find((d) => d.truckId === t.id);
+
+        // Valor total calculado para aquele transporte (ex: R$ 544,81)
+        const valorCalculado = truckDetail && truckDetail.totalCost > 0
+          ? Number(truckDetail.totalCost.toFixed(2))
+          : Number(
+              (
+                (unidadeArea === 'hectares' || unidadeArea === 'hora'
+                  ? (Number(t.truckHours) || 0) * (Number(t.truckHourlyRate) || 0)
+                  : (t.distributedValue || 0)) +
+                (t.totalAdditionalKm || 0) +
+                (t.driverCommission || 0)
+              ).toFixed(2)
+            );
+
+        // Identifica maquinário e funcionário vinculados (se houver)
+        const mach = machineries.find((m) => m.id === t.machineryId);
+        const emp = employees.find(
+          (e) => e.id === t.primaryDriverId || e.name.toLowerCase() === (t.primaryDriverName || '').toLowerCase()
+        );
+
+        // Identificador do veículo (ex: Transp. MTU ou Modelo/Placa)
+        const vehicleIdentifier = t.plate
+          ? (t.truckName ? `${t.truckName} [${t.plate.toUpperCase()}]` : t.plate.toUpperCase())
+          : (t.truckName || mach?.name || mach?.model || 'Caminhão Terceirizado');
+
+        // Nome do motorista / proprietário terceirizado (ex: EDIMO MTU)
+        const driverOrOwnerName = (
+          t.primaryDriverName?.trim() ||
+          mach?.ownerName?.trim() ||
+          mach?.operatorOrDriver?.trim() ||
+          mach?.name?.trim() ||
+          t.truckName?.trim() ||
+          'MOTORISTA TERCEIRIZADO'
+        ).toUpperCase();
+
+        // Busca se já existe um acerto para este caminhão nesta OS
+        const existingIdx = nextSettlements.findIndex(
+          (s) =>
+            (s.orderId === newService.id && s.truckId === t.id) ||
+            (s.orderId === newService.id && s.machineryPlateOrName === vehicleIdentifier)
+        );
+
+        const existingItem = existingIdx >= 0 ? nextSettlements[existingIdx] : null;
+        const deductions = existingItem ? (existingItem.deductions || 0) : 0;
+        const netAmount = Math.max(0, valorCalculado - deductions);
+
+        const settlementRecord: ThirdPartySettlement = {
+          id: existingItem ? existingItem.id : `tset_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          thirdPartyName: driverOrOwnerName,
+          role: 'Freteiro / Caminhão',
+          date: serviceDate || new Date().toISOString().split('T')[0],
+          description: `Transporte Silagem - Pedido #${newService.orderNumber || ''} (${clientName || 'Cliente'}) - ${vehicleIdentifier}`,
+          tons: estimativaToneladas > 0 ? estimativaToneladas : undefined,
+          trips: t.tripLoads || undefined,
+          hours: typeof t.truckHours === 'number' && t.truckHours > 0 ? t.truckHours : undefined,
+          rate: typeof t.truckHourlyRate === 'number' && t.truckHourlyRate > 0
+            ? t.truckHourlyRate
+            : (typeof t.ratePerKm === 'number' && t.ratePerKm > 0 ? t.ratePerKm : valorCalculado),
+          totalAmount: valorCalculado,
+          deductions: deductions,
+          netAmount: netAmount,
+          status: existingItem ? existingItem.status : 'pendente',
+          machineryPlateOrName: vehicleIdentifier,
+          phone: emp?.phone || mach?.notes || undefined,
+          notes: `Lançamento automático de frete terceirizado - Pedido #${newService.orderNumber || ''} (Cliente: ${clientName || ''}). Veículo: ${vehicleIdentifier}. Transportador: ${driverOrOwnerName}.`,
+          orderId: newService.id,
+          truckId: t.id,
+          orderNumber: newService.orderNumber,
+          orderClientName: clientName,
+          createdAt: existingItem && existingItem.createdAt ? existingItem.createdAt : new Date().toISOString(),
+        };
+
+        if (existingIdx >= 0) {
+          nextSettlements[existingIdx] = {
+            ...nextSettlements[existingIdx],
+            ...settlementRecord,
+          };
+        } else {
+          nextSettlements.push(settlementRecord);
+        }
+      }
+
+      saveStoredSettlements(nextSettlements);
+    } catch (err) {
+      console.error('Erro ao gerar lançamento financeiro em Acertos Terceiros:', err);
     }
 
     setSavedOrder(newService);
