@@ -72,7 +72,7 @@ import {
   isThirdPartyTruck
 } from './serviceHelpers';
 
-export type ServiceTabType = 'corte' | 'colheita' | 'trator' | 'maquina' | 'orcamento' | 'venda';
+export type ServiceTabType = 'corte' | 'colheita' | 'trator' | 'maquina' | 'frete' | 'orcamento' | 'venda';
 
 interface ServiceFormModalProps {
   isOpen: boolean;
@@ -118,16 +118,16 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
   const [maintenanceHourMeter, setMaintenanceHourMeter] = useState('');
   const [status, setStatus] = useState<'agendado' | 'em_andamento' | 'concluido' | 'cancelado'>('agendado');
 
-  // Estados da Aba 1: Seleção de Equipamentos & Regras de Cobrança (Serviços e Aluguel de Máquinas/Caminhões)
+  // Estados da Aba 1: Seleção de Equipamentos & Regras de Cobrança (Serviços e Aluguel de Máquinas/Caminhões/Fretes)
   const [equipmentCategory, setEquipmentCategory] = useState<'pesadas' | 'caminhoes'>('pesadas');
   const [heavyMachineType, setHeavyMachineType] = useState<string>('Retroescavadeira');
   const [heavyMachineHours, setHeavyMachineHours] = useState<number | ''>('');
   const [heavyMachineHourlyRate, setHeavyMachineHourlyRate] = useState<string | number>('');
 
-  // Caminhões / Transporte
+  // Caminhões / Transporte / Frete
   const [truckServiceId, setTruckServiceId] = useState<string>('');
   const [truckServiceName, setTruckServiceName] = useState<string>('');
-  const [truckBillingMode, setTruckBillingMode] = useState<'horas' | 'cargas_km' | 'somente_km'>('horas');
+  const [truckBillingMode, setTruckBillingMode] = useState<'km' | 'horas' | 'cargas' | 'viagem' | 'cargas_km' | 'somente_km'>('horas');
   const [truckServiceHours, setTruckServiceHours] = useState<number | ''>('');
   const [truckServiceHourlyRate, setTruckServiceHourlyRate] = useState<string | number>('');
   const [truckServiceLoads, setTruckServiceLoads] = useState<number | ''>('');
@@ -136,6 +136,15 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
   const [truckServiceRatePerKm, setTruckServiceRatePerKm] = useState<string | number>('');
   const [truckServiceTotalKm, setTruckServiceTotalKm] = useState<number | ''>('');
   const [truckServiceRateOnlyKm, setTruckServiceRateOnlyKm] = useState<string | number>('');
+  const [truckServiceTrips, setTruckServiceTrips] = useState<number | ''>('');
+  const [truckServiceRatePerTrip, setTruckServiceRatePerTrip] = useState<string | number>('');
+
+  // Dados Adicionais de Frete / Logística
+  const [freightMaterialType, setFreightMaterialType] = useState<string>('');
+  const [freightOrigin, setFreightOrigin] = useState<string>('');
+  const [freightDestination, setFreightDestination] = useState<string>('');
+  const [freightDriverId, setFreightDriverId] = useState<string>('');
+  const [freightDriverName, setFreightDriverName] = useState<string>('');
 
   // 2. Área e Unidades (Corte e Colheita)
   const [unidadeArea, setUnidadeArea] = useState<'hectares' | 'alqueires' | 'hora'>('hectares');
@@ -468,7 +477,7 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       );
       setTruckServiceId(editRecord.machineryId || '');
       setTruckServiceName(editRecord.machineryAssigned || '');
-      setTruckBillingMode(editRecord.truckBillingMode || 'horas');
+      setTruckBillingMode(editRecord.truckBillingMode || (activeTab === 'frete' ? 'km' : 'horas'));
       setTruckServiceHours(editRecord.truckServiceHours ?? '');
       setTruckServiceHourlyRate(
         editRecord.truckServiceHourlyRate !== undefined ? maskCurrencyBRLInput(editRecord.truckServiceHourlyRate) : ''
@@ -485,6 +494,17 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       setTruckServiceRateOnlyKm(
         editRecord.truckServiceRateOnlyKm !== undefined ? maskCurrencyBRLInput(editRecord.truckServiceRateOnlyKm) : ''
       );
+      setTruckServiceTrips(editRecord.truckServiceTrips ?? '');
+      setTruckServiceRatePerTrip(
+        editRecord.truckServiceRatePerTrip !== undefined ? maskCurrencyBRLInput(editRecord.truckServiceRatePerTrip) : ''
+      );
+
+      // Dados de Frete
+      setFreightMaterialType(editRecord.freightMaterialType || '');
+      setFreightOrigin(editRecord.freightOrigin || '');
+      setFreightDestination(editRecord.freightDestination || '');
+      setFreightDriverId(editRecord.freightDriverId || editRecord.operatorId || '');
+      setFreightDriverName(editRecord.freightDriverName || editRecord.operatorAssigned || '');
 
       setObservacoes(editRecord.notes || '');
       setSavedOrder(editRecord || null);
@@ -498,14 +518,26 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       setServiceDate(new Date().toISOString().split('T')[0]);
       setStatus('agendado');
 
-      // Reset Aba 1
-      setEquipmentCategory('pesadas');
+      // Reset Aba 1 & Frete
+      if (activeTab === 'frete') {
+        setEquipmentCategory('caminhoes');
+        setTruckBillingMode('km');
+        if (frotasCaminhoesDisponiveis.length > 0) {
+          setTruckServiceId(frotasCaminhoesDisponiveis[0].id);
+          setTruckServiceName(frotasCaminhoesDisponiveis[0].name || frotasCaminhoesDisponiveis[0].model);
+        } else {
+          setTruckServiceId('');
+          setTruckServiceName('');
+        }
+      } else {
+        setEquipmentCategory('pesadas');
+        setTruckBillingMode('horas');
+        setTruckServiceId('');
+        setTruckServiceName('');
+      }
       setHeavyMachineType('Retroescavadeira');
       setHeavyMachineHours('');
       setHeavyMachineHourlyRate('');
-      setTruckServiceId('');
-      setTruckServiceName('');
-      setTruckBillingMode('horas');
       setTruckServiceHours('');
       setTruckServiceHourlyRate('');
       setTruckServiceLoads('');
@@ -514,6 +546,14 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       setTruckServiceRatePerKm('');
       setTruckServiceTotalKm('');
       setTruckServiceRateOnlyKm('');
+      setTruckServiceTrips('');
+      setTruckServiceRatePerTrip('');
+
+      setFreightMaterialType('');
+      setFreightOrigin('');
+      setFreightDestination('');
+      setFreightDriverId('');
+      setFreightDriverName('');
 
       setUnidadeArea('hectares');
       setQuantidadeArea('');
@@ -791,23 +831,24 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
     }, 0);
   }, [trucks, unidadeArea]);
 
-  // Subtotal do Serviço de Máquina ou Transporte (Aba 1)
+  // Subtotal do Serviço de Máquina ou Transporte / Frete
   const subtotalServicoMaquina = useMemo(() => {
-    if (activeTab !== 'maquina') return 0;
-    if (equipmentCategory === 'pesadas') {
+    if (activeTab !== 'maquina' && activeTab !== 'frete') return 0;
+    if (activeTab === 'maquina' && equipmentCategory === 'pesadas') {
       const h = typeof heavyMachineHours === 'number' ? heavyMachineHours : 0;
       const rate = typeof heavyMachineHourlyRate === 'number'
         ? heavyMachineHourlyRate
         : parseCurrencyToFloat(heavyMachineHourlyRate);
       return Number((h * rate).toFixed(2));
     } else {
+      // Regras de Cobrança do Frete / Caminhão: Por KM, Por Hora, Por Carga, Por Viagem
       if (truckBillingMode === 'horas') {
         const h = typeof truckServiceHours === 'number' ? truckServiceHours : 0;
         const rate = typeof truckServiceHourlyRate === 'number'
           ? truckServiceHourlyRate
           : parseCurrencyToFloat(truckServiceHourlyRate);
         return Number((h * rate).toFixed(2));
-      } else if (truckBillingMode === 'cargas_km') {
+      } else if (truckBillingMode === 'cargas' || truckBillingMode === 'cargas_km') {
         const loads = typeof truckServiceLoads === 'number' ? truckServiceLoads : 0;
         const rateLoad = typeof truckServiceRatePerLoad === 'number'
           ? truckServiceRatePerLoad
@@ -817,12 +858,18 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
           ? truckServiceRatePerKm
           : parseCurrencyToFloat(truckServiceRatePerKm);
         return Number(((loads * rateLoad) + (km * rateKm)).toFixed(2));
-      } else if (truckBillingMode === 'somente_km') {
+      } else if (truckBillingMode === 'km' || truckBillingMode === 'somente_km') {
         const km = typeof truckServiceTotalKm === 'number' ? truckServiceTotalKm : 0;
         const rateKm = typeof truckServiceRateOnlyKm === 'number'
           ? truckServiceRateOnlyKm
           : parseCurrencyToFloat(truckServiceRateOnlyKm);
         return Number((km * rateKm).toFixed(2));
+      } else if (truckBillingMode === 'viagem') {
+        const trips = typeof truckServiceTrips === 'number' ? truckServiceTrips : 0;
+        const rateTrip = typeof truckServiceRatePerTrip === 'number'
+          ? truckServiceRatePerTrip
+          : parseCurrencyToFloat(truckServiceRatePerTrip);
+        return Number((trips * rateTrip).toFixed(2));
       }
       return 0;
     }
@@ -840,12 +887,14 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
     truckServiceRatePerKm,
     truckServiceTotalKm,
     truckServiceRateOnlyKm,
+    truckServiceTrips,
+    truckServiceRatePerTrip,
   ]);
 
   // 5. TOTAL DO PEDIDO (Cobrado do Cliente - com Frete Prancha e Frotas por Hora quando Hectares ou Por Hora)
   const totalPedido = useMemo(() => {
     const valorFretePrancha = parseCurrencyToFloat(fretePrancha);
-    if (activeTab === 'maquina') {
+    if (activeTab === 'maquina' || activeTab === 'frete') {
       return subtotalServicoMaquina + valorFretePrancha;
     }
     // Inclusão da modalidade Por Hora (h) para frotas cobradas por hora
@@ -1074,6 +1123,15 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
   const activeVehicles = useMemo(() => {
     const list: { vehicleId: string; vehicleType: 'forrageira' | 'trator' | 'caminhao' | 'outro'; vehicleName: string }[] = [];
 
+    if (activeTab === 'frete') {
+      list.push({
+        vehicleId: truckServiceId || 'veh_truck_service',
+        vehicleType: 'caminhao',
+        vehicleName: `Caminhão (${truckServiceName || 'Frota de Frete'})`,
+      });
+      return list;
+    }
+
     if (activeTab === 'maquina') {
       if (equipmentCategory === 'pesadas' && heavyMachineType) {
         list.push({
@@ -1210,6 +1268,13 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       return;
     }
 
+    if (activeTab === 'frete') {
+      if (!truckServiceId && !truckServiceName) {
+        alert('Por favor, selecione o caminhão da frota para o frete.');
+        return;
+      }
+    }
+
     if (activeTab === 'maquina') {
       if (equipmentCategory === 'pesadas') {
         if (!heavyMachineType) {
@@ -1241,53 +1306,104 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       };
     });
 
+    const isFreight = activeTab === 'frete';
+
     const newService: ServiceOrder = {
       id: editRecord?.id || 'serv_' + Date.now(),
       orderNumber: numero || `#${Date.now().toString().slice(-4)}`,
       clientId,
       clientName,
       farmName,
-      serviceType: activeTab === 'corte' ? 'Corte de Silagem' : activeTab === 'colheita' ? 'Colheita' : activeTab === 'trator' ? 'Serviço de Trator' : activeTab === 'orcamento' ? 'Orçamento Agrícola' : activeTab === 'venda' ? 'Venda de Silagem' : 'Serviço de Máquina',
+      serviceType: activeTab === 'frete'
+        ? 'Serviço de Frete'
+        : activeTab === 'corte'
+        ? 'Corte de Silagem'
+        : activeTab === 'colheita'
+        ? 'Colheita'
+        : activeTab === 'trator'
+        ? 'Serviço de Trator'
+        : activeTab === 'orcamento'
+        ? 'Orçamento Agrícola'
+        : activeTab === 'venda'
+        ? 'Venda de Silagem'
+        : 'Serviço de Máquina',
       serviceTab: activeTab,
       status,
       startDate: serviceDate,
       completionDate: completionDate || undefined,
-      machineryId: activeTab === 'maquina'
+      machineryId: isFreight
+        ? (truckServiceId || undefined)
+        : activeTab === 'maquina'
         ? (equipmentCategory === 'caminhoes' ? (truckServiceId || undefined) : (machineries.find((m) => (m.name || m.model) === heavyMachineType)?.id || undefined))
         : (activeTab === 'maquina' && maintenanceMachineryId ? maintenanceMachineryId : editRecord?.machineryId),
-      machineryAssigned: activeTab === 'maquina'
+      machineryAssigned: isFreight
+        ? (truckServiceName || 'Caminhão')
+        : activeTab === 'maquina'
         ? (equipmentCategory === 'caminhoes' ? (truckServiceName || 'Caminhão') : heavyMachineType)
         : editRecord?.machineryAssigned,
-      equipmentCategory: activeTab === 'maquina' ? equipmentCategory : undefined,
+      operatorId: isFreight ? (freightDriverId || undefined) : undefined,
+      operatorAssigned: isFreight ? (freightDriverName || undefined) : undefined,
+      equipmentCategory: isFreight ? 'caminhoes' : (activeTab === 'maquina' ? equipmentCategory : undefined),
       machineSpecificType: activeTab === 'maquina' && equipmentCategory === 'pesadas' ? heavyMachineType : undefined,
       machineHours: activeTab === 'maquina' && equipmentCategory === 'pesadas' && typeof heavyMachineHours === 'number' ? heavyMachineHours : undefined,
       machineHourlyRate: activeTab === 'maquina' && equipmentCategory === 'pesadas' ? parseCurrencyToFloat(heavyMachineHourlyRate) : undefined,
-      truckBillingMode: activeTab === 'maquina' && equipmentCategory === 'caminhoes' ? truckBillingMode : undefined,
-      truckServiceHours: activeTab === 'maquina' && equipmentCategory === 'caminhoes' && typeof truckServiceHours === 'number' ? truckServiceHours : undefined,
-      truckServiceHourlyRate: activeTab === 'maquina' && equipmentCategory === 'caminhoes' ? parseCurrencyToFloat(truckServiceHourlyRate) : undefined,
-      truckServiceLoads: activeTab === 'maquina' && equipmentCategory === 'caminhoes' && typeof truckServiceLoads === 'number' ? truckServiceLoads : undefined,
-      truckServiceRatePerLoad: activeTab === 'maquina' && equipmentCategory === 'caminhoes' ? parseCurrencyToFloat(truckServiceRatePerLoad) : undefined,
-      truckServiceKmAdditional: activeTab === 'maquina' && equipmentCategory === 'caminhoes' && typeof truckServiceAdditionalKm === 'number' ? truckServiceAdditionalKm : undefined,
-      truckServiceRatePerKm: activeTab === 'maquina' && equipmentCategory === 'caminhoes' ? parseCurrencyToFloat(truckServiceRatePerKm) : undefined,
-      truckServiceTotalKm: activeTab === 'maquina' && equipmentCategory === 'caminhoes' && typeof truckServiceTotalKm === 'number' ? truckServiceTotalKm : undefined,
-      truckServiceRateOnlyKm: activeTab === 'maquina' && equipmentCategory === 'caminhoes' ? parseCurrencyToFloat(truckServiceRateOnlyKm) : undefined,
-      machineTotalAmount: activeTab === 'maquina' ? subtotalServicoMaquina : undefined,
+      
+      // Frete & Transporte
+      truckBillingMode: (isFreight || (activeTab === 'maquina' && equipmentCategory === 'caminhoes')) ? truckBillingMode : undefined,
+      truckServiceHours: (isFreight || (activeTab === 'maquina' && equipmentCategory === 'caminhoes')) && typeof truckServiceHours === 'number' ? truckServiceHours : undefined,
+      truckServiceHourlyRate: (isFreight || (activeTab === 'maquina' && equipmentCategory === 'caminhoes')) ? parseCurrencyToFloat(truckServiceHourlyRate) : undefined,
+      truckServiceLoads: (isFreight || (activeTab === 'maquina' && equipmentCategory === 'caminhoes')) && typeof truckServiceLoads === 'number' ? truckServiceLoads : undefined,
+      truckServiceRatePerLoad: (isFreight || (activeTab === 'maquina' && equipmentCategory === 'caminhoes')) ? parseCurrencyToFloat(truckServiceRatePerLoad) : undefined,
+      truckServiceKmAdditional: (isFreight || (activeTab === 'maquina' && equipmentCategory === 'caminhoes')) && typeof truckServiceAdditionalKm === 'number' ? truckServiceAdditionalKm : undefined,
+      truckServiceRatePerKm: (isFreight || (activeTab === 'maquina' && equipmentCategory === 'caminhoes')) ? parseCurrencyToFloat(truckServiceRatePerKm) : undefined,
+      truckServiceTotalKm: (isFreight || (activeTab === 'maquina' && equipmentCategory === 'caminhoes')) && typeof truckServiceTotalKm === 'number' ? truckServiceTotalKm : undefined,
+      truckServiceRateOnlyKm: (isFreight || (activeTab === 'maquina' && equipmentCategory === 'caminhoes')) ? parseCurrencyToFloat(truckServiceRateOnlyKm) : undefined,
+      truckServiceTrips: (isFreight || (activeTab === 'maquina' && equipmentCategory === 'caminhoes')) && typeof truckServiceTrips === 'number' ? truckServiceTrips : undefined,
+      truckServiceRatePerTrip: (isFreight || (activeTab === 'maquina' && equipmentCategory === 'caminhoes')) ? parseCurrencyToFloat(truckServiceRatePerTrip) : undefined,
+      machineTotalAmount: (isFreight || activeTab === 'maquina') ? subtotalServicoMaquina : undefined,
+
+      // Logística / Frete
+      freightMaterialType: freightMaterialType || undefined,
+      freightOrigin: freightOrigin || undefined,
+      freightDestination: freightDestination || undefined,
+      freightDriverId: freightDriverId || undefined,
+      freightDriverName: freightDriverName || undefined,
 
       // Área
-      areaUnit: activeTab === 'maquina' ? (equipmentCategory === 'pesadas' || truckBillingMode === 'horas' ? 'hora' : undefined) : unidadeArea,
-      areaQuantity: activeTab === 'maquina'
+      areaUnit: isFreight
+        ? (truckBillingMode === 'horas' ? 'hora' : undefined)
+        : activeTab === 'maquina'
+        ? (equipmentCategory === 'pesadas' || truckBillingMode === 'horas' ? 'hora' : undefined)
+        : unidadeArea,
+      areaQuantity: isFreight
+        ? (truckBillingMode === 'horas'
+            ? (Number(truckServiceHours) || undefined)
+            : (truckBillingMode === 'km' || truckBillingMode === 'somente_km')
+            ? (Number(truckServiceTotalKm) || undefined)
+            : (truckBillingMode === 'cargas' || truckBillingMode === 'cargas_km')
+            ? (Number(truckServiceLoads) || undefined)
+            : (Number(truckServiceTrips) || undefined))
+        : activeTab === 'maquina'
         ? (equipmentCategory === 'pesadas' ? (Number(heavyMachineHours) || undefined) : (truckBillingMode === 'horas' ? (Number(truckServiceHours) || undefined) : (truckBillingMode === 'somente_km' ? (Number(truckServiceTotalKm) || undefined) : (Number(truckServiceLoads) || undefined))))
         : (typeof quantidadeArea === 'number' ? quantidadeArea : undefined),
-      ratePerAreaUnit: activeTab === 'maquina'
-        ? (equipmentCategory === 'pesadas' ? parseCurrencyToFloat(heavyMachineHourlyRate) : (truckBillingMode === 'horas' ? parseCurrencyToFloat(truckServiceHourlyRate) : (truckBillingMode === 'somente_km' ? parseCurrencyToFloat(truckServiceRateOnlyKm) : parseCurrencyToFloat(truckServiceRatePerLoad))))
+      ratePerAreaUnit: (isFreight || activeTab === 'maquina')
+        ? undefined
         : parseCurrencyToFloat(valorPorHectare),
-      ratePerUnit: activeTab === 'maquina'
+      ratePerUnit: isFreight
+        ? (truckBillingMode === 'horas'
+            ? parseCurrencyToFloat(truckServiceHourlyRate)
+            : (truckBillingMode === 'km' || truckBillingMode === 'somente_km')
+            ? parseCurrencyToFloat(truckServiceRateOnlyKm)
+            : (truckBillingMode === 'cargas' || truckBillingMode === 'cargas_km')
+            ? parseCurrencyToFloat(truckServiceRatePerLoad)
+            : parseCurrencyToFloat(truckServiceRatePerTrip))
+        : activeTab === 'maquina'
         ? (equipmentCategory === 'pesadas' ? parseCurrencyToFloat(heavyMachineHourlyRate) : (truckBillingMode === 'horas' ? parseCurrencyToFloat(truckServiceHourlyRate) : (truckBillingMode === 'somente_km' ? parseCurrencyToFloat(truckServiceRateOnlyKm) : parseCurrencyToFloat(truckServiceRatePerLoad))))
         : parseCurrencyToFloat(valorPorHectare),
       tonsEstimated: estimativaToneladas > 0 ? estimativaToneladas : undefined,
       densityKg: typeof pesoPorM3 === 'number' ? pesoPorM3 : undefined,
       weightPerM3Kg: typeof pesoPorM3 === 'number' ? pesoPorM3 : undefined,
-      subtotalArea: activeTab === 'maquina' ? subtotalServicoMaquina : valorBaseArea,
+      subtotalArea: (isFreight || activeTab === 'maquina') ? subtotalServicoMaquina : valorBaseArea,
 
       // Frete Prancha
       fretePrancha: parseCurrencyToFloat(fretePrancha),
@@ -2104,18 +2220,20 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
   const getTabConfig = () => {
     switch (activeTab) {
       case 'colheita':
-        return { title: 'Nova Colheita', icon: Wheat, color: 'text-amber-600' };
+        return { title: editRecord ? 'Editar Colheita' : 'Nova Colheita', icon: Wheat, color: 'text-amber-600' };
       case 'trator':
-        return { title: 'Novo Serviço de Trator', icon: Tractor, color: 'text-blue-600' };
+        return { title: editRecord ? 'Editar Serviço de Trator' : 'Novo Serviço de Trator', icon: Tractor, color: 'text-blue-600' };
       case 'maquina':
-        return { title: 'Novo Serviço de Máquina', icon: Wrench, color: 'text-purple-600' };
+        return { title: editRecord ? 'Editar Serviço de Máquina' : 'Novo Serviço de Máquina', icon: Wrench, color: 'text-purple-600' };
+      case 'frete':
+        return { title: editRecord ? 'Editar Serviço de Frete' : 'Novo Serviço de Frete', icon: Truck, color: 'text-emerald-700' };
       case 'orcamento':
-        return { title: 'Novo Orçamento', icon: FileText, color: 'text-cyan-600' };
+        return { title: editRecord ? 'Editar Orçamento' : 'Novo Orçamento', icon: FileText, color: 'text-cyan-600' };
       case 'venda':
-        return { title: 'Nova Venda', icon: ShoppingCart, color: 'text-rose-600' };
+        return { title: editRecord ? 'Editar Venda' : 'Nova Venda', icon: ShoppingCart, color: 'text-rose-600' };
       case 'corte':
       default:
-        return { title: 'Novo Corte de Silagem', icon: Scissors, color: 'text-emerald-700' };
+        return { title: editRecord ? 'Editar Corte de Silagem' : 'Novo Corte de Silagem', icon: Scissors, color: 'text-emerald-700' };
     }
   };
 
@@ -2791,6 +2909,425 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
                     )}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* BLOCO CENTRAL: ABA 1. SERVIÇO DE FRETE & REGRAS DE COBRANÇA */}
+            {activeTab === 'frete' && (
+              <div className="bg-emerald-50/70 dark:bg-slate-800/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl p-3.5 sm:p-4 shadow-sm space-y-4">
+                {/* Cabeçalho Verde Esmeralda */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200 dark:border-emerald-800/60 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 bg-emerald-700 text-white rounded-lg shadow-xs">
+                      <Truck className="w-4 h-4" />
+                    </span>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-bold text-emerald-950 dark:text-white uppercase tracking-wider">
+                        ABA 1. SERVIÇO DE FRETE & REGRAS DE COBRANÇA
+                      </h4>
+                      <p className="text-[11px] text-emerald-800 dark:text-emerald-300">
+                        Gestão operacional e faturamento de transporte e frete rodoviário para clientes externos
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="self-start sm:self-auto px-2.5 py-1 text-[11px] font-bold rounded-lg border bg-white dark:bg-slate-900 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 shadow-2xs">
+                    {truckBillingMode === 'km' || truckBillingMode === 'somente_km'
+                      ? 'Modalidade: Por KM'
+                      : truckBillingMode === 'horas'
+                      ? 'Modalidade: Por Hora'
+                      : truckBillingMode === 'cargas' || truckBillingMode === 'cargas_km'
+                      ? 'Modalidade: Por Carga'
+                      : 'Modalidade: Por Viagem'}
+                  </span>
+                </div>
+
+                {/* Bloco 1: Veículo, Condutor e Dados da Carga / Rota */}
+                <div className="bg-white dark:bg-slate-900/80 border border-emerald-200 dark:border-slate-700 rounded-xl p-3 sm:p-4 space-y-3 shadow-2xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                    {/* Caminhão da Frota */}
+                    <div className="sm:col-span-5">
+                      <label className="block text-[11px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-1">
+                        Caminhão da Frota *
+                      </label>
+                      <select
+                        value={truckServiceId}
+                        onChange={(e) => {
+                          const tId = e.target.value;
+                          setTruckServiceId(tId);
+                          const found = machineries.find((m) => m.id === tId);
+                          if (found) {
+                            setTruckServiceName(found.name || found.model);
+                          }
+                        }}
+                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 cursor-pointer"
+                      >
+                        <option value="">Selecione o caminhão...</option>
+                        {frotasCaminhoesDisponiveis.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.licensePlateOrSerial ? `[${m.licensePlateOrSerial}] ` : ''}
+                            {m.name || m.model} {m.brand ? `(${m.brand})` : ''} {m.capacityM3 ? `• ${m.capacityM3}m³` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Motorista / Responsável */}
+                    <div className="sm:col-span-4">
+                      <label className="block text-[11px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-1">
+                        Motorista / Condutor
+                      </label>
+                      <select
+                        value={freightDriverId}
+                        onChange={(e) => {
+                          const drvId = e.target.value;
+                          setFreightDriverId(drvId);
+                          const emp = employees.find((em) => em.id === drvId);
+                          if (emp) {
+                            setFreightDriverName(emp.name);
+                          } else {
+                            setFreightDriverName('');
+                          }
+                        }}
+                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 cursor-pointer"
+                      >
+                        <option value="">Selecione o motorista...</option>
+                        {employees.map((emp) => (
+                          <option key={emp.id} value={emp.id}>
+                            {emp.name} {emp.role ? `(${emp.role})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Tipo de Carga / Material */}
+                    <div className="sm:col-span-3">
+                      <label className="block text-[11px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-1">
+                        Tipo de Carga / Material
+                      </label>
+                      <input
+                        type="text"
+                        value={freightMaterialType}
+                        onChange={(e) => setFreightMaterialType(e.target.value)}
+                        placeholder="Ex: Silagem, Grãos, Adubo..."
+                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Origem e Destino */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        Origem / Ponto de Partida
+                      </label>
+                      <input
+                        type="text"
+                        value={freightOrigin}
+                        onChange={(e) => setFreightOrigin(e.target.value)}
+                        placeholder="Ex: Fazenda Boa Esperança, Galpão 1..."
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 shadow-2xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        Destino / Ponto de Entrega
+                      </label>
+                      <input
+                        type="text"
+                        value={freightDestination}
+                        onChange={(e) => setFreightDestination(e.target.value)}
+                        placeholder="Ex: Silo da Cooperativa, Fazenda Santa Fé..."
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 shadow-2xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Seletor das 4 Regras de Cobrança do Frete */}
+                <div className="bg-white dark:bg-slate-900/80 border border-emerald-200 dark:border-slate-700 rounded-xl p-3 sm:p-4 space-y-3.5 shadow-2xs">
+                  <div>
+                    <label className="block text-[11px] font-bold text-emerald-950 dark:text-slate-200 uppercase tracking-wider mb-2">
+                      Regra de Cobrança do Frete *
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setTruckBillingMode('km')}
+                        className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold border transition cursor-pointer ${
+                          truckBillingMode === 'km' || truckBillingMode === 'somente_km'
+                            ? 'bg-emerald-700 text-white border-emerald-800 shadow-sm'
+                            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600 hover:bg-emerald-50 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        <Gauge className="w-4 h-4" />
+                        <span>Por KM</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setTruckBillingMode('horas')}
+                        className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold border transition cursor-pointer ${
+                          truckBillingMode === 'horas'
+                            ? 'bg-emerald-700 text-white border-emerald-800 shadow-sm'
+                            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600 hover:bg-emerald-50 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        <Clock className="w-4 h-4" />
+                        <span>Por Hora</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setTruckBillingMode('cargas')}
+                        className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold border transition cursor-pointer ${
+                          truckBillingMode === 'cargas' || truckBillingMode === 'cargas_km'
+                            ? 'bg-emerald-700 text-white border-emerald-800 shadow-sm'
+                            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600 hover:bg-emerald-50 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        <Layers className="w-4 h-4" />
+                        <span>Por Carga</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setTruckBillingMode('viagem')}
+                        className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold border transition cursor-pointer ${
+                          truckBillingMode === 'viagem'
+                            ? 'bg-emerald-700 text-white border-emerald-800 shadow-sm'
+                            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600 hover:bg-emerald-50 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        <ArrowRight className="w-4 h-4" />
+                        <span>Por Viagem</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 1. Modalidade: Por KM */}
+                  {(truckBillingMode === 'km' || truckBillingMode === 'somente_km') && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                          Quilometragem Total (km) *
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={truckServiceTotalKm}
+                          onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                          onChange={(e) => setTruckServiceTotalKm(e.target.value === '' ? '' : Number(e.target.value))}
+                          placeholder="Ex: 120"
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 shadow-2xs"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                          Valor por KM (R$/km) *
+                        </label>
+                        <input
+                          type="text"
+                          value={truckServiceRateOnlyKm}
+                          onChange={(e) => setTruckServiceRateOnlyKm(maskCurrencyBRLInput(e.target.value))}
+                          onBlur={() => setTruckServiceRateOnlyKm(formatCurrencyBRLOnBlur(truckServiceRateOnlyKm))}
+                          placeholder="R$ 0,00"
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 shadow-2xs"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                          Subtotal do Frete
+                        </label>
+                        <div className="w-full px-3 py-2 bg-emerald-50 dark:bg-slate-800 border border-emerald-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-bold text-emerald-950 dark:text-white flex items-center justify-between shadow-2xs">
+                          <span>{formatCurrencyBRL(subtotalServicoMaquina)}</span>
+                          <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-normal">
+                            {truckServiceTotalKm || 0} km × {formatCurrencyBRL(parseCurrencyToFloat(truckServiceRateOnlyKm))}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2. Modalidade: Por Hora */}
+                  {truckBillingMode === 'horas' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                          Horas Trabalhadas (h) *
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          value={truckServiceHours}
+                          onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                          onChange={(e) => setTruckServiceHours(e.target.value === '' ? '' : Number(e.target.value))}
+                          placeholder="Ex: 8.0"
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 shadow-2xs"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                          Valor da Hora (R$/h) *
+                        </label>
+                        <input
+                          type="text"
+                          value={truckServiceHourlyRate}
+                          onChange={(e) => setTruckServiceHourlyRate(maskCurrencyBRLInput(e.target.value))}
+                          onBlur={() => setTruckServiceHourlyRate(formatCurrencyBRLOnBlur(truckServiceHourlyRate))}
+                          placeholder="R$ 0,00"
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 shadow-2xs"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                          Subtotal do Frete
+                        </label>
+                        <div className="w-full px-3 py-2 bg-emerald-50 dark:bg-slate-800 border border-emerald-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-bold text-emerald-950 dark:text-white flex items-center justify-between shadow-2xs">
+                          <span>{formatCurrencyBRL(subtotalServicoMaquina)}</span>
+                          <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-normal">
+                            {truckServiceHours || 0} h × {formatCurrencyBRL(parseCurrencyToFloat(truckServiceHourlyRate))}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3. Modalidade: Por Carga (com KM adicional opcional) */}
+                  {(truckBillingMode === 'cargas' || truckBillingMode === 'cargas_km') && (
+                    <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Quantidade de Cargas *
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={truckServiceLoads}
+                            onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                            onChange={(e) => setTruckServiceLoads(e.target.value === '' ? '' : Number(e.target.value))}
+                            placeholder="Ex: 4"
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 shadow-2xs"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Valor por Carga (R$/carga) *
+                          </label>
+                          <input
+                            type="text"
+                            value={truckServiceRatePerLoad}
+                            onChange={(e) => setTruckServiceRatePerLoad(maskCurrencyBRLInput(e.target.value))}
+                            onBlur={() => setTruckServiceRatePerLoad(formatCurrencyBRLOnBlur(truckServiceRatePerLoad))}
+                            placeholder="R$ 0,00"
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 shadow-2xs"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            KM Adicional Rodado
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={truckServiceAdditionalKm}
+                            onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                            onChange={(e) => setTruckServiceAdditionalKm(e.target.value === '' ? '' : Number(e.target.value))}
+                            placeholder="Ex: 30"
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 shadow-2xs"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Valor por KM Adicional (R$/km)
+                          </label>
+                          <input
+                            type="text"
+                            value={truckServiceRatePerKm}
+                            onChange={(e) => setTruckServiceRatePerKm(maskCurrencyBRLInput(e.target.value))}
+                            onBlur={() => setTruckServiceRatePerKm(formatCurrencyBRLOnBlur(truckServiceRatePerKm))}
+                            placeholder="R$ 0,00"
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 shadow-2xs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Card Subtotal da Combinação */}
+                      <div className="flex items-center justify-between px-3.5 py-2 bg-emerald-50 dark:bg-slate-800 border border-emerald-200 dark:border-slate-700 rounded-lg">
+                        <span className="text-xs text-emerald-900 dark:text-emerald-300 font-semibold">
+                          Cargas ({truckServiceLoads || 0} × {formatCurrencyBRL(parseCurrencyToFloat(truckServiceRatePerLoad))}) + KM ({truckServiceAdditionalKm || 0} km × {formatCurrencyBRL(parseCurrencyToFloat(truckServiceRatePerKm))})
+                        </span>
+                        <span className="text-sm font-bold text-emerald-950 dark:text-white">
+                          Subtotal: {formatCurrencyBRL(subtotalServicoMaquina)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 4. Modalidade: Por Viagem */}
+                  {truckBillingMode === 'viagem' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                          Quantidade de Viagens *
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={truckServiceTrips}
+                          onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                          onChange={(e) => setTruckServiceTrips(e.target.value === '' ? '' : Number(e.target.value))}
+                          placeholder="Ex: 2"
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 shadow-2xs"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                          Valor por Viagem (R$/viagem) *
+                        </label>
+                        <input
+                          type="text"
+                          value={truckServiceRatePerTrip}
+                          onChange={(e) => setTruckServiceRatePerTrip(maskCurrencyBRLInput(e.target.value))}
+                          onBlur={() => setTruckServiceRatePerTrip(formatCurrencyBRLOnBlur(truckServiceRatePerTrip))}
+                          placeholder="R$ 0,00"
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 shadow-2xs"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                          Subtotal do Frete
+                        </label>
+                        <div className="w-full px-3 py-2 bg-emerald-50 dark:bg-slate-800 border border-emerald-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-bold text-emerald-950 dark:text-white flex items-center justify-between shadow-2xs">
+                          <span>{formatCurrencyBRL(subtotalServicoMaquina)}</span>
+                          <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-normal">
+                            {truckServiceTrips || 0} viagem(ns) × {formatCurrencyBRL(parseCurrencyToFloat(truckServiceRatePerTrip))}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -3530,9 +4067,19 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
 
             {/* 7. FECHAMENTO E DRE DA OPERAÇÃO (DETALHAMENTO CIRÚRGICO) */}
             <DRESummaryBlock
-              subtotalServicoMaquina={activeTab === 'maquina' ? subtotalServicoMaquina : undefined}
+              subtotalServicoMaquina={(activeTab === 'maquina' || activeTab === 'frete') ? subtotalServicoMaquina : undefined}
               descricaoServicoMaquina={
-                activeTab === 'maquina'
+                activeTab === 'frete'
+                  ? `Frete / Caminhão (${truckServiceName || 'Frota'}) • ${
+                      truckBillingMode === 'km' || truckBillingMode === 'somente_km'
+                        ? `${truckServiceTotalKm || 0} km`
+                        : truckBillingMode === 'horas'
+                        ? `${truckServiceHours || 0} h`
+                        : truckBillingMode === 'cargas' || truckBillingMode === 'cargas_km'
+                        ? `${truckServiceLoads || 0} cargas + ${truckServiceAdditionalKm || 0} km`
+                        : `${truckServiceTrips || 0} viagens`
+                    }`
+                  : activeTab === 'maquina'
                   ? equipmentCategory === 'pesadas'
                     ? `Máquina Pesada (${heavyMachineType || 'Equipamento'}) • ${heavyMachineHours || 0} h`
                     : `Caminhão (${truckServiceName || 'Frota'}) • ${

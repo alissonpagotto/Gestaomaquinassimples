@@ -14,14 +14,15 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Truck
 } from 'lucide-react';
 import { ServiceOrder, Machinery, Employee, Client, CompanyProfile } from '../../types';
 import { formatCurrencyBRL, formatDateBR } from '../../lib/storage';
 import { useConfirm } from '../../context/ConfirmContext';
 import { ServiceFormModal, ServiceTabType } from './ServiceFormModal';
 
-export type ServiceTab = 'corte' | 'colheita' | 'trator' | 'maquina' | 'orcamento';
+export type ServiceTab = 'corte' | 'colheita' | 'trator' | 'maquina' | 'frete' | 'orcamento';
 
 interface ServicesModuleProps {
   services?: ServiceOrder[];
@@ -56,12 +57,13 @@ export const ServicesModule: React.FC<ServicesModuleProps> = ({
   const [editRecord, setEditRecord] = useState<ServiceOrder | null>(null);
 
   // Tabs Definition na ordem exata requerida:
-  // Corte | Colheita | Serviço de Trator | Serviço de Máquina | Orçamento
+  // Corte | Colheita | Serviço de Trator | Serviço de Máquina | Serviço de Frete | Orçamento
   const tabs = [
     { id: 'corte' as ServiceTab, label: 'Corte', icon: Scissors },
     { id: 'colheita' as ServiceTab, label: 'Colheita', icon: Wheat },
     { id: 'trator' as ServiceTab, label: 'Serviço de Trator', icon: Tractor },
     { id: 'maquina' as ServiceTab, label: 'Serviço de Máquina', icon: Wrench },
+    { id: 'frete' as ServiceTab, label: 'Serviço de Frete', icon: Truck },
     { id: 'orcamento' as ServiceTab, label: 'Orçamento', icon: FileText },
   ];
 
@@ -96,6 +98,13 @@ export const ServicesModule: React.FC<ServicesModuleProps> = ({
           newButtonLabel: '+ Novo Serviço de Máquina',
           serviceTypeName: 'Serviço de Máquina',
         };
+      case 'frete':
+        return {
+          dateColumn: 'DATA DO FRETE',
+          quantityColumn: 'KM / HORAS',
+          newButtonLabel: '+ Novo Serviço de Frete',
+          serviceTypeName: 'Serviço de Frete',
+        };
       case 'orcamento':
       default:
         return {
@@ -111,16 +120,22 @@ export const ServicesModule: React.FC<ServicesModuleProps> = ({
   const filteredServices = useMemo(() => {
     return services.filter((srv) => {
       const typeStr = (srv.serviceType || '').toLowerCase();
+      const tabStr = (srv.serviceTab || '').toLowerCase();
+      const isFreight = tabStr === 'frete' || typeStr.includes('frete') || typeStr.includes('transporte') || srv.equipmentCategory === 'caminhoes' || !!srv.truckBillingMode;
+
       let matchesTab = false;
 
       if (activeTab === 'corte') {
-        matchesTab = typeStr.includes('corte') || typeStr.includes('ensilagem') || !srv.serviceType;
+        matchesTab = (typeStr.includes('corte') || typeStr.includes('ensilagem') || !srv.serviceType) && !isFreight;
       } else if (activeTab === 'colheita') {
-        matchesTab = typeStr.includes('colheita');
+        matchesTab = typeStr.includes('colheita') && !isFreight;
       } else if (activeTab === 'trator') {
-        matchesTab = typeStr.includes('trator') || typeStr.includes('preparo') || typeStr.includes('plantio');
+        matchesTab = (typeStr.includes('trator') || typeStr.includes('preparo') || typeStr.includes('plantio')) && !isFreight;
       } else if (activeTab === 'maquina') {
-        matchesTab = typeStr.includes('máquina') || typeStr.includes('maquina');
+        // Máquinas pesadas excluindo frete
+        matchesTab = (typeStr.includes('máquina') || typeStr.includes('maquina')) && !isFreight && srv.equipmentCategory !== 'caminhoes';
+      } else if (activeTab === 'frete') {
+        matchesTab = isFreight;
       } else if (activeTab === 'orcamento') {
         matchesTab = typeStr.includes('orçamento') || typeStr.includes('orcamento');
       }
@@ -138,7 +153,8 @@ export const ServicesModule: React.FC<ServicesModuleProps> = ({
         const matchesClient = srv.clientName.toLowerCase().includes(query);
         const matchesFarm = (srv.farmName || '').toLowerCase().includes(query);
         const matchesNumber = (srv.orderNumber || srv.id).toLowerCase().includes(query);
-        if (!matchesClient && !matchesFarm && !matchesNumber) return false;
+        const matchesRoute = ((srv.freightOrigin || '') + ' ' + (srv.freightDestination || '')).toLowerCase().includes(query);
+        if (!matchesClient && !matchesFarm && !matchesNumber && !matchesRoute) return false;
       }
 
       return true;
@@ -376,9 +392,27 @@ export const ServicesModule: React.FC<ServicesModuleProps> = ({
 
                   const currentStatus = service.status || 'agendado';
 
-                  // Quantidade exibida de acordo com a unidade
+                  // Quantidade exibida de acordo com a unidade e aba
                   let quantityDisplay = '--';
-                  if (service.areaUnit === 'alqueires' && (service.areaQuantity ?? service.areaHectares)) {
+                  if (activeTab === 'frete' || service.serviceTab === 'frete' || service.truckBillingMode) {
+                    const mode = service.truckBillingMode;
+                    if (mode === 'km' || mode === 'somente_km') {
+                      quantityDisplay = `${service.truckServiceTotalKm || service.areaQuantity || 0} km`;
+                    } else if (mode === 'horas') {
+                      quantityDisplay = `${service.truckServiceHours || service.areaQuantity || 0} h`;
+                    } else if (mode === 'cargas' || mode === 'cargas_km') {
+                      const addKm = service.truckServiceKmAdditional ? ` + ${service.truckServiceKmAdditional} km` : '';
+                      quantityDisplay = `${service.truckServiceLoads || 0} cargas${addKm}`;
+                    } else if (mode === 'viagem') {
+                      quantityDisplay = `${service.truckServiceTrips || 1} viagem${(service.truckServiceTrips || 1) > 1 ? 's' : ''}`;
+                    } else if (service.truckServiceTotalKm) {
+                      quantityDisplay = `${service.truckServiceTotalKm} km`;
+                    } else if (service.truckServiceHours) {
+                      quantityDisplay = `${service.truckServiceHours} h`;
+                    } else {
+                      quantityDisplay = '--';
+                    }
+                  } else if (service.areaUnit === 'alqueires' && (service.areaQuantity ?? service.areaHectares)) {
                     quantityDisplay = `${service.areaQuantity ?? service.areaHectares} alq`;
                   } else if (service.areaUnit === 'hora' && (service.areaQuantity ?? service.tractorHours)) {
                     quantityDisplay = `${service.areaQuantity ?? service.tractorHours} h`;
@@ -408,8 +442,20 @@ export const ServicesModule: React.FC<ServicesModuleProps> = ({
                             {service.farmName}
                           </div>
                         )}
-                        {(service.machineryAssigned || service.operatorAssigned || service.tractorName || service.forageHarvesterName) && (
+                        {(service.freightOrigin || service.freightDestination) && (
+                          <div className="text-[11px] text-black font-semibold flex items-center gap-1 mt-0.5">
+                            <span className="bg-emerald-100 text-emerald-900 font-bold px-1 py-0.2 rounded border border-emerald-300">
+                              Rota: {service.freightOrigin || 'Origem'} ➔ {service.freightDestination || 'Destino'}
+                            </span>
+                          </div>
+                        )}
+                        {(service.machineryAssigned || service.operatorAssigned || service.tractorName || service.forageHarvesterName || service.freightDriverName || service.freightMaterialType) && (
                           <div className="text-[11px] text-black font-medium mt-0.5 flex flex-wrap items-center gap-1.5">
+                            {service.freightMaterialType && (
+                              <span className="text-black font-bold bg-purple-100 px-1 py-0.2 rounded border border-purple-300">
+                                Carga: {service.freightMaterialType}
+                              </span>
+                            )}
                             {service.forageHarvesterName && (
                               <span className="text-black font-bold bg-amber-100 px-1 py-0.2 rounded border border-amber-300">
                                 Forr: {service.forageHarvesterName}
@@ -421,10 +467,14 @@ export const ServicesModule: React.FC<ServicesModuleProps> = ({
                               </span>
                             )}
                             {!service.forageHarvesterName && !service.tractorName && service.machineryAssigned && (
-                              <span className="text-black font-semibold">{service.machineryAssigned}</span>
+                              <span className="text-black font-bold bg-slate-100 px-1 py-0.2 rounded border border-slate-300">
+                                {activeTab === 'frete' || service.serviceTab === 'frete' ? `Caminhão: ${service.machineryAssigned}` : service.machineryAssigned}
+                              </span>
                             )}
-                            {(service.operatorAssigned || service.tractorOperatorName || service.forageOperatorName) && (
-                              <span className="text-black font-semibold">• Op: {service.operatorAssigned || service.tractorOperatorName || service.forageOperatorName}</span>
+                            {(service.operatorAssigned || service.tractorOperatorName || service.forageOperatorName || service.freightDriverName) && (
+                              <span className="text-black font-semibold">
+                                • {activeTab === 'frete' || service.serviceTab === 'frete' ? 'Motorista' : 'Op'}: {service.freightDriverName || service.operatorAssigned || service.tractorOperatorName || service.forageOperatorName}
+                              </span>
                             )}
                           </div>
                         )}
