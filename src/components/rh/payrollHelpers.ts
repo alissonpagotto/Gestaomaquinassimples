@@ -568,3 +568,85 @@ export const formatEmployeeBankDeposit = (emp?: Partial<Employee> | null): strin
 
   return `${bankName} Ag: ${agency} Cc: ${account}`;
 };
+
+/**
+ * Calcula lista de competências consecutivas a partir de uma competência inicial (MM/YYYY)
+ */
+export const getNextReferenceMonths = (startRef: string, count: number): string[] => {
+  const parts = (startRef || '').split('/');
+  let month = parseInt(parts[0], 10);
+  let year = parseInt(parts[1], 10);
+
+  if (isNaN(month) || isNaN(year) || month < 1 || month > 12) {
+    const now = new Date();
+    month = now.getMonth() + 1;
+    year = now.getFullYear();
+  }
+
+  const result: string[] = [];
+  for (let i = 0; i < count; i++) {
+    let curM = month + i;
+    let curY = year;
+    while (curM > 12) {
+      curM -= 12;
+      curY += 1;
+    }
+    result.push(`${String(curM).padStart(2, '0')}/${curY}`);
+  }
+  return result;
+};
+
+export interface AdvanceInstallmentPlan {
+  totalWithInterest: number;
+  totalInterest: number;
+  monthlyInterestRate: number;
+  installmentAmount: number;
+  installments: Array<{
+    number: number;
+    referenceMonth: string;
+    amount: number;
+  }>;
+}
+
+/**
+ * Calcula o plano de parcelamento para um vale / adiantamento
+ */
+export const calculateAdvanceInstallmentPlan = (
+  principal: number,
+  count: number,
+  monthlyInterestRate: number,
+  startRef: string
+): AdvanceInstallmentPlan => {
+  const safeCount = Math.max(1, count);
+  const safeRate = Math.max(0, monthlyInterestRate || 0);
+
+  // Se houver juros mensais, calculamos juros simples para o período de parcelamento
+  // Ex: 1.5% ao mês em 3x = 4.5% total sobre o valor adiantado
+  const totalInterest = safeRate > 0 ? Number((principal * (safeRate / 100) * safeCount).toFixed(2)) : 0;
+  const totalWithInterest = Number((principal + totalInterest).toFixed(2));
+
+  const basePerInstallment = Math.floor((totalWithInterest / safeCount) * 100) / 100;
+  const remainder = Number((totalWithInterest - basePerInstallment * safeCount).toFixed(2));
+
+  const months = getNextReferenceMonths(startRef, safeCount);
+  const installments: Array<{ number: number; referenceMonth: string; amount: number }> = [];
+
+  for (let i = 0; i < safeCount; i++) {
+    // Adiciona a sobra de centavos na primeira parcela
+    const amt = i === 0 ? Number((basePerInstallment + remainder).toFixed(2)) : basePerInstallment;
+    installments.push({
+      number: i + 1,
+      referenceMonth: months[i] || startRef,
+      amount: amt,
+    });
+  }
+
+  return {
+    totalWithInterest,
+    totalInterest,
+    monthlyInterestRate: safeRate,
+    installmentAmount: basePerInstallment,
+    installments,
+  };
+};
+

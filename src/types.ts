@@ -917,6 +917,16 @@ export interface SalaryAdvance {
   reason?: string;
   notes?: string;
   createdAt: string;
+  // Campos de Parcelamento e Auditoria
+  discountType?: 'Cota Única' | 'Parcelado';
+  installmentNumber?: number; // ex: 1, 2, 3...
+  totalInstallments?: number; // ex: 3
+  installmentGroupId?: string;
+  monthlyInterestRate?: number; // % juros ao mês
+  totalAmountWithInterest?: number; // Valor total com juros
+  responsibleUser?: string; // Auditoria: Responsável pelo lançamento
+  attachmentName?: string; // Nome do arquivo do comprovante
+  attachmentUrl?: string; // Base64 ou URL do comprovante (PDF ou Imagem)
 }
 
 export interface MedicalCertificateRecord {
