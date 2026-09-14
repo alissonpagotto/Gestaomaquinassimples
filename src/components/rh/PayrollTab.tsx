@@ -22,10 +22,11 @@ import {
   Landmark,
   Building2,
   ShieldAlert,
-  ShieldCheck
+  ShieldCheck,
+  CalendarX
 } from 'lucide-react';
-import { Employee, PayrollRecord, SalaryAdvance, ServiceOrder } from '../../types';
-import { formatCurrencyBRL, formatDateBR, getStoredServices, getStoredCompanyProfile } from '../../lib/storage';
+import { Employee, PayrollRecord, SalaryAdvance, ServiceOrder, AbsenceRecord } from '../../types';
+import { formatCurrencyBRL, formatDateBR, getStoredServices, getStoredCompanyProfile, getStoredAbsences } from '../../lib/storage';
 import { useConfirm } from '../../context/ConfirmContext';
 import { 
   getEmployeeMonthCommissions, 
@@ -224,6 +225,7 @@ interface PayrollTabProps {
   employees: Employee[];
   payrolls: PayrollRecord[];
   advances: SalaryAdvance[];
+  absences?: AbsenceRecord[];
   services?: ServiceOrder[];
   currentMonthRef: string;
   onChangeMonthRef: (month: string) => void;
@@ -235,6 +237,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
   employees,
   payrolls,
   advances,
+  absences,
   services,
   currentMonthRef,
   onChangeMonthRef,
@@ -253,6 +256,15 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
     }
   }, [services]);
 
+  // Sincronização em tempo real com registros de faltas
+  const [internalAbsences, setInternalAbsences] = useState<AbsenceRecord[]>(() => absences || getStoredAbsences());
+
+  useEffect(() => {
+    if (absences) {
+      setInternalAbsences(absences);
+    }
+  }, [absences]);
+
   useEffect(() => {
     const handleServicesUpdate = (e: any) => {
       if (e?.detail && Array.isArray(e.detail)) {
@@ -261,11 +273,22 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
         setInternalServices(getStoredServices());
       }
     };
+    const handleAbsencesUpdate = (e: any) => {
+      if (e?.detail && Array.isArray(e.detail)) {
+        setInternalAbsences(e.detail);
+      } else {
+        setInternalAbsences(getStoredAbsences());
+      }
+    };
     window.addEventListener('silagem_services_updated', handleServicesUpdate);
+    window.addEventListener('silagem_absences_updated', handleAbsencesUpdate);
     window.addEventListener('storage', handleServicesUpdate);
+    window.addEventListener('storage', handleAbsencesUpdate);
     return () => {
       window.removeEventListener('silagem_services_updated', handleServicesUpdate);
+      window.removeEventListener('silagem_absences_updated', handleAbsencesUpdate);
       window.removeEventListener('storage', handleServicesUpdate);
+      window.removeEventListener('storage', handleAbsencesUpdate);
     };
   }, []);
 
@@ -287,6 +310,13 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
   const [otherDiscounts, setOtherDiscounts] = useState<number>(0);
   const [payrollStatus, setPayrollStatus] = useState<'pendente' | 'pago'>('pendente');
   const [notes, setNotes] = useState('');
+
+  // Detalhamento e sincronização de Vales e Faltas no Modal
+  const [syncedAdvances, setSyncedAdvances] = useState<SalaryAdvance[]>([]);
+  const [syncedAbsences, setSyncedAbsences] = useState<AbsenceRecord[]>([]);
+  const [showAdvancesBreakdown, setShowAdvancesBreakdown] = useState(true);
+  const [showAbsencesBreakdown, setShowAbsencesBreakdown] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Ação de Impressão da Folha com dados do modal (Holerite com Logomarca e Assinatura)
   const handlePrintCurrentModalPayroll = () => {
@@ -366,31 +396,90 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
     onChangeMonthRef(`${String(newMonth).padStart(2, '0')}/${newYear}`);
   };
 
+  // Sincronização centralizada de Comissões, Vales e Faltas para o Colaborador
+  const syncEmployeeData = (empId: string, customSalary?: number) => {
+    if (!empId) return;
+    const emp = employees.find(e => e.id === empId);
+    if (!emp) return;
+
+    const salary = customSalary !== undefined ? customSalary : (emp.baseSalary || emp.salary || 3500);
+    setBaseSalary(salary);
+    
+    // 1. REGRA DE NEGÓCIO: Desconto automático de INSS APENAS para regime Registrado (CLT)
+    const estimatedInss = calculateAutomaticInss(emp, salary);
+    setInssDiscount(estimatedInss);
+
+    // 2. Vales / Adiantamentos ativos do colaborador na competência
+    const empAdvances = (advances || []).filter(
+      a => a.employeeId === empId && 
+           a.referenceMonth === currentMonthRef && 
+           (a.status as string) !== 'cancelado'
+    );
+    const totalEmpAdvances = empAdvances.reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+    setAdvancesDiscount(totalEmpAdvances);
+    setSyncedAdvances(empAdvances);
+    if (empAdvances.length > 0) {
+      setShowAdvancesBreakdown(true);
+    }
+
+    // 3. Faltas / Ocorrências ativas cadastradas na aba "Faltas" na competência
+    const currentAbsencesList = (internalAbsences && internalAbsences.length > 0) 
+      ? internalAbsences 
+      : getStoredAbsences();
+
+    const empAbsences = currentAbsencesList.filter(a => {
+      if (a.employeeId !== empId) return false;
+      if (a.status === 'abonada') return false;
+      if (a.discountPayroll === false) return false;
+      if (a.referenceMonth) {
+        return a.referenceMonth === currentMonthRef;
+      }
+      if (a.date) {
+        const [y, m] = a.date.split('-');
+        return `${m}/${y}` === currentMonthRef;
+      }
+      return false;
+    });
+
+    const totalFaltasDesconto = empAbsences.reduce((sum, a) => {
+      if (a.discountAmount !== undefined && a.discountAmount > 0) {
+        return sum + Number(a.discountAmount);
+      }
+      // Cálculo da diária padrão CLT (Salário / 30 dias) * dias de falta
+      const daily = (salary || 3500) / 30;
+      const days = a.daysCount || 1;
+      return sum + Math.round((daily * days) * 100) / 100;
+    }, 0);
+
+    setOtherDiscounts(totalFaltasDesconto);
+    setSyncedAbsences(empAbsences);
+    if (empAbsences.length > 0) {
+      setShowAbsencesBreakdown(true);
+    }
+
+    // 4. INTEGRAÇÃO DE VALORES: Apuração ativa de comissões de silagem e produção no mês
+    const commData = getEmployeeMonthCommissions(empId, currentMonthRef, internalServices, employees);
+    setCommissionAmount(commData.total);
+    setCommissionsInfo(commData);
+    if (commData.count > 0) {
+      setShowCommissionBreakdown(true);
+    }
+  };
+
   // Auto-fill when employee is selected in Modal
   const handleSelectEmployee = (empId: string) => {
     setSelectedEmployeeId(empId);
-    const emp = employees.find(e => e.id === empId);
-    if (emp) {
-      const salary = emp.baseSalary || emp.salary || 3500;
-      setBaseSalary(salary);
-      
-      // REGRA DE NEGÓCIO: Desconto automático de INSS APENAS para regime Registrado (CLT)
-      const estimatedInss = calculateAutomaticInss(emp, salary);
-      setInssDiscount(estimatedInss);
+    syncEmployeeData(empId);
+  };
 
-      // Auto-calculate pending advances for this employee in current month
-      const empAdvances = advances.filter(a => a.employeeId === empId && a.referenceMonth === currentMonthRef);
-      const totalEmpAdvances = empAdvances.reduce((sum, a) => sum + a.amount, 0);
-      setAdvancesDiscount(totalEmpAdvances);
-
-      // INTEGRAÇÃO DE VALORES: Apuração ativa de comissões de silagem e produção no mês
-      const commData = getEmployeeMonthCommissions(empId, currentMonthRef, internalServices, employees);
-      setCommissionAmount(commData.total);
-      setCommissionsInfo(commData);
-      if (commData.count > 0) {
-        setShowCommissionBreakdown(true);
-      }
-    }
+  // Ação explícita do botão de Sincronização em Destaque
+  const handleSyncButton = () => {
+    if (!selectedEmployeeId) return;
+    setIsSyncing(true);
+    syncEmployeeData(selectedEmployeeId, baseSalary);
+    setTimeout(() => {
+      setIsSyncing(false);
+    }, 400);
   };
 
   const handleOpenModal = (payroll?: PayrollRecord) => {
@@ -412,10 +501,38 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
       setPayrollStatus(payroll.status);
       setNotes(payroll.notes || '');
       setShowCommissionBreakdown(commData.count > 0);
+
+      // Carregar listas detalhadas de vales e faltas para inspeção imediata no modal
+      const empAdvances = (advances || []).filter(
+        a => a.employeeId === payroll.employeeId && 
+             a.referenceMonth === currentMonthRef && 
+             (a.status as string) !== 'cancelado'
+      );
+      setSyncedAdvances(empAdvances);
+      setShowAdvancesBreakdown(empAdvances.length > 0);
+
+      const currentAbsencesList = (internalAbsences && internalAbsences.length > 0) 
+        ? internalAbsences 
+        : getStoredAbsences();
+      const empAbsences = currentAbsencesList.filter(a => {
+        if (a.employeeId !== payroll.employeeId) return false;
+        if (a.status === 'abonada') return false;
+        if (a.discountPayroll === false) return false;
+        if (a.referenceMonth) return a.referenceMonth === currentMonthRef;
+        if (a.date) {
+          const [y, m] = a.date.split('-');
+          return `${m}/${y}` === currentMonthRef;
+        }
+        return false;
+      });
+      setSyncedAbsences(empAbsences);
+      setShowAbsencesBreakdown(empAbsences.length > 0);
     } else {
       setEditingPayroll(null);
       setCommissionsInfo(null);
       setShowCommissionBreakdown(false);
+      setSyncedAdvances([]);
+      setSyncedAbsences([]);
       // Selecionar primeiro funcionário ativo NÃO terceirizado
       const firstActive = employees.find(e => e.status === 'ativo' && !isThirdPartyDriver(e) && !isBrokerEmployee(e));
       if (firstActive) {
@@ -426,10 +543,10 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
         setInssDiscount(0);
         setAdvancesDiscount(0);
         setCommissionAmount(0);
+        setOtherDiscounts(0);
       }
       setOvertimeAmount(0);
       setBonusAmount(0);
-      setOtherDiscounts(0);
       setPayrollStatus('pendente');
       setNotes('');
     }
@@ -842,14 +959,14 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
         </div>
       </div>
 
-      {/* Modal Lançamento / Edição de Folha - Expandido para 90% da página */}
+      {/* Modal Lançamento / Edição de Folha - Compactado para Tela Única sem barra de rolagem geral */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-[#b0d2ed] border border-[#0963cb]/30 rounded-2xl w-11/12 max-w-[90vw] shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150 max-h-[94vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-3 bg-black/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-[#b0d2ed] border border-[#0963cb]/30 rounded-2xl w-11/12 max-w-6xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150 max-h-[96vh] flex flex-col">
             
             {/* Header com azul padrão #0963cb e texto/ícone em branco #ffffff */}
-            <div className="flex items-center justify-between px-6 py-3.5 bg-[#0963cb] text-white shrink-0">
-              <div className="flex items-center space-x-2.5">
+            <div className="flex items-center justify-between px-4 sm:px-5 py-2.5 bg-[#0963cb] text-white shrink-0">
+              <div className="flex items-center space-x-2">
                 <Users className="w-5 h-5 text-white" />
                 <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
                   {editingPayroll ? 'Editar Folha de Pagamento' : 'Lançar Folha de Pagamento'} ({currentMonthRef})
@@ -860,7 +977,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                   type="button"
                   onClick={handlePrintCurrentModalPayroll}
                   disabled={!selectedEmployeeId}
-                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition cursor-pointer disabled:opacity-40 shadow-2xs"
+                  className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition cursor-pointer disabled:opacity-40 shadow-2xs"
                   title="Imprimir Folha de Pagamento (Holerite com Logomarca da Empresa)"
                 >
                   <Printer className="w-3.5 h-3.5" />
@@ -876,23 +993,23 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
               </div>
             </div>
 
-            <form onSubmit={handleSaveModal} className="p-5 sm:p-6 space-y-4 text-xs bg-[#b0d2ed] overflow-y-auto flex-1">
+            <form onSubmit={handleSaveModal} className="p-3 sm:p-3.5 space-y-2 text-xs bg-[#b0d2ed] overflow-y-auto flex-1">
               
               {/* Colaborador & Informações de Enquadramento */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 items-end">
                 <div className="lg:col-span-8">
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block font-bold text-black">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <label className="block font-bold text-black text-xs">
                       Colaborador / Funcionário <span className="text-rose-600">*</span>
                     </label>
-                    <span className="text-[11px] text-stone-700 font-medium">
+                    <span className="text-[10px] text-stone-700 font-medium">
                       (Motoristas Terceirizados são geridos no Financeiro)
                     </span>
                   </div>
                   <select
                     value={selectedEmployeeId}
                     onChange={(e) => handleSelectEmployee(e.target.value)}
-                    className="w-full p-2.5 border border-stone-300 rounded-lg bg-white text-black outline-none focus:ring-1 focus:ring-[#0963cb] font-semibold text-xs sm:text-sm"
+                    className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black outline-none focus:ring-1 focus:ring-[#0963cb] font-semibold text-xs"
                     required
                   >
                     <option value="">Selecione um funcionário...</option>
@@ -910,12 +1027,12 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                     const emp = employees.find(e => e.id === selectedEmployeeId);
                     const isClt = isCltContract(emp);
                     return (
-                      <div className="p-2.5 bg-white border border-stone-300 rounded-lg flex items-center justify-between shadow-2xs">
+                      <div className="p-2 bg-white border border-stone-300 rounded-lg flex items-center justify-between shadow-2xs">
                         <div className="truncate mr-2">
-                          <span className="text-[10px] text-stone-500 font-bold uppercase block tracking-wider">Regime / Vínculo</span>
-                          <span className="text-xs font-bold text-stone-900 truncate block">{emp?.role || 'Operador'} ({emp?.contractType || 'CLT'})</span>
+                          <span className="text-[9px] text-stone-500 font-bold uppercase block tracking-wider leading-none">Regime / Vínculo</span>
+                          <span className="text-xs font-bold text-stone-900 truncate block mt-0.5">{emp?.role || 'Operador'} ({emp?.contractType || 'CLT'})</span>
                         </div>
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded shrink-0 ${
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded shrink-0 ${
                           isClt ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                         }`}>
                           {isClt ? 'CLT: INSS Automático' : 'Isento de INSS'}
@@ -923,7 +1040,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                       </div>
                     );
                   })() : (
-                    <div className="p-2.5 bg-white/70 border border-stone-300 rounded-lg text-stone-500 text-xs text-center font-medium">
+                    <div className="p-2 bg-white/70 border border-stone-300 rounded-lg text-stone-500 text-xs text-center font-medium">
                       Selecione um colaborador para carregar dados
                     </div>
                   )}
@@ -935,39 +1052,39 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                 const selectedEmployee = employees.find(e => e.id === selectedEmployeeId);
                 if (!selectedEmployee) return null;
                 return (
-                  <div className="p-3 bg-white border border-stone-300 rounded-xl shadow-2xs">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                      <div className="flex items-center space-x-2.5 p-2 bg-stone-50 rounded-lg border border-stone-200">
-                        <Calendar className="w-4 h-4 text-[#0963cb] shrink-0" />
+                  <div className="p-2 bg-white border border-stone-300 rounded-xl shadow-2xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                      <div className="flex items-center space-x-2 p-1.5 bg-stone-50 rounded-lg border border-stone-200">
+                        <Calendar className="w-3.5 h-3.5 text-[#0963cb] shrink-0" />
                         <div className="truncate">
-                          <span className="text-[10px] font-bold text-stone-500 uppercase block tracking-wider">
+                          <span className="text-[9px] font-bold text-stone-500 uppercase block tracking-wider leading-none">
                             Data de Admissão:
                           </span>
-                          <span className="font-bold text-stone-900">
+                          <span className="font-bold text-stone-900 text-xs block mt-0.5">
                             {formatEmployeeAdmissionDate(selectedEmployee.admissionDate)}
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex items-center space-x-2.5 p-2 bg-stone-50 rounded-lg border border-stone-200">
-                        <CreditCard className="w-4 h-4 text-[#0963cb] shrink-0" />
+                      <div className="flex items-center space-x-2 p-1.5 bg-stone-50 rounded-lg border border-stone-200">
+                        <CreditCard className="w-3.5 h-3.5 text-[#0963cb] shrink-0" />
                         <div className="truncate">
-                          <span className="text-[10px] font-bold text-stone-500 uppercase block tracking-wider">
+                          <span className="text-[9px] font-bold text-stone-500 uppercase block tracking-wider leading-none">
                             CPF:
                           </span>
-                          <span className="font-bold text-stone-900">
+                          <span className="font-bold text-stone-900 text-xs block mt-0.5">
                             {formatCPF(selectedEmployee.cpf)}
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex items-center space-x-2.5 p-2 bg-stone-50 rounded-lg border border-stone-200">
-                        <Landmark className="w-4 h-4 text-[#0963cb] shrink-0" />
+                      <div className="flex items-center space-x-2 p-1.5 bg-stone-50 rounded-lg border border-stone-200">
+                        <Landmark className="w-3.5 h-3.5 text-[#0963cb] shrink-0" />
                         <div className="truncate">
-                          <span className="text-[10px] font-bold text-stone-500 uppercase block tracking-wider">
+                          <span className="text-[9px] font-bold text-stone-500 uppercase block tracking-wider leading-none">
                             Banco para Depósito:
                           </span>
-                          <span className="font-bold text-stone-900 truncate block" title={formatEmployeeBankDeposit(selectedEmployee)}>
+                          <span className="font-bold text-stone-900 text-xs truncate block mt-0.5" title={formatEmployeeBankDeposit(selectedEmployee)}>
                             {formatEmployeeBankDeposit(selectedEmployee)}
                           </span>
                         </div>
@@ -977,8 +1094,8 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                 );
               })()}
 
-              {/* Grid de Proventos com fundo azul de destaque e Máscara BRL em Tempo Real */}
-              <div className="p-4 bg-blue-50/70 dark:bg-stone-900/90 border border-blue-200 dark:border-stone-700 rounded-xl space-y-3 shadow-xs">
+              {/* Grid de Proventos com botão de sincronização em alto destaque */}
+              <div className="p-2.5 sm:p-3 bg-blue-50/80 dark:bg-stone-900/90 border border-blue-200 dark:border-stone-700 rounded-xl space-y-2 shadow-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black uppercase text-blue-950 dark:text-blue-300 block tracking-wider">
                     Proventos (Vencimentos)
@@ -986,17 +1103,17 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                   {selectedEmployeeId && (
                     <button
                       type="button"
-                      onClick={() => handleSelectEmployee(selectedEmployeeId)}
-                      className="inline-flex items-center space-x-1 text-[11px] font-bold text-[#0963cb] hover:underline cursor-pointer"
-                      title="Recalcular comissões e descontos com base nas ordens de serviço do mês"
+                      onClick={handleSyncButton}
+                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-stone-800 dark:hover:bg-stone-700 text-[#0963cb] dark:text-sky-400 border border-blue-300 dark:border-blue-600 font-bold text-xs shadow-xs hover:shadow-sm active:scale-98 transition cursor-pointer"
+                      title="Sincronizar comissões de OS, adiantamentos e faltas ativas cadastradas no mês"
                     >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      <span>Sincronizar Comissões / Vales</span>
+                      <RefreshCw className={`w-3.5 h-3.5 text-[#0963cb] dark:text-sky-400 shrink-0 ${isSyncing ? 'animate-spin' : ''}`} />
+                      <span className="font-bold">Sincronizar Comissões / Vales / Faltas</span>
                     </button>
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
                   <BrlCurrencyInput
                     id="baseSalary"
                     label="Salário Base"
@@ -1038,23 +1155,23 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                   />
                 </div>
 
-                {/* Detalhamento das comissões apuradas no mês */}
+                {/* Detalhamento das comissões apuradas no mês com altura contida para evitar rolagem da página */}
                 {commissionsInfo && commissionsInfo.breakdown.length > 0 && showCommissionBreakdown && (
-                  <div className="mt-3 p-3.5 bg-white/95 dark:bg-stone-800/95 border border-blue-200 dark:border-stone-700 rounded-xl space-y-2.5 text-xs shadow-2xs">
-                    <div className="flex items-center justify-between font-bold text-blue-950 dark:text-blue-200 border-b border-blue-100 dark:border-stone-700 pb-2">
-                      <span className="flex items-center space-x-2">
-                        <FileText className="w-4 h-4 text-[#0963cb]" />
-                        <span className="text-xs sm:text-sm">Ordens de Serviço Integradas ({commissionsInfo.referenceMonth})</span>
+                  <div className="mt-1.5 p-2 bg-white/95 dark:bg-stone-800/95 border border-blue-200 dark:border-stone-700 rounded-lg space-y-1 text-xs shadow-2xs">
+                    <div className="flex items-center justify-between font-bold text-blue-950 dark:text-blue-200 border-b border-blue-100 dark:border-stone-700 pb-1">
+                      <span className="flex items-center space-x-1.5">
+                        <FileText className="w-3.5 h-3.5 text-[#0963cb]" />
+                        <span className="text-[11px] sm:text-xs">Ordens de Serviço Integradas ({commissionsInfo.referenceMonth})</span>
                       </span>
-                      <span className="font-extrabold text-[#0963cb] dark:text-sky-400 font-['Outfit'] text-xs sm:text-sm">
+                      <span className="font-extrabold text-[#0963cb] dark:text-sky-400 font-['Outfit'] text-[11px] sm:text-xs">
                         Total: {formatCurrencyBRL(commissionsInfo.total)}
                       </span>
                     </div>
-                    <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+                    <div className="max-h-[140px] overflow-y-auto space-y-1 pr-1">
                       {commissionsInfo.breakdown.map((b, idx) => (
                         <div 
                           key={idx} 
-                          className="p-2.5 bg-blue-50/40 dark:bg-stone-900/60 rounded-lg border border-blue-100/90 dark:border-stone-700 text-xs text-stone-900 dark:text-stone-100 font-medium leading-relaxed"
+                          className="p-1.5 bg-blue-50/50 dark:bg-stone-900/60 rounded border border-blue-100/90 dark:border-stone-700 text-[11px] text-stone-900 dark:text-stone-100 font-medium leading-normal"
                         >
                           {b.formattedLine || b.description}
                         </div>
@@ -1065,13 +1182,13 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
               </div>
 
               {/* Grid 2 Colunas: Deduções (Esquerda) + Situação & Salário Líquido (Direita) */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
-                {/* Deduções com Máscara BRL */}
-                <div className="lg:col-span-7 p-4 bg-white border border-stone-300 rounded-xl space-y-3 shadow-xs">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5">
+                {/* Deduções com Máscara BRL e Listas Detalhadas de Vales e Faltas */}
+                <div className="lg:col-span-7 p-2.5 sm:p-3 bg-white border border-stone-300 rounded-xl space-y-2 shadow-xs">
                   <span className="text-xs font-black uppercase text-black tracking-wider block">
                     Deduções (Descontos & Vales)
                   </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <BrlCurrencyInput
                       id="inssDiscount"
                       label="INSS"
@@ -1083,23 +1200,137 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                       label="Vales / Adiantamentos"
                       value={advancesDiscount}
                       onChange={setAdvancesDiscount}
+                      headerRight={
+                        syncedAdvances.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => setShowAdvancesBreakdown(!showAdvancesBreakdown)}
+                            className="text-[10px] font-bold text-rose-700 hover:text-rose-800 flex items-center space-x-0.5 cursor-pointer hover:underline"
+                            title="Alternar detalhamento de vales"
+                          >
+                            <span>{syncedAdvances.length} Vale(s)</span>
+                            {showAdvancesBreakdown ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          </button>
+                        ) : null
+                      }
                     />
                     <BrlCurrencyInput
                       id="otherDiscounts"
                       label="Outros Descontos / Faltas"
                       value={otherDiscounts}
                       onChange={setOtherDiscounts}
+                      headerRight={
+                        syncedAbsences.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => setShowAbsencesBreakdown(!showAbsencesBreakdown)}
+                            className="text-[10px] font-bold text-amber-800 hover:text-amber-900 flex items-center space-x-0.5 cursor-pointer hover:underline"
+                            title="Alternar detalhamento de faltas"
+                          >
+                            <span>{syncedAbsences.length} Falta(s)</span>
+                            {showAbsencesBreakdown ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          </button>
+                        ) : null
+                      }
                     />
                   </div>
+
+                  {/* Lista Detalhada de Vales / Adiantamentos Sincronizados */}
+                  {syncedAdvances.length > 0 && showAdvancesBreakdown && (
+                    <div className="p-2 bg-rose-50/40 border border-rose-200 rounded-lg space-y-1 text-xs shadow-2xs">
+                      <div className="flex items-center justify-between font-bold text-rose-950 border-b border-rose-100 pb-1">
+                        <span className="flex items-center space-x-1.5">
+                          <CreditCard className="w-3.5 h-3.5 text-rose-600" />
+                          <span className="text-[11px] font-bold">Vales / Adiantamentos Integrados ({syncedAdvances.length})</span>
+                        </span>
+                        <span className="font-extrabold text-rose-700 font-['Outfit'] text-[11px]">
+                          Total: {formatCurrencyBRL(advancesDiscount)}
+                        </span>
+                      </div>
+                      <div className="max-h-[110px] overflow-y-auto space-y-1 pr-1">
+                        {syncedAdvances.map((adv, idx) => {
+                          const parcelLabel = adv.discountType === 'Parcelado' && adv.installmentNumber && adv.totalInstallments
+                            ? `Parcela [${adv.installmentNumber}/${adv.totalInstallments}]`
+                            : 'Parcela [1/1] (Cota Única)';
+                          const dateStr = formatDateBR(adv.date);
+                          const resp = adv.responsibleUser || 'ADMINISTRADOR SISTEMA';
+                          return (
+                            <div 
+                              key={adv.id || idx}
+                              className="p-1.5 bg-white rounded border border-rose-100 text-[11px] flex items-center justify-between leading-normal"
+                            >
+                              <div className="truncate mr-2">
+                                <span className="font-bold text-stone-900">
+                                  {parcelLabel} — Data: {dateStr} — Responsável: <span className="text-stone-700 font-semibold">{resp}</span>
+                                </span>
+                                {adv.reason && (
+                                  <span className="text-stone-500 text-[10px] block truncate">
+                                    Motivo: {adv.reason}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="font-extrabold text-rose-700 font-['Outfit'] shrink-0">
+                                - {formatCurrencyBRL(adv.amount)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Lista Detalhada de Faltas e Ocorrências Sincronizadas */}
+                  {syncedAbsences.length > 0 && showAbsencesBreakdown && (
+                    <div className="p-2 bg-amber-50/40 border border-amber-200 rounded-lg space-y-1 text-xs shadow-2xs">
+                      <div className="flex items-center justify-between font-bold text-amber-950 border-b border-amber-100 pb-1">
+                        <span className="flex items-center space-x-1.5">
+                          <CalendarX className="w-3.5 h-3.5 text-amber-600" />
+                          <span className="text-[11px] font-bold">Faltas Integradas do RH ({syncedAbsences.length})</span>
+                        </span>
+                        <span className="font-extrabold text-amber-800 font-['Outfit'] text-[11px]">
+                          Total: {formatCurrencyBRL(otherDiscounts)}
+                        </span>
+                      </div>
+                      <div className="max-h-[110px] overflow-y-auto space-y-1 pr-1">
+                        {syncedAbsences.map((abs, idx) => {
+                          const dateStr = formatDateBR(abs.date);
+                          const reasonStr = abs.reason || `Falta ${abs.type || 'injustificada'} (${abs.daysCount || 1} dia${(abs.daysCount || 1) > 1 ? 's' : ''})`;
+                          const itemDiscount = (abs.discountAmount && abs.discountAmount > 0)
+                            ? abs.discountAmount
+                            : Math.round((((baseSalary || 3500) / 30) * (abs.daysCount || 1)) * 100) / 100;
+                          return (
+                            <div 
+                              key={abs.id || idx}
+                              className="p-1.5 bg-white rounded border border-amber-100 text-[11px] flex items-center justify-between leading-normal"
+                            >
+                              <div className="truncate mr-2">
+                                <span className="font-bold text-stone-900">
+                                  Data: {dateStr} — Motivo: <span className="text-stone-700 font-semibold">{reasonStr}</span>
+                                </span>
+                                {abs.notes && (
+                                  <span className="text-stone-500 text-[10px] block truncate">
+                                    Obs: {abs.notes}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="font-extrabold text-amber-800 font-['Outfit'] shrink-0">
+                                - {formatCurrencyBRL(itemDiscount)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Situação do Pagamento & Salário Líquido */}
-                <div className="lg:col-span-5 p-4 bg-white border border-stone-300 rounded-xl shadow-xs flex flex-col justify-between space-y-3">
+                <div className="lg:col-span-5 p-2.5 sm:p-3 bg-white border border-stone-300 rounded-xl shadow-xs flex flex-col justify-between space-y-2">
                   <div>
-                    <span className="text-xs font-black uppercase text-black tracking-wider block mb-2">
+                    <span className="text-xs font-black uppercase text-black tracking-wider block mb-1.5">
                       Situação do Pagamento:
                     </span>
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-3">
                       <label className="flex items-center space-x-1.5 cursor-pointer">
                         <input
                           type="radio"
@@ -1108,7 +1339,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                           onChange={() => setPayrollStatus('pendente')}
                           className="text-[#0963cb] focus:ring-[#0963cb] accent-[#0963cb] cursor-pointer"
                         />
-                        <span className="font-bold text-amber-700">A Pagar</span>
+                        <span className="font-bold text-amber-700 text-xs">A Pagar</span>
                       </label>
                       <label className="flex items-center space-x-1.5 cursor-pointer">
                         <input
@@ -1118,14 +1349,14 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                           onChange={() => setPayrollStatus('pago')}
                           className="text-[#0963cb] focus:ring-[#0963cb] accent-[#0963cb] cursor-pointer"
                         />
-                        <span className="font-bold text-emerald-700">Já Liquidado / Pago</span>
+                        <span className="font-bold text-emerald-700 text-xs">Já Liquidado / Pago</span>
                       </label>
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-stone-200 flex items-center justify-between">
+                  <div className="pt-1.5 border-t border-stone-200 flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] font-bold text-stone-500 uppercase block tracking-wider">Total a Pagar</span>
+                      <span className="text-[9px] font-bold text-stone-500 uppercase block tracking-wider leading-none">Total a Pagar</span>
                       <span className="text-xs font-bold text-stone-800">Salário Líquido</span>
                     </div>
                     <span className="text-xl sm:text-2xl font-black text-[#0963cb] font-['Outfit']">
@@ -1138,19 +1369,19 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                     type="button"
                     onClick={handlePrintCurrentModalPayroll}
                     disabled={!selectedEmployeeId}
-                    className="w-full mt-1 py-2 px-3 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#0963cb] text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer disabled:opacity-40 shadow-2xs"
+                    className="w-full mt-0.5 py-1.5 px-3 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#0963cb] text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer disabled:opacity-40 shadow-2xs"
                     title="Gerar e imprimir holerite oficial com logomarca"
                   >
-                    <Printer className="w-4 h-4 text-[#0963cb]" />
+                    <Printer className="w-3.5 h-3.5 text-[#0963cb]" />
                     <span>Imprimir Folha de Pagamento</span>
                   </button>
                 </div>
               </div>
 
               {/* Observações Internas */}
-              <div className="p-3 bg-white border border-stone-300 rounded-xl shadow-xs">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                  <label className="font-bold text-black text-xs shrink-0 sm:w-48">
+              <div className="p-2 bg-white border border-stone-300 rounded-lg shadow-2xs">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1.5">
+                  <label className="font-bold text-black text-xs shrink-0 sm:w-44">
                     Observações Internas (Opcional):
                   </label>
                   <input
@@ -1158,36 +1389,36 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Ex: Pagamento agendado, observações da safra..."
-                    className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black outline-none focus:ring-1 focus:ring-[#0963cb] text-xs font-medium"
+                    className="w-full p-1.5 border border-stone-300 rounded-lg bg-white text-black outline-none focus:ring-1 focus:ring-[#0963cb] text-xs font-medium"
                   />
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-black/15 shrink-0">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-black/15 shrink-0">
                 <div className="flex items-center space-x-2">
                   <button
                     type="button"
                     onClick={handlePrintCurrentModalPayroll}
                     disabled={!selectedEmployeeId}
-                    className="px-3.5 py-2 rounded-lg bg-white border border-stone-300 text-stone-800 hover:bg-stone-50 font-bold transition shadow-xs cursor-pointer text-xs flex items-center space-x-1.5 disabled:opacity-40"
+                    className="px-3 py-1.5 rounded-lg bg-white border border-stone-300 text-stone-800 hover:bg-stone-50 font-bold transition shadow-xs cursor-pointer text-xs flex items-center space-x-1.5 disabled:opacity-40"
                     title="Imprimir Folha de Pagamento (Holerite com Logomarca e Assinaturas)"
                   >
-                    <Printer className="w-4 h-4 text-[#0963cb]" />
+                    <Printer className="w-3.5 h-3.5 text-[#0963cb]" />
                     <span>Imprimir Folha</span>
                   </button>
                 </div>
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2.5">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 rounded-lg bg-white border border-stone-300 text-stone-700 font-bold hover:bg-stone-50 cursor-pointer transition text-xs"
+                    className="px-4 py-1.5 rounded-lg bg-white border border-stone-300 text-stone-700 font-bold hover:bg-stone-50 cursor-pointer transition text-xs"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 rounded-lg bg-[#0963cb] hover:bg-[#0852a8] text-white font-bold transition shadow-xs cursor-pointer text-xs"
+                    className="px-5 py-1.5 rounded-lg bg-[#0963cb] hover:bg-[#0852a8] text-white font-bold transition shadow-xs cursor-pointer text-xs"
                   >
                     Salvar Folha de Pagamento
                   </button>

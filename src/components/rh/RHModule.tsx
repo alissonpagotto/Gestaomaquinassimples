@@ -379,6 +379,7 @@ export const RHModule: React.FC<RHModuleProps> = ({
           employees={sortedEmployees}
           payrolls={payrolls}
           advances={advances}
+          absences={absences}
           services={services}
           currentMonthRef={currentMonthRef}
           onChangeMonthRef={setCurrentMonthRef}
