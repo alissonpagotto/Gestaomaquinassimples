@@ -265,212 +265,120 @@ export const BankIntegrationCard: React.FC<BankIntegrationCardProps> = ({
   return (
     <div 
       id="card-integracao-contas-banco"
-      className="bg-white rounded-2xl border border-stone-300 shadow-sm overflow-hidden text-black transition-all"
+      className="bg-white rounded-xl border border-stone-200 shadow-2xs px-3 py-1.5 sm:px-3.5 sm:py-2 text-black transition-all"
     >
       {/* Notificação Temporária de Ações */}
       {importNotification && (
-        <div className="bg-emerald-50 border-b border-emerald-300 px-4 py-2.5 text-xs text-emerald-900 font-black flex items-center space-x-2 animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+        <div className="mb-1.5 bg-emerald-50 border border-emerald-300 px-3 py-1 rounded-lg text-xs text-emerald-900 font-bold flex items-center space-x-2 animate-in fade-in">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
           <span>{importNotification}</span>
         </div>
       )}
 
-      {/* CABEÇALHO DO CARD */}
-      <div className="p-4 sm:p-5 border-b border-stone-200 bg-gradient-to-r from-blue-50/70 via-white to-slate-50 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center space-x-3">
-          <div className="w-11 h-11 rounded-2xl bg-[#0963cb] text-white flex items-center justify-center shadow-md shrink-0">
-            <Building2 className="w-6 h-6 stroke-[2.5]" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base sm:text-lg font-black text-black tracking-tight">
-                Inserir as contas do Banco
-              </h3>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-200 flex items-center gap-1">
-                <Link2 className="w-3 h-3 stroke-[2.5]" />
-                Vinculação Direta Ativa
-              </span>
+      {/* BARRA HORIZONTAL COMPACTA ÚNICA */}
+      <div className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-2">
+        {/* Esquerda: Identificação e Seletor de Conta Vinculada */}
+        <div className="flex items-center space-x-2 min-w-0">
+          {/* Logo pequeno da conta selecionada ou ícone geral */}
+          {activeAccount ? (
+            <div 
+              className="w-6 h-6 rounded-md flex items-center justify-center text-white shrink-0 shadow-2xs overflow-hidden"
+              style={{ backgroundColor: activeAccount.color || '#0963cb' }}
+              title={`${activeAccount.name} (${activeAccount.bankName})`}
+            >
+              <BankLogoIcon code={activeAccount.bankCode} name={activeAccount.bankName} size={14} className="text-white" />
             </div>
-            <p className="text-xs text-stone-600 font-medium">
-              Conecte boletos, extratos e títulos a pagar diretamente à conta bancária configurada
-            </p>
-          </div>
-        </div>
+          ) : (
+            <div className="w-6 h-6 rounded-md bg-[#0963cb] text-white flex items-center justify-center shrink-0">
+              <Building2 className="w-3.5 h-3.5" />
+            </div>
+          )}
 
-        {/* SELETOR DIRETO DA CONTA BANCÁRIA CONFIGURADA */}
-        {accounts.length > 0 && (
-          <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-xl border border-stone-300 shadow-2xs">
-            <span className="text-[11px] font-black text-stone-500 uppercase tracking-wider">
+          {/* Rótulo e Seletor CONTA VINCULADA */}
+          <div className="flex items-center space-x-1.5 bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 shrink-0">
+            <span className="text-[10px] font-black text-stone-500 uppercase tracking-wider whitespace-nowrap">
               Conta Vinculada:
             </span>
-            <select
-              id="select-conta-vinculada-card"
-              value={activeAccountId}
-              onChange={(e) => handleAccountChange(e.target.value)}
-              className="font-bold text-xs text-black bg-transparent outline-hidden cursor-pointer"
-            >
-              {accounts.map((acc) => (
-                <option key={acc.id} value={acc.id}>
-                  {acc.bankCode ? `[${acc.bankCode}] ` : ''}{acc.name} ({acc.bankName})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
-
-      {/* CORPO PRINCIPAL DO CARD */}
-      <div className="p-4 sm:p-5 space-y-4">
-        
-        {/* BANNER DE VINCULAÇÃO DIRETA COM A CONTA SELECIONADA */}
-        {activeAccount ? (
-          <div className="bg-slate-50/80 rounded-2xl p-4 border border-stone-200 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center space-x-3.5">
-              <div 
-                className="w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0 shadow-inner overflow-hidden"
-                style={{ backgroundColor: activeAccount.color || '#0963cb' }}
+            {accounts.length > 0 ? (
+              <select
+                id="select-conta-vinculada-card"
+                value={activeAccountId}
+                onChange={(e) => handleAccountChange(e.target.value)}
+                className="font-bold text-xs text-stone-900 bg-transparent outline-none cursor-pointer max-w-[150px] sm:max-w-[200px] truncate"
               >
-                <BankLogoIcon code={activeAccount.bankCode} name={activeAccount.bankName} size={28} className="text-white" />
-              </div>
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <h4 className="text-sm sm:text-base font-black text-black">
-                    {activeAccount.name}
-                  </h4>
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 bg-white border border-stone-200 rounded text-stone-700">
-                    {activeAccount.bankName}
-                  </span>
-                </div>
-                <div className="text-xs text-stone-500 font-semibold flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                  {activeAccount.agency && <span>Agência: <strong className="text-black">{activeAccount.agency}</strong></span>}
-                  {activeAccount.accountNumber && <span>Conta: <strong className="text-black">{activeAccount.accountNumber}</strong></span>}
-                  {activeAccount.pixKey && <span>Chave PIX: <strong className="text-black font-mono">{activeAccount.pixKey}</strong></span>}
-                </div>
-              </div>
-            </div>
-
-            {/* Saldo e Métricas de Vinculação */}
-            <div className="flex items-center space-x-4 border-l border-stone-200 pl-4">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-stone-500 block">
-                  Saldo em Conta
-                </span>
-                <span className={`text-base sm:text-lg font-black font-['Outfit'] ${activeAccount.balance < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
-                  {formatCurrencyBRL(activeAccount.balance)}
-                </span>
-              </div>
-
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-stone-500 block">
-                  Contas Vinculadas
-                </span>
-                <span className="text-base sm:text-lg font-black text-black font-['Outfit']">
-                  {linkedExpenses.length} títulos <span className="text-xs text-stone-500 font-normal">({formatCurrencyBRL(linkedTotal)})</span>
-                </span>
-              </div>
-            </div>
+                {accounts.map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.name} ({acc.bankName})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="text-xs text-stone-400 font-semibold">Nenhuma conta</span>
+            )}
           </div>
-        ) : (
-          <div className="p-4 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 font-semibold flex items-center space-x-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>Cadastre uma conta bancária para utilizar a vinculação direta e inserção de contas do banco.</span>
-          </div>
-        )}
 
-        {/* GRADE DE AÇÕES RÁPIDAS DE INTEGRAÇÃO */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-          
-          {/* AÇÃO 1: INSERIR CONTAS / BOLETOS DO BANCO */}
+          {/* Saldo da Conta Selecionada em badge sutil */}
+          {activeAccount && (
+            <div className="hidden xl:flex items-center space-x-1.5 text-xs text-stone-600 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200/80">
+              <span className="text-[9.5px] text-stone-400 font-bold uppercase">Saldo:</span>
+              <strong className={`font-black text-xs font-['Outfit'] ${activeAccount.balance < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                {formatCurrencyBRL(activeAccount.balance)}
+              </strong>
+            </div>
+          )}
+        </div>
+
+        {/* Direita: 3 Botões de Ação Dispostos Lado a Lado em Linha Horizontal */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* AÇÃO 1: Inserir Boleto */}
           <button
             type="button"
             id="btn-inserir-boleto-banco"
             onClick={() => setIsBillModalOpen(true)}
             disabled={!activeAccount}
-            className="p-3.5 rounded-2xl bg-white border-2 border-stone-200 hover:border-[#0963cb] hover:bg-blue-50/40 text-left transition-all group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs flex flex-col justify-between"
+            className="inline-flex items-center space-x-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-[#0963cb] border border-blue-200/80 rounded-lg text-xs font-black transition cursor-pointer active:scale-95 disabled:opacity-50"
+            title="Inserir boleto ou conta a pagar neste banco"
           >
-            <div className="space-y-2">
-              <div className="w-9 h-9 rounded-xl bg-blue-100 text-[#0963cb] flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Barcode className="w-5 h-5 stroke-[2.5]" />
-              </div>
-              <div>
-                <h5 className="text-xs sm:text-sm font-black text-black group-hover:text-[#0963cb] transition-colors">
-                  Inserir Boleto / Conta do Banco
-                </h5>
-                <p className="text-[11px] text-stone-500 font-medium mt-0.5 leading-snug">
-                  Cadastre contas a pagar com linha digitável e vincule diretamente a este banco
-                </p>
-              </div>
-            </div>
-            <div className="pt-3 flex items-center text-[11px] font-black text-[#0963cb] gap-1">
-              <span>Inserir Título</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-            </div>
+            <Barcode className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Inserir Boleto</span>
           </button>
 
-          {/* AÇÃO 2: IMPORTAR EXTRATO OFX / CSV DO BANCO */}
-          <div className="p-3.5 rounded-2xl bg-white border-2 border-stone-200 hover:border-[#0963cb] hover:bg-blue-50/40 transition-all group shadow-2xs flex flex-col justify-between">
-            <div className="space-y-2">
-              <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <UploadCloud className="w-5 h-5 stroke-[2.5]" />
-              </div>
-              <div>
-                <h5 className="text-xs sm:text-sm font-black text-black group-hover:text-emerald-700 transition-colors">
-                  Importar Extrato Bancário
-                </h5>
-                <p className="text-[11px] text-stone-500 font-medium mt-0.5 leading-snug">
-                  Importe arquivos OFX ou CSV do seu Internet Banking com conciliação automática
-                </p>
-              </div>
-            </div>
+          {/* AÇÃO 2: Importar Extrato */}
+          <label 
+            htmlFor="input-arquivo-extrato-card"
+            className="inline-flex items-center space-x-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 rounded-lg text-xs font-black transition cursor-pointer active:scale-95"
+            title="Importar extrato bancário OFX/CSV"
+          >
+            <UploadCloud className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Importar Extrato</span>
+          </label>
+          <input
+            id="input-arquivo-extrato-card"
+            ref={fileInputRef}
+            type="file"
+            accept=".ofx,.csv,.txt"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
 
-            <div className="pt-3">
-              <label 
-                htmlFor="input-arquivo-extrato-card"
-                className="inline-flex items-center text-[11px] font-black text-emerald-700 hover:text-emerald-800 gap-1 cursor-pointer"
-              >
-                <span>Selecionar Arquivo OFX/CSV</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </label>
-              <input
-                id="input-arquivo-extrato-card"
-                ref={fileInputRef}
-                type="file"
-                accept=".ofx,.csv,.txt"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-            </div>
-          </div>
-
-          {/* AÇÃO 3: VINCULAR CONTAS A PAGAR EM LOTE */}
+          {/* AÇÃO 3: Vincular Contas */}
           <button
             type="button"
             id="btn-vincular-contas-lote"
             onClick={() => setIsLinkBatchModalOpen(true)}
             disabled={!activeAccount}
-            className="p-3.5 rounded-2xl bg-white border-2 border-stone-200 hover:border-[#0963cb] hover:bg-blue-50/40 text-left transition-all group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs flex flex-col justify-between"
+            className="inline-flex items-center space-x-1 px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200/80 rounded-lg text-xs font-black transition cursor-pointer active:scale-95 disabled:opacity-50"
+            title="Vincular contas a pagar existentes a este banco"
           >
-            <div className="space-y-2">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Layers className="w-5 h-5 stroke-[2.5]" />
-              </div>
-              <div>
-                <h5 className="text-xs sm:text-sm font-black text-black group-hover:text-purple-700 transition-colors">
-                  Vincular Contas Existentes
-                </h5>
-                <p className="text-[11px] text-stone-500 font-medium mt-0.5 leading-snug">
-                  Associe despesas pendentes já cadastradas para débito direto nesta conta
-                </p>
-              </div>
-            </div>
-            <div className="pt-3 flex items-center text-[11px] font-black text-purple-700 gap-1">
-              <span>Vincular em Lote</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-            </div>
+            <Layers className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Vincular Contas</span>
+            {linkedExpenses.length > 0 && (
+              <span className="bg-purple-200 text-purple-950 text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full ml-0.5">
+                {linkedExpenses.length}
+              </span>
+            )}
           </button>
-
         </div>
-
       </div>
 
       {/* MODAL 1: INSERIR CONTA / BOLETO DO BANCO VINCULADO */}
