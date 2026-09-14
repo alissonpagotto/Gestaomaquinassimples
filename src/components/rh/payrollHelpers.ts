@@ -28,16 +28,18 @@ export interface EmployeeMonthCommissions {
 
 /**
  * Formata a linha de conferência operacional no padrão do resumo de custos da operação:
- * "[Tipo_Serviço] [Prefixo_Veículo] ([Nome_Trabalho]) — [Qtd_Cargas] Cargas ([Qtd_m³] m³) — Cobrança por Horas: [Qtd_Horas]h x R$ [Valor_Hora]/h — Total: R$ [Valor_Total]"
+ * "Pedido #[Num_Pedido] — Cliente: [Nome_Cliente] — [Tipo_Serviço] [Prefixo_Veículo] ([Nome_Trabalho]) — [Qtd_Cargas] Cargas ([Qtd_m³] m³) — Cobrança por Horas: [Qtd_Horas]h x R$ [Valor_Hora]/h — Total: R$ [Valor_Total]"
  * 
  * Exemplos esperados:
- * - "Transp. AKU (Nilton Par) — 16 Cargas (576.0 m³) — Cobrança por Horas: 12h x R$ 60,00/h — Total: R$ 720,00"
- * - "Comissão Trator (DIEGO TRATO) — Cobrança por Horas: 11h x R$ 61,36/h — Total: R$ 675,00"
+ * - "Pedido #1042 — Cliente: JOÃO DA ROÇA — Comissão Trator (primeiro teste por horas) — Cobrança por Horas: 45h x R$ 15,00/h — Total: R$ 675,00"
+ * - "Pedido #1020 — Cliente: SÍLVIO SANTOS — Transp. AKU (Nilton Par) — 16 Cargas (576.0 m³) — Cobrança por Horas: 12h x R$ 60,00/h — Total: R$ 720,00"
  */
 export const formatCommissionItemLine = (item: {
+  orderNumber?: string;
+  clientName?: string;
   serviceType: string;
   vehiclePrefix?: string;
-  workName: string;
+  workName?: string;
   loads?: number;
   totalM3?: number;
   hours?: number;
@@ -46,18 +48,27 @@ export const formatCommissionItemLine = (item: {
 }): string => {
   const parts: string[] = [];
 
-  // 1. [Tipo_Serviço] [Prefixo_Veículo] ([Nome_Trabalho])
+  // 1. Pedido #[Num_Pedido]
+  const cleanOrderNum = (item.orderNumber || 'S/N').toString().trim().replace(/^#/, '');
+  parts.push(`Pedido #${cleanOrderNum}`);
+
+  // 2. Cliente: [Nome_Cliente]
+  const client = (item.clientName || 'Cliente').trim();
+  parts.push(`Cliente: ${client}`);
+
+  // 3. [Tipo_Serviço] [Prefixo_Veículo] ([Nome_Trabalho])
   const prefix = item.vehiclePrefix && item.vehiclePrefix.trim() ? ` ${item.vehiclePrefix.trim()}` : '';
-  const head = `${item.serviceType.trim()}${prefix} (${(item.workName || 'Operação').trim()})`;
+  const work = (item.workName || 'Operação').trim();
+  const head = `${item.serviceType.trim()}${prefix} (${work})`;
   parts.push(head);
 
-  // 2. [Qtd_Cargas] Cargas ([Qtd_m³] m³) (se houver transporte de cargas)
+  // 4. [Qtd_Cargas] Cargas ([Qtd_m³] m³) (se houver transporte de cargas)
   if (typeof item.loads === 'number' && item.loads > 0) {
     const m3Formatted = (item.totalM3 || 0).toFixed(1);
     parts.push(`${item.loads} Cargas (${m3Formatted} m³)`);
   }
 
-  // 3. Cobrança por Horas: [Qtd_Horas]h x R$ [Valor_Hora]/h
+  // 5. Cobrança por Horas: [Qtd_Horas]h x R$ [Valor_Hora]/h
   const hours = item.hours || 0;
   const rate = item.hourlyRate && item.hourlyRate > 0
     ? item.hourlyRate
@@ -74,7 +85,7 @@ export const formatCommissionItemLine = (item: {
     parts.push(`Cobrança por Horas: ${hoursFormatted}h x R$ ${rateFormatted}/h`);
   }
 
-  // 4. Total: R$ [Valor_Total]
+  // 6. Total: R$ [Valor_Total]
   const totalFormatted = (item.totalAmount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   parts.push(`Total: R$ ${totalFormatted}`);
 
@@ -174,10 +185,12 @@ export const getEmployeeMonthCommissions = (
         const roundedAmount = Number(amount.toFixed(2));
         const hours = service.forageDrumHours || service.forageEngineHours || 0;
         const hourlyRate = service.forageCommissionRate || (hours > 0 ? roundedAmount / hours : 0);
-        const workName = service.clientName || service.farmName || 'Operação';
+        const workName = (service.farmName && service.farmName.trim()) || (service.notes && service.notes.trim()) || 'Operação';
         const vehiclePrefix = service.forageHarvesterName ? service.forageHarvesterName.trim() : '';
         const serviceType = 'Comissão Ensiladeira';
         const formattedLine = formatCommissionItemLine({
+          orderNumber: service.orderNumber,
+          clientName: service.clientName,
           serviceType,
           vehiclePrefix,
           workName,
@@ -226,10 +239,12 @@ export const getEmployeeMonthCommissions = (
         const roundedAmount = Number(amount.toFixed(2));
         const hours = service.forageDrumHours || service.forageEngineHours || 0;
         const hourlyRate = employee.commissionPerHour || (hours > 0 ? roundedAmount / hours : 0);
-        const workName = service.clientName || service.farmName || 'Operação';
+        const workName = (service.farmName && service.farmName.trim()) || (service.notes && service.notes.trim()) || 'Operação';
         const vehiclePrefix = service.forageHarvesterName ? service.forageHarvesterName.trim() : '';
         const serviceType = 'Comissão 2º Op. Ensiladeira';
         const formattedLine = formatCommissionItemLine({
+          orderNumber: service.orderNumber,
+          clientName: service.clientName,
           serviceType,
           vehiclePrefix,
           workName,
@@ -280,9 +295,11 @@ export const getEmployeeMonthCommissions = (
         if (hours === 0 && hourlyRate > 0 && roundedAmount > 0) {
           hours = Math.round((roundedAmount / hourlyRate) * 100) / 100;
         }
-        const workName = service.clientName || service.farmName || service.tractorName || 'Operação';
+        const workName = (service.farmName && service.farmName.trim()) || (service.notes && service.notes.trim()) || service.tractorName || 'Operação';
         const serviceType = 'Comissão Trator';
         const formattedLine = formatCommissionItemLine({
+          orderNumber: service.orderNumber,
+          clientName: service.clientName,
           serviceType,
           workName,
           hours,
@@ -332,9 +349,11 @@ export const getEmployeeMonthCommissions = (
         if (hours === 0 && hourlyRate > 0 && roundedAmount > 0) {
           hours = Math.round((roundedAmount / hourlyRate) * 100) / 100;
         }
-        const workName = service.clientName || service.farmName || service.tractorName || 'Operação';
+        const workName = (service.farmName && service.farmName.trim()) || (service.notes && service.notes.trim()) || service.tractorName || 'Operação';
         const serviceType = 'Comissão 2º Op. Trator';
         const formattedLine = formatCommissionItemLine({
+          orderNumber: service.orderNumber,
+          clientName: service.clientName,
           serviceType,
           workName,
           hours,
@@ -383,9 +402,11 @@ export const getEmployeeMonthCommissions = (
             hours = Math.round((roundedAmount / hourlyRate) * 100) / 100;
           }
           const vehiclePrefix = (truck.plate || truck.truckName || `Caminhão #${index + 1}`).trim();
-          const workName = service.clientName || service.farmName || 'Operação';
+          const workName = (service.farmName && service.farmName.trim()) || (service.notes && service.notes.trim()) || 'Operação';
           const serviceType = 'Transp.';
           const formattedLine = formatCommissionItemLine({
+            orderNumber: service.orderNumber,
+            clientName: service.clientName,
             serviceType,
             vehiclePrefix,
             workName,
@@ -428,9 +449,11 @@ export const getEmployeeMonthCommissions = (
         const roundedAmount = Number(service.driverCostAllocated.toFixed(2));
         const hours = service.tractorHours || service.forageDrumHours || 0;
         const hourlyRate = hours > 0 ? roundedAmount / hours : 0;
-        const workName = service.clientName || service.farmName || 'Operação';
+        const workName = (service.farmName && service.farmName.trim()) || (service.notes && service.notes.trim()) || 'Operação';
         const serviceType = 'Comissão Operação';
         const formattedLine = formatCommissionItemLine({
+          orderNumber: service.orderNumber,
+          clientName: service.clientName,
           serviceType,
           workName,
           hours,

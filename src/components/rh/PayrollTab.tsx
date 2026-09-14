@@ -707,16 +707,19 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
         </div>
       </div>
 
-      {/* Modal Lançamento / Edição de Folha */}
+      {/* Modal Lançamento / Edição de Folha - Expandido para 90% da página */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-[#b0d2ed] border border-[#0963cb]/30 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-[#b0d2ed] border border-[#0963cb]/30 rounded-2xl w-11/12 max-w-[90vw] shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150 max-h-[94vh] flex flex-col">
             
             {/* Header com azul padrão #0963cb e texto/ícone em branco #ffffff */}
-            <div className="flex items-center justify-between px-5 py-3.5 bg-[#0963cb] text-white">
-              <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
-                {editingPayroll ? 'Editar Folha de Pagamento' : 'Lançar Folha de Pagamento'} ({currentMonthRef})
-              </h3>
+            <div className="flex items-center justify-between px-6 py-3.5 bg-[#0963cb] text-white shrink-0">
+              <div className="flex items-center space-x-2.5">
+                <Users className="w-5 h-5 text-white" />
+                <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
+                  {editingPayroll ? 'Editar Folha de Pagamento' : 'Lançar Folha de Pagamento'} ({currentMonthRef})
+                </h3>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
@@ -726,55 +729,80 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveModal} className="p-5 space-y-4 text-xs bg-[#b0d2ed]">
+            <form onSubmit={handleSaveModal} className="p-5 sm:p-6 space-y-4 text-xs bg-[#b0d2ed] overflow-y-auto flex-1">
               
-              {/* Colaborador - Apenas Colaboradores Elegíveis (Excluindo Motoristas/Vínculos Terceirizados) */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block font-bold text-black">
-                    Colaborador / Funcionário <span className="text-rose-600">*</span>
-                  </label>
-                  <span className="text-[10px] text-stone-600 font-medium">
-                    (Motoristas Terceirizados são geridos no Financeiro)
-                  </span>
+              {/* Colaborador & Informações de Enquadramento */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+                <div className="lg:col-span-8">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-black">
+                      Colaborador / Funcionário <span className="text-rose-600">*</span>
+                    </label>
+                    <span className="text-[11px] text-stone-700 font-medium">
+                      (Motoristas Terceirizados são geridos no Financeiro)
+                    </span>
+                  </div>
+                  <select
+                    value={selectedEmployeeId}
+                    onChange={(e) => handleSelectEmployee(e.target.value)}
+                    className="w-full p-2.5 border border-stone-300 rounded-lg bg-white text-black outline-none focus:ring-1 focus:ring-[#0963cb] font-semibold text-xs sm:text-sm"
+                    required
+                  >
+                    <option value="">Selecione um funcionário...</option>
+                    {employees
+                      .filter(emp => !isThirdPartyDriver(emp) && !isBrokerEmployee(emp))
+                      .map(emp => (
+                        <option key={emp.id} value={emp.id}>
+                          {emp.name} ({emp.role}) - {emp.contractType || 'CLT'} - Salário: {formatCurrencyBRL(emp.salary || emp.baseSalary || 3500)}
+                        </option>
+                    ))}
+                  </select>
                 </div>
-                <select
-                  value={selectedEmployeeId}
-                  onChange={(e) => handleSelectEmployee(e.target.value)}
-                  className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black outline-none focus:ring-1 focus:ring-[#0963cb] font-medium"
-                  required
-                >
-                  <option value="">Selecione um funcionário...</option>
-                  {employees
-                    .filter(emp => !isThirdPartyDriver(emp) && !isBrokerEmployee(emp))
-                    .map(emp => (
-                      <option key={emp.id} value={emp.id}>
-                        {emp.name} ({emp.role}) - {emp.contractType || 'CLT'} - Salário: {formatCurrencyBRL(emp.salary || emp.baseSalary || 3500)}
-                      </option>
-                  ))}
-                </select>
+                <div className="lg:col-span-4">
+                  {selectedEmployeeId ? (() => {
+                    const emp = employees.find(e => e.id === selectedEmployeeId);
+                    const isClt = isCltContract(emp);
+                    return (
+                      <div className="p-2.5 bg-white border border-stone-300 rounded-lg flex items-center justify-between shadow-2xs">
+                        <div className="truncate mr-2">
+                          <span className="text-[10px] text-stone-500 font-bold uppercase block tracking-wider">Regime / Vínculo</span>
+                          <span className="text-xs font-bold text-stone-900 truncate block">{emp?.role || 'Operador'} ({emp?.contractType || 'CLT'})</span>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded shrink-0 ${
+                          isClt ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {isClt ? 'CLT: INSS Automático' : 'Isento de INSS'}
+                        </span>
+                      </div>
+                    );
+                  })() : (
+                    <div className="p-2.5 bg-white/70 border border-stone-300 rounded-lg text-stone-500 text-xs text-center font-medium">
+                      Selecione um colaborador para carregar dados
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Grid de Proventos com fundo azul de destaque */}
-              <div className="p-3.5 bg-blue-50/60 dark:bg-stone-900/90 border border-blue-200 dark:border-stone-700 rounded-xl space-y-3 shadow-xs">
+              <div className="p-4 bg-blue-50/70 dark:bg-stone-900/90 border border-blue-200 dark:border-stone-700 rounded-xl space-y-3 shadow-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-black uppercase text-blue-950 dark:text-blue-300 block tracking-wider">
+                  <span className="text-xs font-black uppercase text-blue-950 dark:text-blue-300 block tracking-wider">
                     Proventos (Vencimentos)
                   </span>
                   {selectedEmployeeId && (
                     <button
                       type="button"
                       onClick={() => handleSelectEmployee(selectedEmployeeId)}
-                      className="inline-flex items-center space-x-1 text-[10px] font-bold text-[#0963cb] hover:underline cursor-pointer"
+                      className="inline-flex items-center space-x-1 text-[11px] font-bold text-[#0963cb] hover:underline cursor-pointer"
                       title="Recalcular comissões e descontos com base nas ordens de serviço do mês"
                     >
-                      <RefreshCw className="w-3 h-3" />
+                      <RefreshCw className="w-3.5 h-3.5" />
                       <span>Sincronizar Comissões / Vales</span>
                     </button>
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <div>
                     <label className="block text-[11px] font-bold text-black dark:text-stone-200 mb-1">
                       Salário Base (R$)
@@ -784,7 +812,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                       step="0.01"
                       value={baseSalary || ''}
                       onChange={(e) => setBaseSalary(parseFloat(e.target.value) || 0)}
-                      className="w-full p-2 border border-stone-300 rounded-lg bg-white dark:bg-stone-800 text-black dark:text-white font-bold outline-none focus:ring-1 focus:ring-[#0963cb]"
+                      className="w-full p-2.5 border border-stone-300 rounded-lg bg-white dark:bg-stone-800 text-black dark:text-white font-bold outline-none focus:ring-1 focus:ring-[#0963cb]"
                       required
                     />
                   </div>
@@ -797,7 +825,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                       step="0.01"
                       value={overtimeAmount || ''}
                       onChange={(e) => setOvertimeAmount(parseFloat(e.target.value) || 0)}
-                      className="w-full p-2 border border-stone-300 rounded-lg bg-white dark:bg-stone-800 text-black dark:text-white font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
+                      className="w-full p-2.5 border border-stone-300 rounded-lg bg-white dark:bg-stone-800 text-black dark:text-white font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
                     />
                   </div>
                   <div>
@@ -809,7 +837,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                       step="0.01"
                       value={bonusAmount || ''}
                       onChange={(e) => setBonusAmount(parseFloat(e.target.value) || 0)}
-                      className="w-full p-2 border border-stone-300 rounded-lg bg-white dark:bg-stone-800 text-black dark:text-white font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
+                      className="w-full p-2.5 border border-stone-300 rounded-lg bg-white dark:bg-stone-800 text-black dark:text-white font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
                     />
                   </div>
                   <div>
@@ -833,7 +861,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                       step="0.01"
                       value={commissionAmount || ''}
                       onChange={(e) => setCommissionAmount(parseFloat(e.target.value) || 0)}
-                      className="w-full p-2 border border-emerald-300 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-300 font-bold outline-none focus:ring-1 focus:ring-emerald-600"
+                      className="w-full p-2.5 border border-emerald-300 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-300 font-bold outline-none focus:ring-1 focus:ring-emerald-600"
                       title="Comissões apuradas automaticamente no fechamento de cortes e ordens de silagem"
                     />
                   </div>
@@ -841,21 +869,21 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
 
                 {/* Detalhamento das comissões apuradas no mês */}
                 {commissionsInfo && commissionsInfo.breakdown.length > 0 && showCommissionBreakdown && (
-                  <div className="mt-2.5 p-3 bg-white/95 dark:bg-stone-800/95 border border-blue-200 dark:border-stone-700 rounded-lg space-y-2 text-xs shadow-2xs">
-                    <div className="flex items-center justify-between font-bold text-blue-950 dark:text-blue-200 border-b border-blue-100 dark:border-stone-700 pb-1.5">
-                      <span className="flex items-center space-x-1.5">
-                        <FileText className="w-3.5 h-3.5 text-[#0963cb]" />
-                        <span>Ordens de Serviço Integradas ({commissionsInfo.referenceMonth})</span>
+                  <div className="mt-3 p-3.5 bg-white/95 dark:bg-stone-800/95 border border-blue-200 dark:border-stone-700 rounded-xl space-y-2.5 text-xs shadow-2xs">
+                    <div className="flex items-center justify-between font-bold text-blue-950 dark:text-blue-200 border-b border-blue-100 dark:border-stone-700 pb-2">
+                      <span className="flex items-center space-x-2">
+                        <FileText className="w-4 h-4 text-[#0963cb]" />
+                        <span className="text-xs sm:text-sm">Ordens de Serviço Integradas ({commissionsInfo.referenceMonth})</span>
                       </span>
-                      <span className="font-extrabold text-[#0963cb] dark:text-sky-400 font-['Outfit']">
+                      <span className="font-extrabold text-[#0963cb] dark:text-sky-400 font-['Outfit'] text-xs sm:text-sm">
                         Total: {formatCurrencyBRL(commissionsInfo.total)}
                       </span>
                     </div>
-                    <div className="max-h-48 overflow-y-auto space-y-1.5 pr-0.5">
+                    <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
                       {commissionsInfo.breakdown.map((b, idx) => (
                         <div 
                           key={idx} 
-                          className="p-2 bg-blue-50/40 dark:bg-stone-900/60 rounded border border-blue-100/90 dark:border-stone-700 text-xs text-stone-900 dark:text-stone-100 font-medium leading-relaxed"
+                          className="p-2.5 bg-blue-50/40 dark:bg-stone-900/60 rounded-lg border border-blue-100/90 dark:border-stone-700 text-xs text-stone-900 dark:text-stone-100 font-medium leading-relaxed"
                         >
                           {b.formattedLine || b.description}
                         </div>
@@ -865,134 +893,128 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                 )}
               </div>
 
-              {/* Grid de Deduções com fundo branco */}
-              <div className="p-3.5 bg-white border border-stone-300 rounded-xl space-y-3 shadow-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-black uppercase text-black tracking-wider">
+              {/* Grid 2 Colunas: Deduções (Esquerda) + Situação & Salário Líquido (Direita) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
+                {/* Deduções */}
+                <div className="lg:col-span-7 p-4 bg-white border border-stone-300 rounded-xl space-y-3 shadow-xs">
+                  <span className="text-xs font-black uppercase text-black tracking-wider block">
                     Deduções (Descontos & Vales)
                   </span>
-                  {selectedEmployeeId && (() => {
-                    const emp = employees.find(e => e.id === selectedEmployeeId);
-                    const isClt = isCltContract(emp);
-                    return (
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                        isClt ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {isClt ? 'Vínculo Registrado (CLT): INSS Automático' : 'Sem Registro CLT: Isento de INSS no Holerite'}
-                      </span>
-                    );
-                  })()}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-[11px] font-bold text-black">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-bold text-black mb-1">
                         INSS (R$)
                       </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={inssDiscount || ''}
+                        onChange={(e) => setInssDiscount(parseFloat(e.target.value) || 0)}
+                        className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
+                      />
                     </div>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={inssDiscount || ''}
-                      onChange={(e) => setInssDiscount(parseFloat(e.target.value) || 0)}
-                      className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
-                    />
+                    <div>
+                      <label className="block text-[11px] font-bold text-black mb-1">
+                        Vales / Adiantamentos (R$)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={advancesDiscount || ''}
+                        onChange={(e) => setAdvancesDiscount(parseFloat(e.target.value) || 0)}
+                        className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-black mb-1">
+                        Outros Descontos / Faltas (R$)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={otherDiscounts || ''}
+                        onChange={(e) => setOtherDiscounts(parseFloat(e.target.value) || 0)}
+                        className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
+                      />
+                    </div>
                   </div>
+                </div>
+
+                {/* Situação do Pagamento & Salário Líquido */}
+                <div className="lg:col-span-5 p-4 bg-white border border-stone-300 rounded-xl shadow-xs flex flex-col justify-between space-y-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-black mb-1">
-                      Vales / Adiantamentos (R$)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={advancesDiscount || ''}
-                      onChange={(e) => setAdvancesDiscount(parseFloat(e.target.value) || 0)}
-                      className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
-                    />
+                    <span className="text-xs font-black uppercase text-black tracking-wider block mb-2">
+                      Situação do Pagamento:
+                    </span>
+                    <div className="flex items-center space-x-4">
+                      <label className="flex items-center space-x-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="status"
+                          checked={payrollStatus === 'pendente'}
+                          onChange={() => setPayrollStatus('pendente')}
+                          className="text-[#0963cb] focus:ring-[#0963cb] accent-[#0963cb] cursor-pointer"
+                        />
+                        <span className="font-bold text-amber-700">A Pagar</span>
+                      </label>
+                      <label className="flex items-center space-x-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="status"
+                          checked={payrollStatus === 'pago'}
+                          onChange={() => setPayrollStatus('pago')}
+                          className="text-[#0963cb] focus:ring-[#0963cb] accent-[#0963cb] cursor-pointer"
+                        />
+                        <span className="font-bold text-emerald-700">Já Liquidado / Pago</span>
+                      </label>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-black mb-1">
-                      Outros Descontos / Faltas (R$)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={otherDiscounts || ''}
-                      onChange={(e) => setOtherDiscounts(parseFloat(e.target.value) || 0)}
-                      className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black font-medium outline-none focus:ring-1 focus:ring-[#0963cb]"
-                    />
+
+                  <div className="pt-2 border-t border-stone-200 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-stone-500 uppercase block tracking-wider">Total a Pagar</span>
+                      <span className="text-xs font-bold text-stone-800">Salário Líquido</span>
+                    </div>
+                    <span className="text-xl sm:text-2xl font-black text-[#0963cb] font-['Outfit']">
+                      {formatCurrencyBRL(calculatedModalNet)}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Status & Valor Líquido Preview com fundo branco */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-white border border-stone-300 rounded-xl shadow-xs">
-                <div>
-                  <span className="text-[11px] font-bold text-black uppercase block mb-1">Situação do Pagamento:</span>
-                  <div className="flex items-center space-x-3 mt-1">
-                    <label className="flex items-center space-x-1.5 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="status"
-                        checked={payrollStatus === 'pendente'}
-                        onChange={() => setPayrollStatus('pendente')}
-                        className="text-[#0963cb] focus:ring-[#0963cb] accent-[#0963cb] cursor-pointer"
-                      />
-                      <span className="font-bold text-amber-700">A Pagar</span>
-                    </label>
-                    <label className="flex items-center space-x-1.5 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="status"
-                        checked={payrollStatus === 'pago'}
-                        onChange={() => setPayrollStatus('pago')}
-                        className="text-[#0963cb] focus:ring-[#0963cb] accent-[#0963cb] cursor-pointer"
-                      />
-                      <span className="font-bold text-emerald-700">Já Liquidado / Pago</span>
-                    </label>
-                  </div>
+              {/* Observações Internas */}
+              <div className="p-3 bg-white border border-stone-300 rounded-xl shadow-xs">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                  <label className="font-bold text-black text-xs shrink-0 sm:w-48">
+                    Observações Internas (Opcional):
+                  </label>
+                  <input
+                    type="text"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Ex: Pagamento agendado, observações da safra..."
+                    className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black outline-none focus:ring-1 focus:ring-[#0963cb] text-xs font-medium"
+                  />
                 </div>
-
-                <div className="text-right">
-                  <span className="text-[11px] font-bold text-black uppercase block">Salário Líquido</span>
-                  <span className="text-lg sm:text-xl font-black text-[#0963cb]">
-                    {formatCurrencyBRL(calculatedModalNet)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Observações Internas (sem placeholder) */}
-              <div>
-                <label className="block font-bold text-black mb-1">
-                  Observações Internas (Opcional)
-                </label>
-                <textarea
-                  rows={2}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full p-2 border border-stone-300 rounded-lg bg-white text-black outline-none focus:ring-1 focus:ring-[#0963cb] resize-none"
-                />
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-black/15">
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-black/15 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-white border border-stone-300 text-stone-700 font-bold hover:bg-stone-50 cursor-pointer transition"
+                  className="px-4 py-2 rounded-lg bg-white border border-stone-300 text-stone-700 font-bold hover:bg-stone-50 cursor-pointer transition text-xs"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-lg bg-[#0963cb] hover:bg-[#0852a8] text-white font-bold transition shadow-xs cursor-pointer"
+                  className="px-6 py-2 rounded-lg bg-[#0963cb] hover:bg-[#0852a8] text-white font-bold transition shadow-xs cursor-pointer text-xs"
                 >
-                  Salvar Folha
+                  Salvar Folha de Pagamento
                 </button>
               </div>
-
             </form>
-
           </div>
         </div>
       )}
