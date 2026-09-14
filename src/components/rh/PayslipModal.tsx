@@ -1,5 +1,7 @@
-import React, { useMemo, useEffect } from 'react';
-import { X, Printer, Download, CheckCircle2, User, Building, Calendar, DollarSign, FileText, CreditCard, CalendarX, AlertCircle } from 'lucide-react';
+import React, { useMemo, useEffect, useState } from 'react';
+import { X, Printer, Download, CheckCircle2, User, Building, Calendar, DollarSign, FileText, CreditCard, CalendarX, AlertCircle, Loader2 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { PayrollRecord, Employee, CompanyProfile, SalaryAdvance, AbsenceRecord, ServiceOrder } from '../../types';
 import { formatCurrencyBRL, formatDateBR, getStoredServices, getStoredAbsences, getStoredSalaryAdvances } from '../../lib/storage';
 import { PrintReportFooter } from '../common/PrintReportFooter';
@@ -152,20 +154,108 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
     });
   }, [absences, payroll?.employeeId, payroll?.referenceMonth]);
 
-  const handlePrint = (e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    document.body.classList.add('printing-payslip');
-    window.focus();
-    setTimeout(() => {
-      window.print();
-    }, 30);
-  };
-
   // Safe early exit AFTER all hooks are called
   if (!isOpen || !payroll) return null;
+
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const handleDownloadPDF = async () => {
+    if (!payroll) return;
+    const target = document.getElementById('recibo-holerite-branco');
+    if (!target) {
+      console.warn('Elemento #recibo-holerite-branco não encontrado para exportação');
+      window.print();
+      return;
+    }
+
+    try {
+      setIsGeneratingPdf(true);
+
+      // Padronização do nome do arquivo (Ex: "Holerite_PEDRO_SILVEIRA_09_2026.pdf")
+      const cleanName = (payroll.employeeName || 'COLABORADOR')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase()
+        .trim()
+        .replace(/[^A-Z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+
+      let cleanMonth = (payroll.referenceMonth || '').trim();
+      if (cleanMonth.includes('/')) {
+        cleanMonth = cleanMonth.replace(/\//g, '_');
+      } else if (cleanMonth.includes('-')) {
+        const parts = cleanMonth.split('-');
+        if (parts.length === 2 && parts[0].length === 4) {
+          cleanMonth = `${parts[1]}_${parts[0]}`;
+        } else {
+          cleanMonth = cleanMonth.replace(/-/g, '_');
+        }
+      } else if (!cleanMonth) {
+        cleanMonth = '09_2026';
+      }
+
+      const filename = `Holerite_${cleanName}_${cleanMonth}.pdf`;
+
+      // Captura o contêiner com qualidade nítida para impressão
+      const canvas = await html2canvas(target, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        onclone: (clonedDoc) => {
+          clonedDoc.documentElement.classList.remove('dark');
+          clonedDoc.body.classList.remove('dark');
+          const clonedEl = clonedDoc.getElementById('recibo-holerite-branco');
+          if (clonedEl) {
+            clonedEl.classList.remove('dark:bg-stone-900', 'dark:text-stone-100');
+            clonedEl.style.backgroundColor = '#ffffff';
+            clonedEl.style.color = '#1c1917';
+          }
+        },
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
+      const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
+
+      const imgProps = pdf.getImageProperties(imgData);
+      const marginX = 8;
+      const marginY = 8;
+      const printableWidth = pdfWidth - marginX * 2;
+      const imgHeight = (imgProps.height * printableWidth) / imgProps.width;
+
+      let heightLeft = imgHeight;
+      let position = marginY;
+
+      // Primeira página
+      pdf.addImage(imgData, 'JPEG', marginX, position, printableWidth, imgHeight);
+      heightLeft -= (pdfHeight - marginY * 2);
+
+      // Se houver overflow e precisar de mais páginas
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight + marginY;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', marginX, position, printableWidth, imgHeight);
+        heightLeft -= (pdfHeight - marginY * 2);
+      }
+
+      pdf.save(filename);
+    } catch (error) {
+      console.error('Erro ao gerar documento PDF do holerite:', error);
+      try {
+        window.print();
+      } catch (_) {}
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
 
   const totalEarnings = payroll.baseSalary + (payroll.overtimeAmount || 0) + (payroll.bonusAmount || 0) + (payroll.commissionAmount || 0);
   const totalDiscounts = payroll.inssDiscount + payroll.advancesDiscount + payroll.otherDiscounts;
@@ -201,12 +291,22 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
             <button
               type="button"
               id="btn-print-payslip"
-              onClick={handlePrint}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#0963cb] text-white text-xs font-bold hover:bg-blue-700 transition cursor-pointer shadow-xs"
-              title="Imprimir ou Salvar em PDF (Ctrl+P)"
+              onClick={handleDownloadPDF}
+              disabled={isGeneratingPdf}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#0963cb] text-white text-xs font-bold hover:bg-blue-700 active:scale-95 transition cursor-pointer shadow-xs disabled:opacity-75 disabled:cursor-not-allowed"
+              title="Baixar Holerite em PDF"
             >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Imprimir / PDF</span>
+              {isGeneratingPdf ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Gerando PDF...</span>
+                </>
+              ) : (
+                <>
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Imprimir / PDF</span>
+                </>
+              )}
             </button>
             <button
               type="button"
