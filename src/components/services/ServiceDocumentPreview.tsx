@@ -88,6 +88,9 @@ export interface ServiceDocumentPreviewProps {
   segundoOperadorTratorNome: string;
   comissaoTratorP2: number;
 
+  brokerName?: string;
+  brokerCommissionAmount?: number;
+
   trucksExpenseDetails: TruckExpenseDetail[];
   totalGeralDespesas: number;
   lucroEstimado: number;
@@ -142,6 +145,8 @@ export const ServiceDocumentPreview: React.FC<ServiceDocumentPreviewProps> = ({
   comissaoTratorP1,
   segundoOperadorTratorNome,
   comissaoTratorP2,
+  brokerName,
+  brokerCommissionAmount = 0,
   trucksExpenseDetails,
   totalGeralDespesas,
   lucroEstimado,
@@ -1856,6 +1861,21 @@ export const ServiceDocumentPreview: React.FC<ServiceDocumentPreviewProps> = ({
                             </div>
                             <span className="font-bold font-mono text-orange-700 text-[10px] whitespace-nowrap">
                               {formatCurrencyBRL(comissaoTratorP1 + comissaoTratorP2)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 4. COMISSÃO AGENCIADOR / INTERMEDIAÇÃO */}
+                      {brokerCommissionAmount > 0 && (
+                        <div className="pt-1 border-t border-orange-200/60">
+                          <div className="bg-white px-2 py-1 rounded border border-orange-200 text-[9.5px] flex justify-between items-center break-avoid">
+                            <div>
+                              <span className="text-[8.5px] font-bold text-amber-700 block uppercase">Agenciador / Intermediação</span>
+                              <strong className="text-slate-900">{brokerName || 'Agenciador'}</strong>
+                            </div>
+                            <span className="font-bold font-mono text-orange-700 text-[10px] whitespace-nowrap">
+                              {formatCurrencyBRL(brokerCommissionAmount)}
                             </span>
                           </div>
                         </div>

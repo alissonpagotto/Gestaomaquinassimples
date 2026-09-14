@@ -508,6 +508,13 @@ export interface ServiceOrder {
   mealExpenses?: ServiceMealExpense[];
   totalMealCost?: number;
 
+  // Agenciador / Intermediação
+  brokerId?: string;
+  brokerName?: string;
+  brokerCommissionType?: string;
+  brokerCommissionRate?: number;
+  brokerCommissionAmount?: number;
+
   // Fechamento e DRE da Operação
   totalExpenses?: number; // Total Geral Despesas (comissões e custos adicionais)
   estimatedProfit?: number; // Resultado Final (Lucro Estimado)

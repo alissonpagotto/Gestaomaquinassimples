@@ -118,3 +118,11 @@ export const formatTruckOptionLabel = (m: Machinery): string => {
   }
   return `${nameOrModel}${brand}${cap}`;
 };
+
+export const isBrokerEmployee = (emp?: Partial<Employee>): boolean => {
+  if (!emp) return false;
+  const roleStr = (emp.role || '').toLowerCase();
+  const rolesList = Array.isArray(emp.roles) ? emp.roles.map(r => r.toLowerCase()) : [];
+  const regTypeStr = (emp.registrationType || '').toLowerCase();
+  return roleStr.includes('agenciador') || rolesList.some(r => r.includes('agenciador')) || regTypeStr.includes('agenciador');
+};

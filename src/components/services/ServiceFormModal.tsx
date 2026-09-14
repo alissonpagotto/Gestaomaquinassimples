@@ -28,7 +28,8 @@ import {
   PrinterCheck,
   Lock,
   LogOut,
-  CheckCircle2
+  CheckCircle2,
+  Handshake
 } from 'lucide-react';
 import { 
   ServiceOrder, 
@@ -38,9 +39,10 @@ import {
   ServiceTruckItem, 
   CompanyProfile,
   ServiceFuelEntry,
-  ServiceMealExpense
+  ServiceMealExpense,
+  BrokerSettlement
 } from '../../types';
-import { formatCurrencyBRL } from '../../lib/storage';
+import { formatCurrencyBRL, getStoredBrokerSettlements, saveStoredBrokerSettlements } from '../../lib/storage';
 import { parseCurrencyToFloat, maskCurrencyBRLInput, formatCurrencyBRLOnBlur } from '../../lib/formatters';
 // Cadastro Unificado de Cliente (Modal Completo Oficial "Novo Produtor Rural / Pecuarista")
 import { ClientModal } from '../crm/ClientModal';
@@ -58,7 +60,8 @@ import {
   isForrageira, 
   findLinkedOperator, 
   formatEmployeeOptionLabel,
-  formatMachineryOptionLabel
+  formatMachineryOptionLabel,
+  isBrokerEmployee
 } from './serviceHelpers';
 
 export type ServiceTabType = 'corte' | 'colheita' | 'trator' | 'maquina' | 'orcamento' | 'venda';
@@ -211,6 +214,12 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
   const [qtdBaseComissao, setQtdBaseComissao] = useState<number | ''>('');
   const [taxaComissaoOperador, setTaxaComissaoOperador] = useState<number | ''>('');
 
+  // 4.5. Bloco Agenciador / Intermediação
+  const [brokerId, setBrokerId] = useState('');
+  const [brokerName, setBrokerName] = useState('');
+  const [brokerCommissionType, setBrokerCommissionType] = useState<string>('Porcentagem (%) sobre o valor do pedido');
+  const [brokerCommissionRate, setBrokerCommissionRate] = useState<number | ''>('');
+
   // 5. Seção Dinâmica de Frotas / Caminhões
   const [truckFleetPercentage, setTruckFleetPercentage] = useState<number | ''>(10);
   const [trucks, setTrucks] = useState<ServiceTruckItem[]>([]);
@@ -253,6 +262,29 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       return m.id === forrageiraId || !selectedMachineryIds.has(m.id);
     });
   }, [machineries, forrageiraId, selectedMachineryIds]);
+
+  // Lista filtrada de Colaboradores cujo Tipo de Cadastro ou Função seja "Agenciador"
+  const agenciadoresDisponiveis = useMemo(() => {
+    return employees.filter((emp) => isBrokerEmployee(emp));
+  }, [employees]);
+
+  // Sincroniza dados e configurações do Agenciador ao selecioná-lo no dropdown
+  const handleSelectBroker = (selectedId: string) => {
+    setBrokerId(selectedId);
+    if (!selectedId) {
+      setBrokerName('');
+      setBrokerCommissionRate('');
+      return;
+    }
+    const emp = employees.find((e) => e.id === selectedId);
+    if (emp) {
+      setBrokerName((emp.name || '').toUpperCase());
+      const type = emp.brokerCommissionType || 'Porcentagem (%) sobre o valor do pedido';
+      setBrokerCommissionType(type);
+      const val = emp.brokerCommissionValue !== undefined && emp.brokerCommissionValue !== null ? emp.brokerCommissionValue : 5;
+      setBrokerCommissionRate(val);
+    }
+  };
 
   // Carrega dados iniciais ou do registro em edição
   useEffect(() => {
@@ -362,6 +394,12 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       setFuelEntries(editRecord.fuelEntries || []);
       setMealExpenses(editRecord.mealExpenses || []);
 
+      // Agenciador / Intermediação
+      setBrokerId(editRecord.brokerId ?? '');
+      setBrokerName(editRecord.brokerName ?? '');
+      setBrokerCommissionType(editRecord.brokerCommissionType ?? 'Porcentagem (%) sobre o valor do pedido');
+      setBrokerCommissionRate(editRecord.brokerCommissionRate ?? '');
+
       setCompletionDate(editRecord.completionDate || '');
       setMaintenanceMachineryId(editRecord.machineryId || '');
       if (editRecord.startDate) {
@@ -421,6 +459,12 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       setFretePrancha('');
       setFuelEntries([]);
       setMealExpenses([]);
+
+      // Agenciador / Intermediação
+      setBrokerId('');
+      setBrokerName('');
+      setBrokerCommissionType('Porcentagem (%) sobre o valor do pedido');
+      setBrokerCommissionRate('');
 
       setCompletionDate('');
       setMaintenanceType('preventiva');
@@ -800,6 +844,25 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
     };
   }, [tratorId, tratorNome, qtdBaseComissao, taxaComissaoOperador, modoComissaoOperador, segundoOperadorTratorNome, segundoOperadorTratorId, employees]);
 
+  // C) Comissão Agenciador / Intermediação
+  const brokerCommissionAmount = useMemo(() => {
+    if (!brokerId) return 0;
+    const rate = typeof brokerCommissionRate === 'number' ? brokerCommissionRate : 0;
+    if (rate <= 0) return 0;
+
+    const typeStr = (brokerCommissionType || '').toLowerCase();
+    if (typeStr.includes('valor do pedido') || typeStr.includes('pedido') || typeStr.includes('área') || typeStr.includes('area')) {
+      // Calcule a comissão sobre o campo "Subtotal Área (Base)"
+      return Number(((valorBaseArea * rate) / 100).toFixed(2));
+    } else if (typeStr.includes('produção') || typeStr.includes('producao')) {
+      // Calcule com base no valor da "Estimativa de Produção"
+      return Number((estimativaToneladas * rate).toFixed(2));
+    } else {
+      // Se for "Valor Fixo": Aplique o valor cadastrado diretamente.
+      return Number(rate.toFixed(2));
+    }
+  }, [brokerId, brokerCommissionType, brokerCommissionRate, valorBaseArea, estimativaToneladas]);
+
   // =========================================================================
   // REGRA 5: DETALHAMENTO CIRÚRGICO NA DRE (BLOCO CUSTOS E PROVENTOS ADICIONAIS)
   // Plotagem nominal de cada caminhão ativo: Placa, Motorista, Cargas, Cap m³, Total m³, % e Valor Proporcional + Adicional KM
@@ -963,8 +1026,8 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
   // TOTAL GERAL DESPESAS (Soma exata de todas as comissões, frotas, combustível e alimentação)
   const totalGeralDespesas = useMemo(() => {
     const totalTrucksExpense = trucksExpenseDetails.reduce((sum, item) => sum + item.totalCost, 0);
-    return comissaoForrageiraP1 + comissaoForrageiraP2 + comissaoTratorP1 + comissaoTratorP2 + totalTrucksExpense + totalCombustivelGeral + totalAlimentacaoGeral;
-  }, [comissaoForrageiraP1, comissaoForrageiraP2, comissaoTratorP1, comissaoTratorP2, trucksExpenseDetails, totalCombustivelGeral, totalAlimentacaoGeral]);
+    return comissaoForrageiraP1 + comissaoForrageiraP2 + comissaoTratorP1 + comissaoTratorP2 + brokerCommissionAmount + totalTrucksExpense + totalCombustivelGeral + totalAlimentacaoGeral;
+  }, [comissaoForrageiraP1, comissaoForrageiraP2, comissaoTratorP1, comissaoTratorP2, brokerCommissionAmount, trucksExpenseDetails, totalCombustivelGeral, totalAlimentacaoGeral]);
 
   // RESULTADO FINAL (LUCRO ESTIMADO)
   const lucroEstimado = useMemo(() => {
@@ -1077,9 +1140,73 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       totalExpenses: totalGeralDespesas,
       estimatedProfit: lucroEstimado,
       notes: observacoes,
+
+      // Agenciador / Intermediação
+      brokerId: brokerId || undefined,
+      brokerName: brokerName || undefined,
+      brokerCommissionType: brokerId ? brokerCommissionType : undefined,
+      brokerCommissionRate: brokerId && typeof brokerCommissionRate === 'number' ? brokerCommissionRate : undefined,
+      brokerCommissionAmount: brokerId && brokerCommissionAmount > 0 ? brokerCommissionAmount : undefined,
     };
 
     onSave(newService);
+
+    // Geração automática de Contas a Pagar em "Acertos Agenciadores" se houver agenciador selecionado e comissão calculada > 0
+    if (brokerId && brokerCommissionAmount > 0) {
+      try {
+        const storedBrokerSettlements = getStoredBrokerSettlements();
+        const existingIdx = storedBrokerSettlements.findIndex((s) => s.orderId === newService.id);
+        const broker = employees.find((b) => b.id === brokerId);
+
+        const currentMonthYear = (() => {
+          if (serviceDate) {
+            const [y, m] = serviceDate.split('-');
+            if (y && m) return `${m}/${y}`;
+          }
+          const now = new Date();
+          return `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+        })();
+
+        const baseVal = (brokerCommissionType || '').toLowerCase().includes('produção') || (brokerCommissionType || '').toLowerCase().includes('producao')
+          ? estimativaToneladas
+          : (brokerCommissionType || '').toLowerCase().includes('fixo')
+          ? brokerCommissionAmount
+          : valorBaseArea;
+
+        const settlementRecord: BrokerSettlement = {
+          id: existingIdx >= 0 ? storedBrokerSettlements[existingIdx].id : `bset_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          brokerId: brokerId,
+          brokerName: (brokerName || broker?.name || 'AGENCIADOR').toUpperCase(),
+          actingRegion: broker?.actingRegion || undefined,
+          date: serviceDate || new Date().toISOString().split('T')[0],
+          referenceMonth: currentMonthYear,
+          orderId: newService.id,
+          orderClientName: (clientName || '').toUpperCase(),
+          description: `Comissão Agenciador - Pedido #${newService.orderNumber || ''} (${clientName || 'Cliente'})`,
+          commissionType: brokerCommissionType,
+          commissionRate: typeof brokerCommissionRate === 'number' ? brokerCommissionRate : 0,
+          baseValue: baseVal,
+          grossAmount: brokerCommissionAmount,
+          deductions: 0,
+          netAmount: brokerCommissionAmount,
+          status: existingIdx >= 0 ? storedBrokerSettlements[existingIdx].status : 'pendente',
+          createdAt: existingIdx >= 0 && storedBrokerSettlements[existingIdx].createdAt ? storedBrokerSettlements[existingIdx].createdAt : new Date().toISOString(),
+        };
+
+        if (existingIdx >= 0) {
+          storedBrokerSettlements[existingIdx] = {
+            ...storedBrokerSettlements[existingIdx],
+            ...settlementRecord,
+          };
+        } else {
+          storedBrokerSettlements.push(settlementRecord);
+        }
+        saveStoredBrokerSettlements(storedBrokerSettlements);
+      } catch (err) {
+        console.error('Erro ao salvar lançamento em Acertos Agenciadores:', err);
+      }
+    }
+
     setSavedOrder(newService);
     setSaveSuccessMessage(`Pedido ${newService.orderNumber} salvo com sucesso! Os dados foram gravados no sistema. Você pode continuar na tela para analisar o DRE ou imprimir.`);
     setIsSaveSuccessToast(true);
@@ -2224,6 +2351,113 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
               </div>
             )}
 
+            {/* NOVO BLOCO: AGENCIADOR / INTERMEDIAÇÃO */}
+            {(activeTab === 'corte' || activeTab === 'colheita' || activeTab === 'plantio' || activeTab === 'pulverizacao') && (
+              <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl p-3.5 sm:p-4 shadow-sm space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Handshake className="w-4 h-4 text-amber-600" />
+                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
+                      AGENCIADOR / INTERMEDIAÇÃO
+                    </span>
+                    {brokerId ? (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded shadow-2xs">
+                        Vinculado ao Pedido
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded shadow-2xs">
+                        Opcional
+                      </span>
+                    )}
+                  </div>
+                  {brokerId && (
+                    <button
+                      type="button"
+                      onClick={() => handleSelectBroker('')}
+                      className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:underline cursor-pointer self-start sm:self-auto"
+                    >
+                      Limpar Agenciador
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                  {/* Campo 1: Select / Dropdown do Agenciador */}
+                  <div className="sm:col-span-5">
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 uppercase tracking-wide">
+                      SELECIONE O AGENCIADOR
+                    </label>
+                    <select
+                      value={brokerId}
+                      onChange={(e) => handleSelectBroker(e.target.value)}
+                      className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-400 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-600 shadow-2xs transition-colors cursor-pointer"
+                    >
+                      <option value="">-- Nenhum Agenciador --</option>
+                      {agenciadoresDisponiveis.map((ag) => (
+                        <option key={ag.id} value={ag.id}>
+                          {ag.name.toUpperCase()} {ag.actingRegion ? `(${ag.actingRegion})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Campo 2: Regra de Comissão (Tipo e Valor / %) */}
+                  {brokerId ? (
+                    <>
+                      <div className="sm:col-span-3">
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 uppercase tracking-wide">
+                          Tipo de Comissão
+                        </label>
+                        <select
+                          value={brokerCommissionType}
+                          onChange={(e) => setBrokerCommissionType(e.target.value)}
+                          className="w-full px-2.5 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-600 shadow-2xs cursor-pointer"
+                        >
+                          <option value="Porcentagem (%) sobre o valor do pedido">% sobre o valor do pedido (Área)</option>
+                          <option value="Porcentagem (%) sobre a produção">% sobre a produção (Estimativa ton)</option>
+                          <option value="Valor Fixo por contrato/pedido">Valor Fixo (R$ direto)</option>
+                        </select>
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 uppercase tracking-wide">
+                          {brokerCommissionType === 'Valor Fixo por contrato/pedido' ? 'Valor Fixo (R$)' : 'Alíquota (%)'}
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          value={brokerCommissionRate}
+                          onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                          onChange={(e) => setBrokerCommissionRate(e.target.value === '' ? '' : Number(e.target.value))}
+                          placeholder="Ex: 5"
+                          className="w-full px-2.5 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-600 shadow-2xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                      </div>
+
+                      {/* Label Destacada com o Resultado do Cálculo Dinâmico */}
+                      <div className="sm:col-span-2 flex flex-col justify-end">
+                        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 rounded-lg px-2.5 py-1.5 shadow-2xs">
+                          <span className="block text-[9.5px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-tight truncate" title={`Comissão Agenciador ${brokerName || ''}`}>
+                            Comissão Agenciador {brokerName ? `[${brokerName}]` : ''}:
+                          </span>
+                          <span className="block text-sm font-black font-mono text-amber-900 dark:text-amber-200">
+                            {formatCurrencyBRL(brokerCommissionAmount)}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="sm:col-span-7">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 italic py-2">
+                        Caso este pedido tenha intermediação ou agenciamento externo, selecione o agenciador para calcular sua comissão e lançar automaticamente no Contas a Pagar.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* 3. BLOCO FORRAGEIRA / ENSILADEIRA (COR DE FUNDO PERSONALIZADA #edc79c) COM OPÇÃO NEUTRA E TOGGLES DE COMISSÃO */}
             {(activeTab === 'corte' || activeTab === 'colheita') && (
               <div className={`border rounded-xl p-4 space-y-4 border-l-4 transition-colors bg-[#edc79c] ${
@@ -2717,6 +2951,8 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
               comissaoTratorP1={comissaoTratorP1}
               segundoOperadorTratorNome={segundoOperadorTratorNome}
               comissaoTratorP2={comissaoTratorP2}
+              brokerName={brokerName}
+              brokerCommissionAmount={brokerCommissionAmount}
               trucksExpenseDetails={trucksExpenseDetails}
               totalGeralDespesas={totalGeralDespesas}
               lucroEstimado={lucroEstimado}
@@ -2863,6 +3099,8 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
           comissaoTratorP1={comissaoTratorP1}
           segundoOperadorTratorNome={segundoOperadorTratorNome}
           comissaoTratorP2={comissaoTratorP2}
+          brokerName={brokerName}
+          brokerCommissionAmount={brokerCommissionAmount}
           trucksExpenseDetails={trucksExpenseDetails}
           totalGeralDespesas={totalGeralDespesas}
           lucroEstimado={lucroEstimado}

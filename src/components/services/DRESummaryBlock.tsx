@@ -58,6 +58,10 @@ interface DRESummaryBlockProps {
   segundoOperadorTratorNome: string;
   comissaoTratorP2: number;
 
+  // Agenciador / Intermediação
+  brokerName?: string;
+  brokerCommissionAmount?: number;
+
   trucksExpenseDetails: TruckExpenseDetail[];
   totalGeralDespesas: number;
 
@@ -102,6 +106,8 @@ export const DRESummaryBlock: React.FC<DRESummaryBlockProps> = ({
   comissaoTratorP1,
   segundoOperadorTratorNome,
   comissaoTratorP2,
+  brokerName,
+  brokerCommissionAmount = 0,
   trucksExpenseDetails,
   totalGeralDespesas,
   lucroEstimado,
@@ -524,6 +530,19 @@ export const DRESummaryBlock: React.FC<DRESummaryBlockProps> = ({
               </span>
               <span className="font-semibold font-mono text-gray-900 dark:text-white">
                 {formatCurrencyBRL(comissaoForrageiraP2)}
+              </span>
+            </div>
+          )}
+
+          {/* Comissão Agenciador / Intermediação */}
+          {brokerCommissionAmount > 0 && (
+            <div className="flex items-center justify-between text-gray-700 dark:text-slate-300 py-0.5">
+              <span className="flex items-center gap-1.5">
+                <span className="text-amber-700 dark:text-amber-400 font-bold">🤝</span>
+                Comissão Agenciador ({brokerName || 'Agenciador'}):
+              </span>
+              <span className="font-semibold font-mono text-gray-900 dark:text-white">
+                {formatCurrencyBRL(brokerCommissionAmount)}
               </span>
             </div>
           )}
