@@ -1221,7 +1221,7 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
                           key={idx} 
                           className="p-1.5 bg-blue-50/50 dark:bg-stone-900/60 rounded border border-blue-100/90 dark:border-stone-700 text-[11px] text-stone-900 dark:text-stone-100 font-medium leading-normal"
                         >
-                          {b.formattedLine || b.description}
+                          {(b.formattedLine || b.description || '').replace(/\s*\(\s*cla?ss\s*\)/gi, '')}
                         </div>
                       ))}
                     </div>

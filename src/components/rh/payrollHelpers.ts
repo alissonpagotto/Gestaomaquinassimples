@@ -27,6 +27,14 @@ export interface EmployeeMonthCommissions {
 }
 
 /**
+ * Limpa sufixos estáticos redundantes como " (class)" ou " (claas)" de nomes de máquinas/veículos
+ */
+export const cleanVehicleName = (name?: string): string => {
+  if (!name) return '';
+  return name.replace(/\s*\(\s*cla?ss\s*\)/gi, '').trim();
+};
+
+/**
  * Formata a linha de conferência operacional no padrão do resumo de custos da operação:
  * "Pedido #[Num_Pedido] — Cliente: [Nome_Cliente] — [Tipo_Serviço] [Prefixo_Veículo] ([Nome_Trabalho]) — [Qtd_Cargas] Cargas ([Qtd_m³] m³) — Cobrança por Horas: [Qtd_Horas]h x R$ [Valor_Hora]/h — Total: R$ [Valor_Total]"
  * 
@@ -57,7 +65,9 @@ export const formatCommissionItemLine = (item: {
   parts.push(`Cliente: ${client}`);
 
   // 3. [Tipo_Serviço] [Prefixo_Veículo] ([Nome_Trabalho])
-  const prefix = item.vehiclePrefix && item.vehiclePrefix.trim() ? ` ${item.vehiclePrefix.trim()}` : '';
+  // Remove qualquer texto estático repetido "(class)" ou "(claas)" logo após a máquina
+  const rawPrefix = cleanVehicleName(item.vehiclePrefix);
+  const prefix = rawPrefix ? ` ${rawPrefix}` : '';
   const work = (item.workName || 'Operação').trim();
   const head = `${item.serviceType.trim()}${prefix} (${work})`;
   parts.push(head);
@@ -186,7 +196,7 @@ export const getEmployeeMonthCommissions = (
         const hours = service.forageDrumHours || service.forageEngineHours || 0;
         const hourlyRate = service.forageCommissionRate || (hours > 0 ? roundedAmount / hours : 0);
         const workName = (service.farmName && service.farmName.trim()) || (service.notes && service.notes.trim()) || 'Operação';
-        const vehiclePrefix = service.forageHarvesterName ? service.forageHarvesterName.trim() : '';
+        const vehiclePrefix = cleanVehicleName(service.forageHarvesterName);
         const serviceType = 'Comissão Ensiladeira';
         const formattedLine = formatCommissionItemLine({
           orderNumber: service.orderNumber,
@@ -240,7 +250,7 @@ export const getEmployeeMonthCommissions = (
         const hours = service.forageDrumHours || service.forageEngineHours || 0;
         const hourlyRate = employee.commissionPerHour || (hours > 0 ? roundedAmount / hours : 0);
         const workName = (service.farmName && service.farmName.trim()) || (service.notes && service.notes.trim()) || 'Operação';
-        const vehiclePrefix = service.forageHarvesterName ? service.forageHarvesterName.trim() : '';
+        const vehiclePrefix = cleanVehicleName(service.forageHarvesterName);
         const serviceType = 'Comissão 2º Op. Ensiladeira';
         const formattedLine = formatCommissionItemLine({
           orderNumber: service.orderNumber,
@@ -401,7 +411,7 @@ export const getEmployeeMonthCommissions = (
           if (hours === 0 && hourlyRate > 0 && roundedAmount > 0) {
             hours = Math.round((roundedAmount / hourlyRate) * 100) / 100;
           }
-          const vehiclePrefix = (truck.plate || truck.truckName || `Caminhão #${index + 1}`).trim();
+          const vehiclePrefix = cleanVehicleName(truck.plate || truck.truckName || `Caminhão #${index + 1}`);
           const workName = (service.farmName && service.farmName.trim()) || (service.notes && service.notes.trim()) || 'Operação';
           const serviceType = 'Transp.';
           const formattedLine = formatCommissionItemLine({

@@ -312,42 +312,42 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
             </div>
           </div>
 
-          {/* Dados Cadastrais do Empregado Enriquecidos */}
-          <div className="border border-stone-300 dark:border-stone-700 rounded-xl p-4 bg-stone-50/50 dark:bg-stone-800/30">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 text-xs">
+          {/* Dados Cadastrais do Empregado Enriquecidos (Bloco Compacto e Alinhado) */}
+          <div className="border border-stone-300 dark:border-stone-700 rounded-lg p-2 sm:p-2.5 print:p-1.5 my-1 sm:my-1.5 print:my-0.5 bg-stone-50/50 dark:bg-stone-800/30">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3 gap-y-1 sm:gap-y-1.5 print:gap-y-0.5 print:gap-x-2 text-xs">
               <div>
-                <span className="text-stone-500 block text-[11px] font-bold">Colaborador:</span>
-                <span className="font-bold text-stone-900 dark:text-stone-100">{payroll.employeeName}</span>
+                <span className="text-stone-500 block text-[9.5px] sm:text-[10px] print:text-[8.5px] font-bold leading-tight">Colaborador:</span>
+                <span className="font-bold text-stone-900 dark:text-stone-100 text-[11px] sm:text-xs print:text-[9.5px] block leading-tight truncate">{payroll.employeeName}</span>
               </div>
               <div>
-                <span className="text-stone-500 block text-[11px] font-bold">Função / Cargo:</span>
-                <span className="font-medium text-stone-800 dark:text-stone-200">{payroll.employeeRole}</span>
+                <span className="text-stone-500 block text-[9.5px] sm:text-[10px] print:text-[8.5px] font-bold leading-tight">Função / Cargo:</span>
+                <span className="font-semibold text-stone-800 dark:text-stone-200 text-[11px] sm:text-xs print:text-[9.5px] block leading-tight truncate">{payroll.employeeRole}</span>
               </div>
               <div>
-                <span className="text-stone-500 block text-[11px] font-bold">CPF:</span>
-                <span className="font-medium text-stone-800 dark:text-stone-200">
+                <span className="text-stone-500 block text-[9.5px] sm:text-[10px] print:text-[8.5px] font-bold leading-tight">CPF:</span>
+                <span className="font-semibold text-stone-800 dark:text-stone-200 text-[11px] sm:text-xs print:text-[9.5px] block leading-tight">
                   {formatCPF(employee?.cpf)}
                 </span>
               </div>
               <div>
-                <span className="text-stone-500 block text-[11px] font-bold">Data de Admissão:</span>
-                <span className="font-medium text-stone-800 dark:text-stone-200">
+                <span className="text-stone-500 block text-[9.5px] sm:text-[10px] print:text-[8.5px] font-bold leading-tight">Data de Admissão:</span>
+                <span className="font-semibold text-stone-800 dark:text-stone-200 text-[11px] sm:text-xs print:text-[9.5px] block leading-tight">
                   {formatEmployeeAdmissionDate(employee?.admissionDate)}
                 </span>
               </div>
               <div>
-                <span className="text-stone-500 block text-[11px] font-bold">Mês Referência:</span>
-                <span className="font-bold text-[#0963cb]">{payroll.referenceMonth}</span>
+                <span className="text-stone-500 block text-[9.5px] sm:text-[10px] print:text-[8.5px] font-bold leading-tight">Mês Referência:</span>
+                <span className="font-bold text-[#0963cb] text-[11px] sm:text-xs print:text-[9.5px] block leading-tight">{payroll.referenceMonth}</span>
               </div>
               <div>
-                <span className="text-stone-500 block text-[11px] font-bold">Regime / Vínculo:</span>
-                <span className="font-medium text-stone-800 dark:text-stone-200">
+                <span className="text-stone-500 block text-[9.5px] sm:text-[10px] print:text-[8.5px] font-bold leading-tight">Regime / Vínculo:</span>
+                <span className="font-semibold text-stone-800 dark:text-stone-200 text-[11px] sm:text-xs print:text-[9.5px] block leading-tight">
                   {employee?.contractType || 'CLT'}
                 </span>
               </div>
               <div className="sm:col-span-3 lg:col-span-2">
-                <span className="text-stone-500 block text-[11px] font-bold">Banco para Depósito:</span>
-                <span className="font-bold text-stone-800 dark:text-stone-200 truncate block" title={formatEmployeeBankDeposit(employee)}>
+                <span className="text-stone-500 block text-[9.5px] sm:text-[10px] print:text-[8.5px] font-bold leading-tight">Banco para Depósito:</span>
+                <span className="font-bold text-stone-800 dark:text-stone-200 text-[11px] sm:text-xs print:text-[9.5px] truncate block leading-tight" title={formatEmployeeBankDeposit(employee)}>
                   {formatEmployeeBankDeposit(employee)}
                 </span>
               </div>
@@ -532,14 +532,17 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
                     </span>
                   </div>
                   <div className="space-y-1 pl-1">
-                    {resolvedCommissions.breakdown.map((item, idx) => (
-                      <div 
-                        key={item.serviceId ? `${item.serviceId}-${idx}` : idx}
-                        className="text-[11px] leading-relaxed text-stone-800 dark:text-stone-200 border-b border-stone-200/60 dark:border-stone-800 pb-1 font-mono sm:font-sans"
-                      >
-                        {item.formattedLine || item.description}
-                      </div>
-                    ))}
+                    {resolvedCommissions.breakdown.map((item, idx) => {
+                      const cleanDesc = (item.formattedLine || item.description || '').replace(/\s*\(\s*cla?ss\s*\)/gi, '');
+                      return (
+                        <div 
+                          key={item.serviceId ? `${item.serviceId}-${idx}` : idx}
+                          className="text-[11px] leading-relaxed text-stone-800 dark:text-stone-200 border-b border-stone-200/60 dark:border-stone-800 pb-1 font-mono sm:font-sans"
+                        >
+                          {cleanDesc}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

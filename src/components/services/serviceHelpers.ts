@@ -99,7 +99,13 @@ export const formatEmployeeOptionLabel = (emp: Employee): string => {
 export const formatMachineryOptionLabel = (m: Machinery): string => {
   const plate = m.licensePlateOrSerial ? m.licensePlateOrSerial.trim().toUpperCase() : '';
   const nameOrModel = (m.name || m.model || 'Equipamento').toUpperCase();
-  const brand = m.brand ? ` (${m.brand.toUpperCase()})` : '';
+  const brandUpper = (m.brand || '').trim().toUpperCase();
+  const isBrandDuplicated = brandUpper && (
+    nameOrModel.includes(brandUpper) ||
+    (brandUpper === 'CLASS' && (nameOrModel.includes('CLASS') || nameOrModel.includes('CLAAS'))) ||
+    (brandUpper === 'CLAAS' && (nameOrModel.includes('CLASS') || nameOrModel.includes('CLAAS')))
+  );
+  const brand = brandUpper && !isBrandDuplicated ? ` (${brandUpper})` : '';
   const cap = m.capacityM3 && m.capacityM3 > 0 ? ` [${m.capacityM3} m³]` : '';
   
   if (plate) {
