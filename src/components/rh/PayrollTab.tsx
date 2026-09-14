@@ -318,39 +318,54 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
   const [showAbsencesBreakdown, setShowAbsencesBreakdown] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Ação de Impressão Isolada do Recibo Branco (Holerite Oficial)
+  // Ação de Impressão Isolada do Recibo Branco (Holerite Oficial) com injeção de estilos do projeto
   const handlePrintIsolated = () => {
     const reciboElement = document.getElementById('recibo-holerite-branco');
     if (!reciboElement) return;
 
     const printWindow = window.open('', '_blank', 'width=900,height=1000');
     if (printWindow) {
+      // Captura todas as folhas de estilo ativas no sistema principal
+      const estilosPai = Array.from(document.styleSheets)
+        .map(styleSheet => {
+          try {
+            return Array.from(styleSheet.cssRules)
+              .map(rule => rule.cssText)
+              .join('\n');
+          } catch (e) {
+            return '';
+          }
+        })
+        .join('\n');
+
       printWindow.document.write(`
-        <!DOCTYPE html>
         <html>
           <head>
-            <meta charset="utf-8">
             <title>Imprimir Holerite</title>
-            <link rel="stylesheet" href="${window.location.origin}/src/index.css">
             <style>
-              body { background: white; color: black; padding: 20px; font-family: sans-serif; }
+              ${estilosPai}
+              body { background: white !important; color: black !important; padding: 24px; font-family: sans-serif; }
               @media print {
-                body { padding: 0; margin: 0; background: white; }
-                .print\\:hidden { display: none !important; }
+                body { padding: 0; }
+                .no-print { display: none !important; }
               }
             </style>
           </head>
-          <body>
-            ${reciboElement.innerHTML}
+          <body class="bg-white text-black antialiased">
+            <div class="w-full max-w-4xl mx-auto p-4 bg-white border border-gray-200 rounded-xl shadow-none">
+              ${reciboElement.innerHTML}
+            </div>
           </body>
         </html>
       `);
       printWindow.document.close();
+      
+      // Aguarda a renderização completa e dispara a impressora
       setTimeout(() => {
         printWindow.focus();
         printWindow.print();
         printWindow.close();
-      }, 500);
+      }, 600);
     }
   };
 
