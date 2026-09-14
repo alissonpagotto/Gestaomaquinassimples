@@ -1,7 +1,7 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import { X, Printer, Download, CheckCircle2, User, Building, Calendar, DollarSign, FileText, CreditCard, CalendarX, AlertCircle, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import { PayrollRecord, Employee, CompanyProfile, SalaryAdvance, AbsenceRecord, ServiceOrder } from '../../types';
 import { formatCurrencyBRL, formatDateBR, getStoredServices, getStoredAbsences, getStoredSalaryAdvances } from '../../lib/storage';
 import { PrintReportFooter } from '../common/PrintReportFooter';
@@ -33,6 +33,8 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
   allEmployees,
   commissionsInfo,
 }) => {
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
   useEffect(() => {
     if (!isOpen || !payroll) return;
 
@@ -156,8 +158,6 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
 
   // Safe early exit AFTER all hooks are called
   if (!isOpen || !payroll) return null;
-
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const handleDownloadPDF = async () => {
     if (!payroll) return;
