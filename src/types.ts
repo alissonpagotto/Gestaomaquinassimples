@@ -452,6 +452,22 @@ export interface ServiceOrder {
   driverCostAllocated?: number;
   notes?: string;
 
+  // Serviços de Máquinas Pesadas e Transporte (Aba 1)
+  equipmentCategory?: 'pesadas' | 'caminhoes';
+  machineSpecificType?: string;
+  machineHours?: number;
+  machineHourlyRate?: number;
+  truckBillingMode?: 'horas' | 'cargas_km' | 'somente_km';
+  truckServiceHours?: number;
+  truckServiceHourlyRate?: number;
+  truckServiceLoads?: number;
+  truckServiceRatePerLoad?: number;
+  truckServiceKmAdditional?: number;
+  truckServiceRatePerKm?: number;
+  truckServiceTotalKm?: number;
+  truckServiceRateOnlyKm?: number;
+  machineTotalAmount?: number;
+
   // Unidade de Área e Valores Base
   areaUnit?: 'hectares' | 'alqueires' | 'hora';
   areaQuantity?: number;

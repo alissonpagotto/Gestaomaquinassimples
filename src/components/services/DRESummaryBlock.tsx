@@ -35,6 +35,8 @@ interface DRESummaryBlockProps {
   volumeTotalFrotaM3?: number;
   unidadeArea?: 'hectares' | 'alqueires' | 'hora' | 'horas';
   totalFrotasPorHora?: number;
+  subtotalServicoMaquina?: number;
+  descricaoServicoMaquina?: string;
 
   // NOVO CARD: Consumo de Combustível e Alimentação
   fuelEntries?: ServiceFuelEntry[];
@@ -87,6 +89,8 @@ export const DRESummaryBlock: React.FC<DRESummaryBlockProps> = ({
   volumeTotalFrotaM3 = 0,
   unidadeArea,
   totalFrotasPorHora = 0,
+  subtotalServicoMaquina,
+  descricaoServicoMaquina,
 
   fuelEntries = [],
   onFuelEntryChange,
@@ -126,9 +130,11 @@ export const DRESummaryBlock: React.FC<DRESummaryBlockProps> = ({
             <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider flex flex-wrap items-center gap-1.5">
               <span>Resumo do Pedido (Cobrado do Cliente)</span>
-              <span className="text-emerald-700 dark:text-emerald-300 font-extrabold normal-case bg-emerald-100/90 dark:bg-emerald-900/60 px-2 py-0.5 rounded text-[11px] border border-emerald-200 dark:border-emerald-700/80">
-                — [Volume Total: {volumeTotalFrotaM3.toFixed(1)} m³]
-              </span>
+              {volumeTotalFrotaM3 > 0 && (
+                <span className="text-emerald-700 dark:text-emerald-300 font-extrabold normal-case bg-emerald-100/90 dark:bg-emerald-900/60 px-2 py-0.5 rounded text-[11px] border border-emerald-200 dark:border-emerald-700/80">
+                  — [Volume Total: {volumeTotalFrotaM3.toFixed(1)} m³]
+                </span>
+              )}
             </h4>
           </div>
           <span className="px-2 py-0.5 bg-emerald-600 text-white rounded text-[10px] font-extrabold uppercase tracking-wide">
@@ -137,14 +143,28 @@ export const DRESummaryBlock: React.FC<DRESummaryBlockProps> = ({
         </div>
 
         <div className="space-y-1.5 text-xs">
-          <div className="flex items-center justify-between text-gray-700 dark:text-slate-300 py-0.5">
-            <span>
-              Valor Base do Serviço ({quantidadeArea || 0} {unidadeAreaLabel}):
-            </span>
-            <span className="font-semibold text-gray-900 dark:text-white font-mono">
-              {formatCurrencyBRL(valorBaseArea)}
-            </span>
-          </div>
+          {valorBaseArea > 0 && (
+            <div className="flex items-center justify-between text-gray-700 dark:text-slate-300 py-0.5">
+              <span>
+                Valor Base do Serviço ({quantidadeArea || 0} {unidadeAreaLabel}):
+              </span>
+              <span className="font-semibold text-gray-900 dark:text-white font-mono">
+                {formatCurrencyBRL(valorBaseArea)}
+              </span>
+            </div>
+          )}
+
+          {subtotalServicoMaquina !== undefined && subtotalServicoMaquina > 0 && (
+            <div className="flex items-center justify-between text-gray-700 dark:text-slate-300 py-0.5">
+              <span className="flex items-center gap-1.5">
+                <Tractor className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                {descricaoServicoMaquina || 'Serviço de Máquinas / Transporte'}:
+              </span>
+              <span className="font-semibold text-gray-900 dark:text-white font-mono">
+                {formatCurrencyBRL(subtotalServicoMaquina)}
+              </span>
+            </div>
+          )}
 
           {subtotalTrator > 0 && (
             <div className="flex items-center justify-between text-gray-700 dark:text-slate-300 py-0.5">
