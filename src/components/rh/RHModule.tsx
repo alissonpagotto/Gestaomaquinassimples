@@ -439,6 +439,10 @@ export const RHModule: React.FC<RHModuleProps> = ({
         companyProfile={companyProfile}
         isOpen={!!viewingPayslip}
         onClose={() => setViewingPayslip(null)}
+        advances={advances}
+        absences={absences}
+        services={services}
+        allEmployees={sortedEmployees}
       />
 
     </div>

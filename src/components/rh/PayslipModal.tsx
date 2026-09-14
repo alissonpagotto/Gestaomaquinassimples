@@ -1,10 +1,10 @@
-import React from 'react';
-import { X, Printer, Download, CheckCircle2, User, Building, Calendar, DollarSign } from 'lucide-react';
-import { PayrollRecord, Employee, CompanyProfile } from '../../types';
-import { formatCurrencyBRL, formatDateBR } from '../../lib/storage';
+import React, { useMemo } from 'react';
+import { X, Printer, Download, CheckCircle2, User, Building, Calendar, DollarSign, FileText, CreditCard, CalendarX, AlertCircle } from 'lucide-react';
+import { PayrollRecord, Employee, CompanyProfile, SalaryAdvance, AbsenceRecord, ServiceOrder } from '../../types';
+import { formatCurrencyBRL, formatDateBR, getStoredServices, getStoredAbsences, getStoredSalaryAdvances } from '../../lib/storage';
 import { PrintReportHeader } from '../common/PrintReportHeader';
 import { PrintReportFooter } from '../common/PrintReportFooter';
-import { formatCPF, formatEmployeeAdmissionDate, formatEmployeeBankDeposit } from './payrollHelpers';
+import { formatCPF, formatEmployeeAdmissionDate, formatEmployeeBankDeposit, getEmployeeMonthCommissions, EmployeeMonthCommissions } from './payrollHelpers';
 
 interface PayslipModalProps {
   payroll: PayrollRecord | null;
@@ -12,6 +12,12 @@ interface PayslipModalProps {
   companyProfile: CompanyProfile;
   isOpen: boolean;
   onClose: () => void;
+  // Opcionais para receber listas diretamente ou consultar do storage em tempo real
+  advances?: SalaryAdvance[];
+  absences?: AbsenceRecord[];
+  services?: ServiceOrder[];
+  allEmployees?: Employee[];
+  commissionsInfo?: EmployeeMonthCommissions | null;
 }
 
 export const PayslipModal: React.FC<PayslipModalProps> = ({
@@ -20,6 +26,11 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
   companyProfile,
   isOpen,
   onClose,
+  advances,
+  absences,
+  services,
+  allEmployees,
+  commissionsInfo,
 }) => {
   if (!isOpen || !payroll) return null;
 
@@ -29,6 +40,47 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
 
   const totalEarnings = payroll.baseSalary + (payroll.overtimeAmount || 0) + (payroll.bonusAmount || 0) + (payroll.commissionAmount || 0);
   const totalDiscounts = payroll.inssDiscount + payroll.advancesDiscount + payroll.otherDiscounts;
+
+  // 1. Apuração detalhada das Ordens de Serviço / Comissões
+  const resolvedCommissions = useMemo(() => {
+    if (commissionsInfo) return commissionsInfo;
+    const srvs = services || getStoredServices();
+    const emps = allEmployees || (employee ? [employee] : []);
+    return getEmployeeMonthCommissions(payroll.employeeId, payroll.referenceMonth, srvs, emps);
+  }, [commissionsInfo, services, allEmployees, employee, payroll.employeeId, payroll.referenceMonth]);
+
+  // 2. Apuração detalhada dos Vales / Adiantamentos
+  const resolvedAdvances = useMemo(() => {
+    const list = advances || getStoredSalaryAdvances();
+    return list.filter(
+      a => a.employeeId === payroll.employeeId &&
+           a.referenceMonth === payroll.referenceMonth &&
+           (a.status as string) !== 'cancelado'
+    );
+  }, [advances, payroll.employeeId, payroll.referenceMonth]);
+
+  // 3. Apuração detalhada das Faltas e Ocorrências
+  const resolvedAbsences = useMemo(() => {
+    const list = absences || getStoredAbsences();
+    return list.filter(a => {
+      if (a.employeeId !== payroll.employeeId) return false;
+      if (a.status === 'abonada') return false;
+      if (a.discountPayroll === false) return false;
+      if (a.referenceMonth) return a.referenceMonth === payroll.referenceMonth;
+      if (a.date) {
+        const [y, m] = a.date.split('-');
+        return `${m}/${y}` === payroll.referenceMonth;
+      }
+      return false;
+    });
+  }, [absences, payroll.employeeId, payroll.referenceMonth]);
+
+  // Verifica se há qualquer lançamento detalhado ou observação para exibir a seção de conferência
+  const hasDetailedBreakdown = 
+    resolvedCommissions.breakdown.length > 0 || 
+    resolvedAdvances.length > 0 || 
+    resolvedAbsences.length > 0 || 
+    Boolean(payroll.notes && payroll.notes.trim());
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:fixed print:inset-0 print:z-[9999]">
@@ -268,6 +320,129 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
               </span>
             </div>
           </div>
+
+          {/* Seção: DETALHAMENTO DOS LANÇAMENTOS (CONFERÊNCIA) */}
+          {hasDetailedBreakdown && (
+            <div className="border border-stone-300 dark:border-stone-700 rounded-xl p-3 sm:p-4 bg-stone-50/50 dark:bg-stone-800/20 space-y-3 print:p-2.5 print:space-y-2">
+              <div className="flex items-center justify-between border-b border-stone-300 dark:border-stone-700 pb-1.5">
+                <span className="text-[11px] font-black tracking-wider uppercase text-stone-800 dark:text-stone-200">
+                  DETALHAMENTO DOS LANÇAMENTOS (CONFERÊNCIA)
+                </span>
+                <span className="text-[10px] text-stone-500 font-bold">
+                  Competência: {payroll.referenceMonth}
+                </span>
+              </div>
+
+              {/* Subbloco Comissões: Ordens de Serviço Integradas */}
+              {resolvedCommissions.breakdown.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-blue-900 dark:text-blue-300 border-b border-blue-100 dark:border-stone-700/80 pb-0.5">
+                    <span className="flex items-center space-x-1">
+                      <FileText className="w-3 h-3 text-[#0963cb] shrink-0" />
+                      <span>Ordens de Serviço Integradas ({resolvedCommissions.breakdown.length})</span>
+                    </span>
+                    <span className="font-extrabold text-[#0963cb] dark:text-sky-400 font-['Outfit']">
+                      Subtotal: {formatCurrencyBRL(resolvedCommissions.total)}
+                    </span>
+                  </div>
+                  <div className="space-y-1 pl-1">
+                    {resolvedCommissions.breakdown.map((item, idx) => (
+                      <div 
+                        key={item.serviceId ? `${item.serviceId}-${idx}` : idx}
+                        className="text-[11px] leading-relaxed text-stone-800 dark:text-stone-200 border-b border-stone-200/60 dark:border-stone-800 pb-1 font-mono sm:font-sans"
+                      >
+                        {item.formattedLine || item.description}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Subbloco Vales / Adiantamentos */}
+              {resolvedAdvances.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-rose-950 dark:text-rose-300 border-b border-rose-100 dark:border-stone-700/80 pb-0.5">
+                    <span className="flex items-center space-x-1">
+                      <CreditCard className="w-3 h-3 text-rose-600 shrink-0" />
+                      <span>Vales / Adiantamentos Integrados ({resolvedAdvances.length})</span>
+                    </span>
+                    <span className="font-extrabold text-rose-700 dark:text-rose-400 font-['Outfit']">
+                      Subtotal: {formatCurrencyBRL(resolvedAdvances.reduce((sum, a) => sum + (Number(a.amount) || 0), 0))}
+                    </span>
+                  </div>
+                  <div className="space-y-1 pl-1">
+                    {resolvedAdvances.map((adv, idx) => {
+                      const parcelLabel = adv.discountType === 'Parcelado' && adv.installmentNumber && adv.totalInstallments
+                        ? `Parcela [${adv.installmentNumber}/${adv.totalInstallments}]`
+                        : 'Parcela [1/1]';
+                      const dateStr = formatDateBR(adv.date);
+                      const resp = adv.responsibleUser || 'ADMINISTRADOR SISTEMA';
+                      const reasonPart = adv.reason ? ` — Motivo: ${adv.reason}` : '';
+                      return (
+                        <div 
+                          key={adv.id || idx}
+                          className="text-[11px] leading-relaxed text-stone-800 dark:text-stone-200 border-b border-stone-200/60 dark:border-stone-800 pb-1 font-mono sm:font-sans flex flex-col sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <span>
+                            {parcelLabel} — Data: {dateStr} — Responsável: {resp}{reasonPart} — Valor: -{formatCurrencyBRL(adv.amount)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Subbloco Faltas: Faltas Integradas do RH */}
+              {resolvedAbsences.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-amber-950 dark:text-amber-300 border-b border-amber-100 dark:border-stone-700/80 pb-0.5">
+                    <span className="flex items-center space-x-1">
+                      <CalendarX className="w-3 h-3 text-amber-600 shrink-0" />
+                      <span>Faltas Integradas do RH ({resolvedAbsences.length})</span>
+                    </span>
+                    <span className="font-extrabold text-amber-800 dark:text-amber-400 font-['Outfit']">
+                      Subtotal: {formatCurrencyBRL(
+                        resolvedAbsences.reduce((sum, a) => {
+                          if (a.discountAmount !== undefined && a.discountAmount > 0) return sum + Number(a.discountAmount);
+                          const daily = (payroll.baseSalary || 3500) / 30;
+                          return sum + Math.round((daily * (a.daysCount || 1)) * 100) / 100;
+                        }, 0)
+                      )}
+                    </span>
+                  </div>
+                  <div className="space-y-1 pl-1">
+                    {resolvedAbsences.map((abs, idx) => {
+                      const dateStr = formatDateBR(abs.date);
+                      const reasonStr = abs.reason || `Falta ${abs.type || 'injustificada'} (${abs.daysCount || 1} dia${(abs.daysCount || 1) > 1 ? 's' : ''})`;
+                      const itemDiscount = (abs.discountAmount && abs.discountAmount > 0)
+                        ? abs.discountAmount
+                        : Math.round((((payroll.baseSalary || 3500) / 30) * (abs.daysCount || 1)) * 100) / 100;
+                      const obsPart = abs.notes ? ` — Obs: ${abs.notes}` : '';
+                      return (
+                        <div 
+                          key={abs.id || idx}
+                          className="text-[11px] leading-relaxed text-stone-800 dark:text-stone-200 border-b border-stone-200/60 dark:border-stone-800 pb-1 font-mono sm:font-sans flex flex-col sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <span>
+                            Data: {dateStr} — Motivo: {reasonStr}{obsPart} — Valor: -{formatCurrencyBRL(itemDiscount)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Observações Gerais / Internas no rodapé do detalhamento */}
+              {payroll.notes && payroll.notes.trim() && (
+                <div className="pt-1.5 border-t border-stone-200 dark:border-stone-700/80 text-[11px] text-stone-700 dark:text-stone-300">
+                  <span className="font-bold text-stone-900 dark:text-stone-100">Observações: </span>
+                  <span>{payroll.notes}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Rodapé Corporativo Padronizado */}
           <PrintReportFooter

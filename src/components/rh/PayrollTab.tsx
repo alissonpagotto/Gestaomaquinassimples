@@ -1436,6 +1436,11 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
         companyProfile={companyProfile}
         isOpen={!!modalPayslipPayroll}
         onClose={() => setModalPayslipPayroll(null)}
+        advances={advances}
+        absences={internalAbsences}
+        services={internalServices}
+        allEmployees={employees}
+        commissionsInfo={modalPayslipPayroll?.employeeId === selectedEmployeeId ? commissionsInfo : undefined}
       />
 
     </div>
