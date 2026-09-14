@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { X, Printer, Download, CheckCircle2, User, Building, Calendar, DollarSign, FileText, CreditCard, CalendarX, AlertCircle } from 'lucide-react';
 import { PayrollRecord, Employee, CompanyProfile, SalaryAdvance, AbsenceRecord, ServiceOrder } from '../../types';
 import { formatCurrencyBRL, formatDateBR, getStoredServices, getStoredAbsences, getStoredSalaryAdvances } from '../../lib/storage';
@@ -33,13 +33,36 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
 }) => {
   if (!isOpen || !payroll) return null;
 
+  useEffect(() => {
+    document.body.classList.add('has-payslip-open');
+    const handleBeforePrint = () => {
+      document.body.classList.add('printing-payslip');
+    };
+    const handleAfterPrint = () => {
+      document.body.classList.remove('printing-payslip');
+    };
+
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    return () => {
+      document.body.classList.remove('has-payslip-open');
+      document.body.classList.remove('printing-payslip');
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, []);
+
   const handlePrint = (e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
+    document.body.classList.add('printing-payslip');
     window.focus();
-    window.print();
+    setTimeout(() => {
+      window.print();
+    }, 30);
   };
 
   const totalEarnings = payroll.baseSalary + (payroll.overtimeAmount || 0) + (payroll.bonusAmount || 0) + (payroll.commissionAmount || 0);
@@ -151,11 +174,11 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
   return (
     <div 
       id="printable-payslip-overlay"
-      className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:fixed print:inset-0 print:z-[9999]"
+      className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto print:p-0 print:m-0 print:bg-white print:fixed print:top-0 print:left-0 print:right-0 print:w-full print:inset-0 print:z-[99999] print:overflow-visible"
     >
       <div 
         id="printable-payslip-card"
-        className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150 print:max-h-none print:shadow-none print:border-none print:rounded-none print:w-full"
+        className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150 print:top-0 print:left-0 print:max-w-none print:w-full print:m-0 print:p-0 print:shadow-none print:border-none print:rounded-none print:bg-white"
       >
         
         {/* Modal Action Header (Non-printable) */}

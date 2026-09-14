@@ -184,62 +184,134 @@
     display: none !important;
   }
 
-  /* Isolamento e formatação de impressão do Holerite */
-  @media print {
-    body:has(#printable-payslip) {
-      background: #ffffff !important;
-      color: #0f172a !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      overflow: visible !important;
-    }
+  /* =============================================================
+     ISOLAMENTO E ESTILO ESTRITO DE IMPRESSÃO DO RECIBO / HOLERITE
+     ============================================================= */
 
-    body:has(#printable-payslip) header,
-    body:has(#printable-payslip) nav,
-    body:has(#printable-payslip) aside,
-    body:has(#printable-payslip) .print\:hidden,
-    body:has(#printable-payslip) .no-print {
-      display: none !important;
-    }
+  /* Ocultar estritamente o modal azul de edição de folha e elementos de formulário */
+  #payroll-edit-modal-overlay,
+  .print-hidden,
+  .print\:hidden,
+  .no-print {
+    display: none !important;
+  }
 
-    #printable-payslip-overlay {
-      position: static !important;
-      display: block !important;
-      background: transparent !important;
-      padding: 0 !important;
-      margin: 0 !important;
-      overflow: visible !important;
-      width: 100% !important;
-      height: auto !important;
-      inset: auto !important;
-      z-index: auto !important;
-    }
+  /* Quando o holerite estiver ativo ou sendo impresso:
+     Ocultar layout geral, menus laterais, barras superiores e listagem de funcionários */
+  body.printing-payslip #root > *:not(#printable-payslip-overlay),
+  body.printing-payslip header,
+  body.printing-payslip nav,
+  body.printing-payslip aside,
+  body.printing-payslip main,
+  body.printing-payslip #main-sidebar,
+  body.printing-payslip #top-bar-container,
+  body.printing-payslip #payroll-edit-modal-overlay,
+  body.printing-payslip .crm-card,
+  body.printing-payslip table,
+  body.has-payslip-open #root > *:not(#printable-payslip-overlay),
+  body.has-payslip-open header,
+  body.has-payslip-open nav,
+  body.has-payslip-open aside,
+  body.has-payslip-open main,
+  body.has-payslip-open #main-sidebar,
+  body.has-payslip-open #top-bar-container,
+  body.has-payslip-open #payroll-edit-modal-overlay,
+  body.has-payslip-open .crm-card,
+  body.has-payslip-open table,
+  body:has(#printable-payslip) #root > *:not(#printable-payslip-overlay),
+  body:has(#printable-payslip) header,
+  body:has(#printable-payslip) nav,
+  body:has(#printable-payslip) aside,
+  body:has(#printable-payslip) main,
+  body:has(#printable-payslip) #main-sidebar,
+  body:has(#printable-payslip) #top-bar-container,
+  body:has(#printable-payslip) #payroll-edit-modal-overlay,
+  body:has(#printable-payslip) .crm-card,
+  body:has(#printable-payslip) table {
+    display: none !important;
+  }
 
-    #printable-payslip-card {
-      position: static !important;
-      display: block !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      max-height: none !important;
-      height: auto !important;
-      overflow: visible !important;
-      box-shadow: none !important;
-      border: none !important;
-      background: #ffffff !important;
-      color: #0f172a !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      page-break-inside: avoid !important;
-      break-inside: avoid !important;
-    }
+  /* Body limpo e branco no papel */
+  body.printing-payslip,
+  body.has-payslip-open,
+  body:has(#printable-payslip) {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
 
-    #printable-payslip {
-      background: #ffffff !important;
-      color: #0f172a !important;
-      padding: 0 !important;
-      margin: 0 !important;
-      width: 100% !important;
-    }
+  /* Remover completamente o fundo escurecido (backdrop), fixando o holerite no topo */
+  body.printing-payslip #printable-payslip-overlay,
+  body.has-payslip-open #printable-payslip-overlay,
+  body:has(#printable-payslip) #printable-payslip-overlay,
+  #printable-payslip-overlay {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    display: block !important;
+    background: transparent !important;
+    background-color: #ffffff !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    width: 100% !important;
+    height: auto !important;
+    inset: 0 !important;
+    z-index: 99999 !important;
+  }
+
+  /* Forçar recibo branco a ocupar o topo da página (top-0, left-0), largura total (w-full), sem sombras */
+  body.printing-payslip #printable-payslip-card,
+  body.has-payslip-open #printable-payslip-card,
+  body:has(#printable-payslip) #printable-payslip-card,
+  #printable-payslip-card {
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Ocultar barra superior de ação interna com botões (Imprimir / PDF e Fechar X) */
+  #printable-payslip-overlay .print\:hidden,
+  #printable-payslip-card .print\:hidden,
+  #btn-print-payslip {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Recibo de pagamento branco limpo e profissional */
+  #printable-payslip {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    padding: 6mm 8mm !important;
+    margin: 0 !important;
+    width: 100% !important;
+    box-shadow: none !important;
   }
 
   body.printing-service-order #printable-modal-overlay {

@@ -961,8 +961,11 @@ export const PayrollTab: React.FC<PayrollTabProps> = ({
 
       {/* Modal Lançamento / Edição de Folha - Compactado para Tela Única sem barra de rolagem geral */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-3 bg-black/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-[#b0d2ed] border border-[#0963cb]/30 rounded-2xl w-11/12 max-w-6xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150 max-h-[96vh] flex flex-col">
+        <div 
+          id="payroll-edit-modal-overlay" 
+          className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-3 bg-black/60 backdrop-blur-xs overflow-y-auto print:hidden"
+        >
+          <div className="bg-[#b0d2ed] border border-[#0963cb]/30 rounded-2xl w-11/12 max-w-6xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150 max-h-[96vh] flex flex-col print:hidden">
             
             {/* Header com azul padrão #0963cb e texto/ícone em branco #ffffff */}
             <div className="flex items-center justify-between px-4 sm:px-5 py-2.5 bg-[#0963cb] text-white shrink-0">
