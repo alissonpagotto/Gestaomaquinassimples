@@ -180,60 +180,66 @@
   body.printing-service-order header,
   body.printing-service-order nav,
   body.printing-service-order aside,
-  body.printing-service-order .app-main-layout,
-  body.printing-payslip #root > *:not(#printable-payslip-overlay),
-  body.printing-payslip header,
-  body.printing-payslip nav,
-  body.printing-payslip aside,
-  body.printing-payslip .app-main-layout {
+  body.printing-service-order .app-main-layout {
     display: none !important;
   }
 
-  body.printing-payslip {
-    background: #ffffff !important;
-    color: #0f172a !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: visible !important;
-    -webkit-font-smoothing: antialiased !important;
-    -moz-osx-font-smoothing: grayscale !important;
-    text-rendering: optimizeLegibility !important;
-  }
+  /* Isolamento e formatação de impressão do Holerite */
+  @media print {
+    body:has(#printable-payslip) {
+      background: #ffffff !important;
+      color: #0f172a !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: visible !important;
+    }
 
-  body.printing-payslip #printable-payslip-overlay {
-    position: static !important;
-    display: block !important;
-    background: transparent !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow: visible !important;
-    width: 100% !important;
-    height: auto !important;
-    inset: auto !important;
-  }
+    body:has(#printable-payslip) header,
+    body:has(#printable-payslip) nav,
+    body:has(#printable-payslip) aside,
+    body:has(#printable-payslip) .print\:hidden,
+    body:has(#printable-payslip) .no-print {
+      display: none !important;
+    }
 
-  body.printing-payslip #printable-payslip-card {
-    position: static !important;
-    display: block !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    max-height: none !important;
-    height: auto !important;
-    overflow: visible !important;
-    box-shadow: none !important;
-    border: none !important;
-    background: #ffffff !important;
-    color: #0f172a !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }
+    #printable-payslip-overlay {
+      position: static !important;
+      display: block !important;
+      background: transparent !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      overflow: visible !important;
+      width: 100% !important;
+      height: auto !important;
+      inset: auto !important;
+      z-index: auto !important;
+    }
 
-  body.printing-payslip #printable-payslip {
-    background: #ffffff !important;
-    color: #0f172a !important;
-    padding: 0 !important;
+    #printable-payslip-card {
+      position: static !important;
+      display: block !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      max-height: none !important;
+      height: auto !important;
+      overflow: visible !important;
+      box-shadow: none !important;
+      border: none !important;
+      background: #ffffff !important;
+      color: #0f172a !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+
+    #printable-payslip {
+      background: #ffffff !important;
+      color: #0f172a !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      width: 100% !important;
+    }
   }
 
   body.printing-service-order #printable-modal-overlay {

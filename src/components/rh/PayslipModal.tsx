@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { X, Printer, Download, CheckCircle2, User, Building, Calendar, DollarSign, FileText, CreditCard, CalendarX, AlertCircle } from 'lucide-react';
 import { PayrollRecord, Employee, CompanyProfile, SalaryAdvance, AbsenceRecord, ServiceOrder } from '../../types';
 import { formatCurrencyBRL, formatDateBR, getStoredServices, getStoredAbsences, getStoredSalaryAdvances } from '../../lib/storage';
@@ -33,30 +33,13 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
 }) => {
   if (!isOpen || !payroll) return null;
 
-  // Listeners para garantir impressão limpa e completa
-  useEffect(() => {
-    const handleBeforePrint = () => {
-      document.body.classList.add('printing-payslip');
-    };
-    const handleAfterPrint = () => {
-      document.body.classList.remove('printing-payslip');
-    };
-
-    window.addEventListener('beforeprint', handleBeforePrint);
-    window.addEventListener('afterprint', handleAfterPrint);
-
-    return () => {
-      window.removeEventListener('beforeprint', handleBeforePrint);
-      window.removeEventListener('afterprint', handleAfterPrint);
-      document.body.classList.remove('printing-payslip');
-    };
-  }, []);
-
-  const handlePrint = () => {
-    document.body.classList.add('printing-payslip');
-    setTimeout(() => {
-      window.print();
-    }, 50);
+  const handlePrint = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    window.focus();
+    window.print();
   };
 
   const totalEarnings = payroll.baseSalary + (payroll.overtimeAmount || 0) + (payroll.bonusAmount || 0) + (payroll.commissionAmount || 0);
@@ -188,8 +171,10 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
           <div className="flex items-center space-x-2">
             <button
               type="button"
+              id="btn-print-payslip"
               onClick={handlePrint}
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#0963cb] text-white text-xs font-bold hover:bg-blue-700 transition cursor-pointer shadow-xs"
+              title="Imprimir ou Salvar em PDF (Ctrl+P)"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Imprimir / PDF</span>
