@@ -180,9 +180,40 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   }, [isOpen]);
 
   const handleSaveCategories = (updated: MaintenanceCategoryDefinition[]) => {
-    setCategoriesList(updated);
-    saveStoredMaintenanceCategories(updated);
+    const sorted = [...updated].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' }));
+    setCategoriesList(sorted);
+    saveStoredMaintenanceCategories(sorted);
   };
+
+  // Lista de categorias de serviço estritamente em ordem alfabética (com "Revisão (entressafra)" garantida)
+  const sortedCategories = useMemo(() => {
+    const list = [...categoriesList];
+    const hasRevisaoEntressafra = list.some(
+      c => c.name?.toLowerCase().trim() === 'revisão (entressafra)' || c.name?.toLowerCase().trim() === 'revisao (entressafra)'
+    );
+    if (!hasRevisaoEntressafra) {
+      list.push({
+        id: 'cat_revisao_entressafra',
+        name: 'Revisão (entressafra)',
+        description: 'Revisão geral completa realizada durante o período de entressafra',
+        color: '#1e40af',
+        isSystem: true
+      });
+    }
+
+    // Desduplicar por nome normalizado
+    const seen = new Set<string>();
+    const deduplicated: MaintenanceCategoryDefinition[] = [];
+    for (const item of list) {
+      const normalized = (item.name || '').trim().toLowerCase();
+      if (!seen.has(normalized)) {
+        seen.add(normalized);
+        deduplicated.push(item);
+      }
+    }
+
+    return deduplicated.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' }));
+  }, [categoriesList]);
 
   // --- CONFIGURAÇÃO GLOBAL DE PREÇO PADRÃO DA OS ---
   const [defaultPriceType, setDefaultPriceType] = useState<DefaultOsPriceType>(() => {
@@ -995,7 +1026,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       machineryId,
       machineryPlateOrName: machName,
       type,
-      serviceCategory: serviceCategory === 'Outro' && customCategory.trim() ? customCategory.trim() : serviceCategory,
+      serviceCategory: (serviceCategory === 'Outro' || serviceCategory === 'Outro (Personalizado)') && customCategory.trim() ? customCategory.trim() : serviceCategory,
       location,
       locationDetails: locationDetails.trim() || undefined,
       executorType,
@@ -1376,7 +1407,13 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                           <button
                             key={t.id}
                             type="button"
-                            onClick={() => setType(t.id as any)}
+                            onClick={() => {
+                              const selectedType = t.id as any;
+                              setType(selectedType);
+                              if (selectedType === 'reforma_entressafra') {
+                                setServiceCategory('Revisão (entressafra)');
+                              }
+                            }}
                             className={`py-1 px-1.5 text-[10.5px] font-bold rounded-lg border text-center transition cursor-pointer ${
                               type === t.id || (t.id === 'reforma_entressafra' && (type as any) === 'revisao_periodica')
                                 ? 'ring-2 ring-blue-500 bg-blue-600 text-white border-blue-600 shadow-xs font-bold'
@@ -1410,15 +1447,14 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                           onChange={(e) => setServiceCategory(e.target.value)}
                           className="flex-1 px-2 py-1 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500 cursor-pointer"
                         >
-                          {categoriesList.map((cat) => (
+                          {sortedCategories.map((cat) => (
                             <option key={cat.id} value={cat.name}>
                               {cat.name}
                             </option>
                           ))}
-                          {!categoriesList.some(c => c.name === serviceCategory) && serviceCategory && serviceCategory !== 'Outro' && (
+                          {!sortedCategories.some(c => c.name === serviceCategory) && serviceCategory && (
                             <option value={serviceCategory}>{serviceCategory}</option>
                           )}
-                          <option value="Outro">Outro (Personalizado)</option>
                         </select>
 
                         <button
@@ -1433,7 +1469,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                     </div>
                   </div>
 
-                  {serviceCategory === 'Outro' && (
+                  {(serviceCategory === 'Outro' || serviceCategory === 'Outro (Personalizado)') && (
                     <div>
                       <label className="block text-[10.5px] font-bold text-stone-700 dark:text-stone-300 mb-0.5">
                         Especifique a Categoria

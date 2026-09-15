@@ -1048,39 +1048,59 @@ export function saveStoredPurchaseRequests(requests: MaintenancePurchaseRequest[
 }
 
 export const INITIAL_MAINTENANCE_CATEGORIES: MaintenanceCategoryDefinition[] = [
-  { id: 'cat_oleo_filtros', name: 'Troca de Óleo & Filtros', description: 'Trocas periódicas de óleo de motor, transmissão, hidráulico e filtros', color: '#0284c7', isSystem: true },
-  { id: 'cat_facas_rotor', name: 'Facas & Contra-Faca (Ensiladeira)', description: 'Afiação, regulagem e substituição de facas, contra-faca e fundo de rotor', color: '#16a34a', isSystem: true },
-  { id: 'cat_pneus_rodas', name: 'Pneus, Rodas & Esteiras', description: 'Calibragem, conserto de furos, recapagem e alinhamento', color: '#ea580c', isSystem: true },
-  { id: 'cat_motor_transmissao', name: 'Motor & Transmissão (Câmbio)', description: 'Revisão e reparo de motor, embreagem, caixa e cardan', color: '#dc2626', isSystem: true },
-  { id: 'cat_sistema_hidraulico', name: 'Sistema Hidráulico & Mangueiras', description: 'Cilindros, comandos, bombas hidráulicas e prensagem de mangueiras', color: '#2563eb', isSystem: true },
-  { id: 'cat_freios_embreagem', name: 'Freios & Embreagem', description: 'Pastilhas, lonas, cuícas de freio e atuadores de embreagem', color: '#9333ea', isSystem: true },
-  { id: 'cat_eletrica_ar', name: 'Elétrica & Ar-Condicionado', description: 'Alternador, motor de partida, chicotes elétricos e recarga de gás', color: '#ca8a04', isSystem: true },
-  { id: 'cat_solda_estrutura', name: 'Solda, Funilaria & Estrutura', description: 'Reforços de chassi, soldas em plataformas, caçambas e implementos', color: '#4f46e5', isSystem: true },
-  { id: 'cat_plataforma_craqueador', name: 'Plataforma & Craqueador', description: 'Rolos quebradores de grãos, correntes recolhedoras e navalhas', color: '#059669', isSystem: true },
-  { id: 'cat_diferencial_cardan', name: 'Diferencial & Cardan', description: 'Cruzetas, rolamentos de centro, coroa e pinhão', color: '#7c2d12', isSystem: true },
   { id: 'cat_arrefecimento_radiador', name: 'Arrefecimento & Radiador', description: 'Limpeza de colmeia de radiador, mangotes, bomba d’água e válvula termostática', color: '#0891b2', isSystem: true },
-  { id: 'cat_lubrificacao', name: 'Lubrificação & Engraxamento', description: 'Engraxamento geral de pinos, buchas e mancais', color: '#475569', isSystem: true },
-  { id: 'cat_suspensao_direcao', name: 'Suspensão & Direção', description: 'Molas, barras de direção, pivôs, terminais e amortecedores', color: '#0d9488', isSystem: true },
+  { id: 'cat_diferencial_cardan', name: 'Diferencial & Cardan', description: 'Cruzetas, rolamentos de centro, coroa e pinhão', color: '#7c2d12', isSystem: true },
+  { id: 'cat_eletrica_ar', name: 'Elétrica & Ar-Condicionado', description: 'Alternador, motor de partida, chicotes elétricos e recarga de gás', color: '#ca8a04', isSystem: true },
+  { id: 'cat_facas_rotor', name: 'Facas & Contra-Faca (Ensiladeira)', description: 'Afiação, regulagem e substituição de facas, contra-faca e fundo de rotor', color: '#16a34a', isSystem: true },
+  { id: 'cat_freios_embreagem', name: 'Freios & Embreagem', description: 'Pastilhas, lonas, cuícas de freio e atuadores de embreagem', color: '#9333ea', isSystem: true },
   { id: 'cat_injecao_bomba', name: 'Injeção & Bomba Injetora', description: 'Bicos injetores, bomba de alta pressão, filtros sedimentadores e sensores', color: '#b45309', isSystem: true },
+  { id: 'cat_lubrificacao', name: 'Lubrificação & Engraxamento', description: 'Engraxamento geral de pinos, buchas e mancais', color: '#475569', isSystem: true },
+  { id: 'cat_motor_transmissao', name: 'Motor & Transmissão (Câmbio)', description: 'Revisão e reparo de motor, embreagem, caixa e cardan', color: '#dc2626', isSystem: true },
   { id: 'cat_outro', name: 'Outro (Personalizado)', description: 'Serviços diversos e específicos', color: '#64748b', isSystem: true },
+  { id: 'cat_plataforma_craqueador', name: 'Plataforma & Craqueador', description: 'Rolos quebradores de grãos, correntes recolhedoras e navalhas', color: '#059669', isSystem: true },
+  { id: 'cat_pneus_rodas', name: 'Pneus, Rodas & Esteiras', description: 'Calibragem, conserto de furos, recapagem e alinhamento', color: '#ea580c', isSystem: true },
+  { id: 'cat_revisao_entressafra', name: 'Revisão (entressafra)', description: 'Revisão geral completa realizada durante o período de entressafra', color: '#1e40af', isSystem: true },
+  { id: 'cat_sistema_hidraulico', name: 'Sistema Hidráulico & Mangueiras', description: 'Cilindros, comandos, bombas hidráulicas e prensagem de mangueiras', color: '#2563eb', isSystem: true },
+  { id: 'cat_solda_estrutura', name: 'Solda, Funilaria & Estrutura', description: 'Reforços de chassi, soldas em plataformas, caçambas e implementos', color: '#4f46e5', isSystem: true },
+  { id: 'cat_suspensao_direcao', name: 'Suspensão & Direção', description: 'Molas, barras de direção, pivôs, terminais e amortecedores', color: '#0d9488', isSystem: true },
+  { id: 'cat_oleo_filtros', name: 'Troca de Óleo & Filtros', description: 'Trocas periódicas de óleo de motor, transmissão, hidráulico e filtros', color: '#0284c7', isSystem: true },
 ];
 
 export function getStoredMaintenanceCategories(): MaintenanceCategoryDefinition[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.MAINTENANCE_CATEGORIES);
-    if (!raw) return INITIAL_MAINTENANCE_CATEGORIES;
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_MAINTENANCE_CATEGORIES;
-    return parsed;
+    let list: MaintenanceCategoryDefinition[] = [...INITIAL_MAINTENANCE_CATEGORIES];
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        list = parsed;
+      }
+    }
+    // Garantir que a opção "Revisão (entressafra)" esteja presente mesmo com dados anteriores no localStorage
+    const hasRevisaoEntressafra = list.some(
+      c => c.name?.toLowerCase().trim() === 'revisão (entressafra)' || c.name?.toLowerCase().trim() === 'revisao (entressafra)'
+    );
+    if (!hasRevisaoEntressafra) {
+      list.push({
+        id: 'cat_revisao_entressafra',
+        name: 'Revisão (entressafra)',
+        description: 'Revisão geral completa realizada durante o período de entressafra',
+        color: '#1e40af',
+        isSystem: true
+      });
+    }
+    // Ordenar estritamente em ordem alfabética
+    return list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' }));
   } catch (e) {
     console.error('Failed to load maintenance categories', e);
-    return INITIAL_MAINTENANCE_CATEGORIES;
+    return [...INITIAL_MAINTENANCE_CATEGORIES].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' }));
   }
 }
 
 export function saveStoredMaintenanceCategories(categories: MaintenanceCategoryDefinition[]): void {
   try {
-    localStorage.setItem(STORAGE_KEYS.MAINTENANCE_CATEGORIES, JSON.stringify(categories));
+    const sorted = [...categories].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' }));
+    localStorage.setItem(STORAGE_KEYS.MAINTENANCE_CATEGORIES, JSON.stringify(sorted));
   } catch (e) {
     console.error('Failed to save maintenance categories', e);
   }
