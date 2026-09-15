@@ -709,6 +709,20 @@ export interface MaintenanceFinancialConditions {
   firstDueDate: string;
   supplierName?: string;
   notes?: string;
+  installments?: Array<{
+    id: string;
+    number: string;
+    amount: number;
+    daysInterval: number;
+    dueDate: string;
+    paymentMethodCode: string;
+    paymentMethodLabel: string;
+    creditAccount: string;
+    debitAccount: string;
+    observations: string;
+    documentFileUrl?: string;
+    documentFileName?: string;
+  }>;
 }
 
 export interface MaintenancePurchaseRequest {

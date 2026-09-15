@@ -42,8 +42,12 @@ interface NfeInstallmentsModalProps {
   totalAmount: number;
   initialInstallmentsCount?: number;
   existingInstallments?: Array<{ number: string; dueDate: string; amount: number }>;
+  initialDetailedInstallments?: NfeDetailedInstallment[];
   defaultPaymentMethod?: string;
   suggestedCategory?: string;
+  customTitle?: string;
+  customSubtitle?: string;
+  totalLabel?: string;
   onConfirmAndSave: (installments: NfeDetailedInstallment[]) => void;
 }
 
@@ -108,8 +112,12 @@ export const NfeInstallmentsModal: React.FC<NfeInstallmentsModalProps> = ({
   totalAmount,
   initialInstallmentsCount = 1,
   existingInstallments,
+  initialDetailedInstallments,
   defaultPaymentMethod = 'boleto',
   suggestedCategory,
+  customTitle,
+  customSubtitle,
+  totalLabel,
   onConfirmAndSave,
 }) => {
   const [installments, setInstallments] = useState<NfeDetailedInstallment[]>([]);
@@ -134,6 +142,13 @@ export const NfeInstallmentsModal: React.FC<NfeInstallmentsModalProps> = ({
     if (!isOpen) return;
 
     setValidationError('');
+
+    // 0. Se já existirem parcelas detalhadas previamente configuradas
+    if (initialDetailedInstallments && initialDetailedInstallments.length > 0) {
+      setInstallments(initialDetailedInstallments);
+      setInstallmentsCountInput(initialDetailedInstallments.length);
+      return;
+    }
 
     // 1. Se já existirem parcelas extraídas do XML da NF-e (<dup>)
     if (existingInstallments && existingInstallments.length > 0) {
@@ -165,7 +180,7 @@ export const NfeInstallmentsModal: React.FC<NfeInstallmentsModalProps> = ({
       setInstallments(generated);
       setInstallmentsCountInput(count);
     }
-  }, [isOpen, totalAmount, issueDate, initialInstallmentsCount, existingInstallments]);
+  }, [isOpen, totalAmount, issueDate, initialInstallmentsCount, existingInstallments, initialDetailedInstallments]);
 
   // Função para gerar parcelas divididas igualmente
   const generateEqualInstallments = (count: number, total: number, baseDate: string): NfeDetailedInstallment[] => {
@@ -406,10 +421,10 @@ export const NfeInstallmentsModal: React.FC<NfeInstallmentsModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
-                Parcelas Geradas com Base no XML
+                {customTitle || 'Parcelas Geradas com Base no XML'}
               </h2>
               <p className="text-xs text-sky-100 font-medium">
-                NF-e Nº {invoiceNumber} • Fornecedor: {supplierName}
+                {customSubtitle || `NF-e Nº ${invoiceNumber} • Fornecedor: ${supplierName}`}
               </p>
             </div>
           </div>
@@ -438,7 +453,7 @@ export const NfeInstallmentsModal: React.FC<NfeInstallmentsModalProps> = ({
               </div>
               <div>
                 <span className="text-[11px] font-black uppercase tracking-wider text-black block mb-0.5">
-                  Valor Total Consolidado da NF-e
+                  {totalLabel || 'Valor Total Consolidado da NF-e'}
                 </span>
                 <span className="text-2xl sm:text-3xl font-black text-black font-mono tracking-tight">
                   {formatCurrencyBRL(totalAmount)}

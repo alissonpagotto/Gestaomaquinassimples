@@ -61,6 +61,7 @@ import {
 } from '../../lib/storage';
 import { MaintenanceCategoriesModal } from './MaintenanceCategoriesModal';
 import { ProductSearchModal } from './ProductSearchModal';
+import { NfeInstallmentsModal, NfeDetailedInstallment } from '../nfe/NfeInstallmentsModal';
 
 export const parseCleanPriceNumber = (val: any): number => {
   if (val === undefined || val === null || val === '') return 0;
@@ -367,6 +368,8 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('boleto');
   const [firstDueDate, setFirstDueDate] = useState(new Date().toISOString().split('T')[0]);
   const [financialSupplier, setFinancialSupplier] = useState('');
+  const [installments, setInstallments] = useState<NfeDetailedInstallment[]>([]);
+  const [isInstallmentsModalOpen, setIsInstallmentsModalOpen] = useState(false);
 
   // --- SOLICITAÇÃO DE COMPRA (FLUXO A) ---
   const [generatePurchaseRequest, setGeneratePurchaseRequest] = useState(false);
@@ -450,9 +453,15 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
         setFirstDueDate(editingLog.financialConditions.firstDueDate);
         setFinancialSupplier(editingLog.financialConditions.supplierName || '');
         setExpenseGenerated(!!editingLog.financialConditions.createAccountsPayable);
+        if (editingLog.financialConditions.installments && editingLog.financialConditions.installments.length > 0) {
+          setInstallments(editingLog.financialConditions.installments as NfeDetailedInstallment[]);
+        } else {
+          setInstallments([]);
+        }
       } else {
         setCreateExpense(false);
         setExpenseGenerated(false);
+        setInstallments([]);
       }
 
       setCurrentOsId(editingLog.id);
@@ -1057,9 +1066,11 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
         createAccountsPayable: true,
         paymentTerm,
         paymentMethod,
-        firstDueDate,
+        firstDueDate: (installments.length > 0 && installments[0]?.dueDate) ? installments[0].dueDate : firstDueDate,
+        installmentsCount: installments.length > 0 ? installments.length : 1,
         supplierName: financialSupplier.trim() || finalMechanicName || workshopOrMechanic.trim(),
         notes: `OS ${osNumber} - ${machName}`,
+        installments: installments.length > 0 ? installments : undefined,
       } : (editingLog?.financialConditions || undefined),
     };
 
@@ -2682,24 +2693,48 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
 
                 {createExpense && (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                    {/* Condição de Pagamento */}
+                    {/* Condição / Prazo de Pagamento: Card Indicador e Botão Detalhamento de Parcelas */}
                     <div>
-                      <label className="block text-[11px] font-bold text-stone-700 dark:text-stone-400 mb-1">
-                        Condição / Prazo de Pagamento
+                      <label className="block text-[11px] font-bold text-stone-700 dark:text-stone-400 mb-1 flex items-center justify-between">
+                        <span>Condição / Prazo de Pagamento</span>
+                        <span className="text-[10px] font-extrabold text-[#0963cb] dark:text-blue-400">
+                          {installments.length > 1 ? `${installments.length}x Parcelas` : (installments.length === 1 ? '1x Parcela' : 'À Vista')}
+                        </span>
                       </label>
-                      <select
-                        value={paymentTerm}
-                        onChange={(e) => setPaymentTerm(e.target.value as any)}
-                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-xs font-bold text-stone-900 dark:text-stone-100 cursor-pointer focus:ring-2 focus:ring-[#8da7eb]"
-                      >
-                        <option value="a_vista">À Vista (Hoje)</option>
-                        <option value="15_dias">15 Dias</option>
-                        <option value="30_dias">30 Dias (Boleto/Faturado)</option>
-                        <option value="30_60_dias">30 / 60 Dias (2x Parcelas)</option>
-                        <option value="30_60_90_dias">30 / 60 / 90 Dias (3x Parcelas)</option>
-                        <option value="safra_prazo">Safra a Prazo (Fim da Colheita)</option>
-                        <option value="personalizado">Personalizado</option>
-                      </select>
+                      <div className="flex items-center justify-between gap-2 p-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl min-h-[38px] shadow-2xs">
+                        <div className="min-w-0 flex-1 px-1.5">
+                          <p className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate">
+                            {installments.length > 0 
+                              ? `${installments.length}x de ${formatCurrencyBRL(installments[0]?.amount || (grandTotal / installments.length))}`
+                              : `1x de ${formatCurrencyBRL(grandTotal)}`}
+                          </p>
+                          <p className="text-[10px] text-stone-500 dark:text-stone-400 truncate">
+                            {installments.length > 1 
+                              ? installments.map(i => `${i.daysInterval || 0}d`).join(' / ')
+                              : (firstDueDate ? `Venc: ${firstDueDate.split('-').reverse().join('/')}` : 'À vista')}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          id="btn-detalhamento-parcelas-os"
+                          onClick={() => {
+                            if (grandTotal <= 0) {
+                              setFeedbackBanner({
+                                type: 'save',
+                                message: 'Adicione itens de peças ou mão de obra para calcular o Total da OS antes de detalhar parcelas.'
+                              });
+                              setTimeout(() => setFeedbackBanner(null), 3500);
+                              return;
+                            }
+                            setIsInstallmentsModalOpen(true);
+                          }}
+                          className="px-2.5 py-1.5 bg-[#0963cb] hover:bg-[#0752a8] text-white rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer shadow-2xs shrink-0"
+                          title="Abrir Janela de Detalhamento de Parcelas da OS"
+                        >
+                          <Layers className="w-3.5 h-3.5" />
+                          <span>Detalhamento de Parcelas</span>
+                        </button>
+                      </div>
                     </div>
 
                     {/* Forma de Pagamento */}
@@ -2962,6 +2997,40 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
         inventory={allInventoryList}
         initialQuery={activeSearchInitialQuery}
         onSelectProduct={handleSelectProductFromModal}
+      />
+
+      {/* Janela Modal de Detalhamento de Parcelas da OS */}
+      <NfeInstallmentsModal
+        isOpen={isInstallmentsModalOpen}
+        onClose={() => setIsInstallmentsModalOpen(false)}
+        invoiceNumber={osNumber || 'OS'}
+        supplierName={financialSupplier.trim() || workshopOrMechanic.trim() || 'Oficina Mecânica'}
+        issueDate={date || new Date().toISOString().split('T')[0]}
+        totalAmount={grandTotal}
+        initialInstallmentsCount={installments.length > 0 ? installments.length : 1}
+        initialDetailedInstallments={installments.length > 0 ? installments : undefined}
+        defaultPaymentMethod={paymentMethod}
+        suggestedCategory="cat_manutencao"
+        customTitle="Detalhamento de Parcelas da OS"
+        customSubtitle={`OS Nº ${osNumber || 'Sem número'} • Fornecedor / Oficina: ${financialSupplier.trim() || workshopOrMechanic.trim() || 'Oficina Mecânica'}`}
+        totalLabel="Total a Faturar na OS"
+        onConfirmAndSave={(detailedInstallments) => {
+          setInstallments(detailedInstallments);
+          if (detailedInstallments.length > 0 && detailedInstallments[0].dueDate) {
+            setFirstDueDate(detailedInstallments[0].dueDate);
+          }
+          if (detailedInstallments.length > 1) {
+            setPaymentTerm('personalizado');
+          } else {
+            setPaymentTerm('a_vista');
+          }
+          setIsInstallmentsModalOpen(false);
+          setFeedbackBanner({
+            type: 'billed',
+            message: `${detailedInstallments.length} parcela(s) configurada(s) com sucesso na OS.`
+          });
+          setTimeout(() => setFeedbackBanner(null), 3000);
+        }}
       />
     </div>
   );

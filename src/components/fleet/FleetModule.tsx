@@ -427,18 +427,43 @@ export const FleetModule: React.FC<FleetModuleProps> = ({
       const cond = log.financialConditions;
       const nfe = log.nfeLink;
 
-      onAddExpense({
-        date: log.date,
-        category: 'Manutenção de Máquinas',
-        description: `OS ${log.osNumber || log.id} [${log.serviceCategory}] - ${log.machineryPlateOrName}${nfe?.nfeNumber ? ` (NF-e ${nfe.nfeNumber})` : ''}`,
-        amount: log.totalCost,
-        paymentMethod: cond?.paymentMethod || 'boleto',
-        dueDate: cond?.firstDueDate || log.date,
-        supplier: nfe?.supplierName || log.workshopOrMechanic || 'Oficina Mecânica',
-        invoiceNumber: nfe?.nfeNumber || log.osNumber,
-        status: cond?.paymentTerm === 'a_vista' ? 'pago' : 'pendente',
-        notes: `Lançamento automático de OS de frotas. Local: ${log.location}. Condição: ${cond?.paymentTerm || 'À Vista'}. Executante: ${log.workshopOrMechanic}`,
-      });
+      if (cond?.installments && cond.installments.length > 1) {
+        cond.installments.forEach((inst, idx) => {
+          const methodKey = (inst.paymentMethodLabel?.toLowerCase().includes('pix') ? 'pix' :
+                            inst.paymentMethodLabel?.toLowerCase().includes('cart') ? 'cartao_credito' :
+                            inst.paymentMethodLabel?.toLowerCase().includes('dinheiro') ? 'dinheiro' :
+                            cond.paymentMethod || 'boleto') as any;
+
+          onAddExpense({
+            date: log.date,
+            category: 'Manutenção de Máquinas',
+            description: `OS ${log.osNumber || log.id} [${log.serviceCategory}] - ${log.machineryPlateOrName} (Parcela ${inst.number || idx + 1}/${cond.installments?.length})`,
+            amount: inst.amount,
+            paymentMethod: methodKey,
+            dueDate: inst.dueDate || log.date,
+            supplier: nfe?.supplierName || cond.supplierName || log.workshopOrMechanic || 'Oficina Mecânica',
+            invoiceNumber: `${log.osNumber || log.id}-${inst.number || idx + 1}`,
+            status: 'pendente',
+            notes: `Parcela ${inst.number || idx + 1}/${cond.installments?.length} de OS de frotas. Prazo: ${inst.daysInterval || 0} dias. Executante: ${log.workshopOrMechanic}`,
+          });
+        });
+      } else {
+        const singleAmount = (cond?.installments && cond.installments.length === 1) ? cond.installments[0].amount : log.totalCost;
+        const singleDueDate = (cond?.installments && cond.installments.length === 1) ? cond.installments[0].dueDate : (cond?.firstDueDate || log.date);
+
+        onAddExpense({
+          date: log.date,
+          category: 'Manutenção de Máquinas',
+          description: `OS ${log.osNumber || log.id} [${log.serviceCategory}] - ${log.machineryPlateOrName}${nfe?.nfeNumber ? ` (NF-e ${nfe.nfeNumber})` : ''}`,
+          amount: singleAmount,
+          paymentMethod: cond?.paymentMethod || 'boleto',
+          dueDate: singleDueDate,
+          supplier: nfe?.supplierName || cond?.supplierName || log.workshopOrMechanic || 'Oficina Mecânica',
+          invoiceNumber: nfe?.nfeNumber || log.osNumber,
+          status: cond?.paymentTerm === 'a_vista' ? 'pago' : 'pendente',
+          notes: `Lançamento automático de OS de frotas. Local: ${log.location}. Condição: ${cond?.paymentTerm || 'À Vista'}. Executante: ${log.workshopOrMechanic}`,
+        });
+      }
     }
   };
 
