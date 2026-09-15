@@ -427,35 +427,51 @@ export const FleetModule: React.FC<FleetModuleProps> = ({
       const cond = log.financialConditions;
       const nfe = log.nfeLink;
 
-      if (cond?.installments && cond.installments.length > 1) {
-        cond.installments.forEach((inst, idx) => {
+      if (cond?.installments && cond.installments.length >= 1) {
+        const totalLines = cond.installments.length;
+        const osIdClean = log.osNumber || log.id;
+        const baseExpenseId = `exp_os_${osIdClean.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
+
+        // Inicia rigorosamente a partir da Linha 1 (Item 1 / Parcela 1) com índice 0
+        const installmentExpenses = cond.installments.map((inst, idx) => {
+          const parcelNum = inst.number || String(idx + 1).padStart(2, '0');
           const methodKey = (inst.paymentMethodLabel?.toLowerCase().includes('pix') ? 'pix' :
                             inst.paymentMethodLabel?.toLowerCase().includes('cart') ? 'cartao_credito' :
                             inst.paymentMethodLabel?.toLowerCase().includes('dinheiro') ? 'dinheiro' :
                             cond.paymentMethod || 'boleto') as any;
 
-          onAddExpense({
+          const desc = totalLines > 1
+            ? `OS ${osIdClean} [${log.serviceCategory}] - ${log.machineryPlateOrName} (Parcela ${parcelNum}/${totalLines})`
+            : `OS ${osIdClean} [${log.serviceCategory}] - ${log.machineryPlateOrName}`;
+
+          const instId = totalLines > 1 ? `${baseExpenseId}_parc_${idx + 1}` : baseExpenseId;
+
+          return {
+            id: instId,
             date: log.date,
             category: 'Manutenção de Máquinas',
-            description: `OS ${log.osNumber || log.id} [${log.serviceCategory}] - ${log.machineryPlateOrName} (Parcela ${inst.number || idx + 1}/${cond.installments?.length})`,
-            amount: inst.amount,
+            description: desc,
+            amount: Number(inst.amount) || 0,
             paymentMethod: methodKey,
             dueDate: inst.dueDate || log.date,
             supplier: nfe?.supplierName || cond.supplierName || log.workshopOrMechanic || 'Oficina Mecânica',
-            invoiceNumber: `${log.osNumber || log.id}-${inst.number || idx + 1}`,
-            status: 'pendente',
-            notes: `Parcela ${inst.number || idx + 1}/${cond.installments?.length} de OS de frotas. Prazo: ${inst.daysInterval || 0} dias. Executante: ${log.workshopOrMechanic}`,
-          });
+            invoiceNumber: totalLines > 1 ? `${osIdClean} (${parcelNum}/${totalLines})` : osIdClean,
+            status: 'pendente' as const,
+            notes: `Parcela ${parcelNum}/${totalLines} de OS de frotas. Prazo: ${inst.daysInterval || 0} dias. Executante: ${log.workshopOrMechanic || 'Oficina'}`,
+            createdAt: new Date().toISOString(),
+          };
         });
+
+        // Grava o conjunto completo de parcelas garantindo a persistência íntegra da primeira à última linha
+        onAddExpense(installmentExpenses);
       } else {
-        const singleAmount = (cond?.installments && cond.installments.length === 1) ? cond.installments[0].amount : log.totalCost;
-        const singleDueDate = (cond?.installments && cond.installments.length === 1) ? cond.installments[0].dueDate : (cond?.firstDueDate || log.date);
+        const singleDueDate = cond?.firstDueDate || log.date;
 
         onAddExpense({
           date: log.date,
           category: 'Manutenção de Máquinas',
           description: `OS ${log.osNumber || log.id} [${log.serviceCategory}] - ${log.machineryPlateOrName}${nfe?.nfeNumber ? ` (NF-e ${nfe.nfeNumber})` : ''}`,
-          amount: singleAmount,
+          amount: log.totalCost,
           paymentMethod: cond?.paymentMethod || 'boleto',
           dueDate: singleDueDate,
           supplier: nfe?.supplierName || cond?.supplierName || log.workshopOrMechanic || 'Oficina Mecânica',

@@ -456,7 +456,27 @@ export default function App() {
     if (Array.isArray(newOrUpdated)) {
       setExpenses((prev) => {
         const newIds = new Set(newOrUpdated.map((n) => n.id));
-        const filtered = prev.filter((e) => !newIds.has(e.id));
+        // Coleta identificadores base das parcelas para substituir com segurança versões antigas da mesma OS ou NF-e
+        const baseKeys = new Set(
+          newOrUpdated
+            .map((n) => {
+              if (n.id && n.id.includes('_parc_')) {
+                return n.id.split('_parc_')[0];
+              }
+              return '';
+            })
+            .filter(Boolean)
+        );
+
+        const filtered = prev.filter((e) => {
+          if (newIds.has(e.id)) return false;
+          if (baseKeys.size > 0) {
+            const eBase = e.id.includes('_parc_') ? e.id.split('_parc_')[0] : e.id;
+            if (baseKeys.has(eBase)) return false;
+          }
+          return true;
+        });
+
         return [...newOrUpdated, ...filtered];
       });
     } else {
@@ -932,23 +952,28 @@ export default function App() {
               onSaveInventory={setInventory}
               onSaveServices={setServices}
               onSaveOrders={setOrders}
-              onAddExpense={(newExp) => {
-                const created: Expense = {
-                  id: `exp_fleet_${Date.now()}`,
-                  description: newExp.description || 'Despesa de Frota',
-                  amount: newExp.amount || 0,
-                  categoryId: newExp.category?.toLowerCase().includes('combust') ? 'cat_combustivel' : 'cat_manutencao',
-                  categoryName: newExp.category || 'Gestão de Frotas',
-                  categoryColor: newExp.category?.toLowerCase().includes('combust') ? '#d97706' : '#6366f1',
-                  dueDate: newExp.dueDate || newExp.date || new Date().toISOString().split('T')[0],
-                  status: (newExp.status as any) || 'pago',
-                  paymentMethod: (newExp.paymentMethod as any) || 'pix',
-                  supplier: newExp.supplier || 'Fornecedor',
-                  invoiceNumber: newExp.invoiceNumber,
-                  notes: newExp.notes,
-                  createdAt: new Date().toISOString(),
-                };
-                handleSaveExpense(created);
+              onAddExpense={(newExpOrList: any) => {
+                const list = Array.isArray(newExpOrList) ? newExpOrList : [newExpOrList];
+                const baseTime = Date.now();
+                const createdList: Expense[] = list.map((newExp, idx) => {
+                  const uniqueId = newExp.id || (list.length > 1 ? `exp_fleet_${baseTime}_parc_${idx + 1}` : `exp_fleet_${baseTime}_${idx}`);
+                  return {
+                    id: uniqueId,
+                    description: newExp.description || 'Despesa de Frota',
+                    amount: Number(newExp.amount) || 0,
+                    categoryId: newExp.categoryId || (newExp.category?.toLowerCase().includes('combust') ? 'cat_combustivel' : 'cat_manutencao'),
+                    categoryName: newExp.categoryName || newExp.category || 'Gestão de Frotas',
+                    categoryColor: newExp.categoryColor || (newExp.category?.toLowerCase().includes('combust') ? '#d97706' : '#6366f1'),
+                    dueDate: newExp.dueDate || newExp.date || new Date().toISOString().split('T')[0],
+                    status: (newExp.status as any) || 'pendente',
+                    paymentMethod: (newExp.paymentMethod as any) || 'boleto',
+                    supplier: newExp.supplier || 'Fornecedor',
+                    invoiceNumber: newExp.invoiceNumber,
+                    notes: newExp.notes,
+                    createdAt: newExp.createdAt || new Date().toISOString(),
+                  };
+                });
+                handleSaveExpense(createdList.length === 1 ? createdList[0] : createdList);
               }}
             />
           )}

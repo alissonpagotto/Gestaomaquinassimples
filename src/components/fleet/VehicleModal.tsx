@@ -947,7 +947,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     const vehicleId = editingVehicle?.id || `veh_${Date.now()}`;
     const totalLines = instList.length;
 
-    instList.forEach((inst) => {
+    const installmentExpenses = instList.map((inst, idx) => {
       const desc = totalLines > 1
         ? `Parcela ${inst.number}/${String(totalLines).padStart(2, '0')} - Compra/Financiamento ${vName} (${vIdentifier})`
         : `Compra/Financiamento (Quitação) - ${vName} (${vIdentifier})`;
@@ -968,12 +968,15 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       else if (inst.paymentMethodCode === '06') payMethod = 'cartao_credito';
       else if (inst.paymentMethodCode === '07') payMethod = 'safra_prazo';
 
-      onAddExpense({
+      const instId = totalLines > 1 ? `exp_compra_${vehicleId}_parc_${idx + 1}` : `exp_compra_${vehicleId}`;
+
+      return {
+        id: instId,
         description: desc,
-        amount: inst.amount,
+        amount: Number(inst.amount) || 0,
         category: 'Financiamento de Veículos / Frotas',
         dueDate: inst.dueDate,
-        status: 'pendente',
+        status: 'pendente' as const,
         paymentMethod: payMethod,
         supplier: financialInstitution.trim() || purchaseSupplier.trim() || ownerName.trim() || 'Banco / Concessionária',
         invoiceNumber: purchaseInvoiceNumber.trim() || undefined,
@@ -981,8 +984,10 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
         machineryName: vName,
         notes: notesText,
         receiptUrl: inst.documentFileUrl || undefined,
-      });
+      };
     });
+
+    onAddExpense(installmentExpenses);
 
     setSavedPurchaseInstallmentRows(instList);
     setPurchaseInstallmentIntervalDays(intervalDays);

@@ -2391,8 +2391,9 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
 
     const totalParcs = detailedInstallments.length;
     const installmentRecords: Expense[] = detailedInstallments.map((inst, idx) => {
+      const parcelNum = inst.number || String(idx + 1).padStart(2, '0');
       const instId = totalParcs === 1 ? expenseId : `${expenseId}_parc_${idx + 1}`;
-      const suffix = totalParcs > 1 ? ` (${inst.number}/${totalParcs})` : '';
+      const suffix = totalParcs > 1 ? ` (${parcelNum}/${totalParcs})` : '';
       
       const contabNote = ` [Contábil - Crédito: ${inst.creditAccount || 'N/A'} | Débito: ${inst.debitAccount || 'N/A'}]`;
       const obsNote = inst.observations ? ` Obs: ${inst.observations}.` : '';
@@ -2411,7 +2412,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
         paymentMethod: mapPayCode(inst.paymentMethodCode),
         costCenterId: selectedCC?.id,
         costCenterName: selectedCC?.name,
-        notes: `Lançamento de parcela via NF-e XML. Parcela ${inst.number}/${totalParcs}. Prazo: ${inst.daysInterval} dias.${contabNote}${obsNote} Chave: ${parsedData.accessKey || 'N/A'}.${stockNote}\n${itemsEmbed}`,
+        notes: `Lançamento de parcela via NF-e XML. Parcela ${parcelNum}/${totalParcs}. Prazo: ${inst.daysInterval} dias.${contabNote}${obsNote} Chave: ${parsedData.accessKey || 'N/A'}.${stockNote}\n${itemsEmbed}`,
         receiptUrl: inst.documentFileUrl,
         receiptName: inst.documentFileName,
         nfeItems: parsedData.items,
@@ -2419,7 +2420,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       };
     });
 
-    // 1. Envia as parcelas individualmente para o Contas a Pagar (Financeiro)
+    // 1. Envia as parcelas individualmente para o Contas a Pagar (Financeiro), iniciando rigorosamente pelo Item 1
     onAddExpenseFromNfe(installmentRecords);
 
     // 2. UNICIDADE DO REGISTRO FISCAL: Salva rigorosamente 1 ÚNICA LINHA no Histórico de Notas Fiscais Lançadas
