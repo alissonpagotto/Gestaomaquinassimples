@@ -667,6 +667,7 @@ export interface MaintenancePartItem {
   requiresPurchase?: boolean;
   serviceDescription?: string;
   externalServiceCost?: number;
+  stockDeducted?: boolean; // Controle interno para evitar baixa duplicada no estoque
 }
 
 export interface MaintenanceLaborItem {

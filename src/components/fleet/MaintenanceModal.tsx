@@ -331,9 +331,6 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   const [generatePurchaseRequest, setGeneratePurchaseRequest] = useState(false);
   const [purchaseUrgency, setPurchaseUrgency] = useState<'baixa' | 'media' | 'alta' | 'urgente_veiculo_parado'>('alta');
 
-  // --- BAIXA NO ESTOQUE ---
-  const [deductStock, setDeductStock] = useState(true);
-
   // Preenchimento no carregamento/edição
   useEffect(() => {
     if (editingLog) {
@@ -355,9 +352,12 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       setExecutorType(editingLog.executorType || 'equipe_propria');
       setWorkshopOrMechanic(editingLog.workshopOrMechanic || editingLog.executorName || 'Mecânica Interna / Própria');
 
-      // Peças
+      // Peças (com marcação de controle de baixa prévia)
       if (editingLog.partsItems && editingLog.partsItems.length > 0) {
-        setPartsItems(editingLog.partsItems);
+        setPartsItems(editingLog.partsItems.map(p => ({
+          ...p,
+          stockDeducted: p.stockDeducted ?? (editingLog.stockDeducted ? true : false)
+        })));
         setUsePartsItemList(true);
       } else {
         setPartsItems([]);
@@ -409,7 +409,6 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       }
 
       setCurrentOsId(editingLog.id);
-      setDeductStock(!editingLog.stockDeducted);
     } else {
       // Novo registro
       const newOsId = `maint_${Date.now()}`;
@@ -455,7 +454,6 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       setPaymentMethod('boleto');
       setFirstDueDate(new Date().toISOString().split('T')[0]);
       setFinancialSupplier('');
-      setDeductStock(true);
       setGeneratePurchaseRequest(false);
       setPurchaseUrgency('alta');
     }
@@ -583,6 +581,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       unit: 'un',
       unitCost: 0,
       totalCost: 0,
+      stockDeducted: false,
     };
     setPartsItems(prev => [...prev, newItem]);
   };
@@ -657,6 +656,32 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   };
 
   const handleRemovePartItem = (index: number) => {
+    const itemToRemove = partsItems[index];
+    // Se o item já havia sido baixado do estoque interno, devolve o saldo ao estoque
+    if (itemToRemove && itemToRemove.stockDeducted && (itemToRemove.origin === 'almoxarifado_interno' || !itemToRemove.origin)) {
+      const qtyToRestore = parseCleanPriceNumber(itemToRemove.quantity);
+      if (qtyToRestore > 0) {
+        const currentStored = getStoredInventory();
+        const baseStock = currentStored.length > 0 ? currentStored : (inventory && inventory.length > 0 ? inventory : []);
+        if (baseStock.length > 0) {
+          const updatedStock = [...baseStock];
+          const targetIdx = updatedStock.findIndex(inv => 
+            (itemToRemove.inventoryItemId && inv.id === itemToRemove.inventoryItemId) ||
+            (inv.code && itemToRemove.description && inv.code.trim().toLowerCase() === itemToRemove.description.trim().toLowerCase()) ||
+            (inv.name && itemToRemove.description && inv.name.trim().toLowerCase() === itemToRemove.description.trim().toLowerCase())
+          );
+          if (targetIdx !== -1) {
+            updatedStock[targetIdx] = {
+              ...updatedStock[targetIdx],
+              quantity: (Number(updatedStock[targetIdx].quantity) || 0) + qtyToRestore,
+              updatedAt: new Date().toISOString()
+            };
+            saveStoredInventory(updatedStock);
+            setStoredInventory(updatedStock);
+          }
+        }
+      }
+    }
     setPartsItems(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -759,6 +784,67 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       setCurrentOsId(idToUse);
     }
 
+    // 1. BAIXA NATIVA E AUTOMÁTICA NO ESTOQUE (COM CONTROLE POR LINHA CONTRA BAIXA DUPLICADA)
+    const currentStored = getStoredInventory();
+    const baseStock = currentStored.length > 0 ? currentStored : (inventory && inventory.length > 0 ? inventory : []);
+    let updatedStock = [...baseStock];
+    let hasNewDeductions = false;
+
+    // LÓGICA DO LOOP:
+    // Quando o usuário clica em "Salvar Ordem de Serviço", o script verifica cada linha.
+    // Se a linha já estiver marcada como "baixada" (part.stockDeducted === true), o sistema APENAS a ignora e pula para a próxima.
+    // O cálculo de subtração no estoque só é executado nas linhas novas que ainda não possuem essa marcação.
+    // Assim que a linha nova for processada e salva com sucesso, marca-a imediatamente como "baixada".
+    const processedPartsItems: MaintenancePartItem[] = partsItems.map(part => {
+      // REGRA: Se a linha já estiver marcada como baixada, o sistema deve APENAS ignorá-la e pular para a próxima.
+      if (part.stockDeducted) {
+        return part;
+      }
+
+      // Executa cálculo de subtração no estoque apenas nas linhas novas de almoxarifado interno
+      const isInternal = part.origin === 'almoxarifado_interno' || !part.origin;
+      const qty = parseCleanPriceNumber(part.quantity);
+
+      if (isInternal && qty > 0 && updatedStock.length > 0) {
+        const targetIdx = updatedStock.findIndex(inv => 
+          (part.inventoryItemId && inv.id === part.inventoryItemId) ||
+          (inv.code && part.description && inv.code.trim().toLowerCase() === part.description.trim().toLowerCase()) ||
+          (inv.name && part.description && inv.name.trim().toLowerCase() === part.description.trim().toLowerCase())
+        );
+
+        if (targetIdx !== -1) {
+          const currentQty = Number(updatedStock[targetIdx].quantity) || 0;
+          const newQty = Math.max(0, currentQty - qty);
+          updatedStock[targetIdx] = {
+            ...updatedStock[targetIdx],
+            quantity: newQty,
+            updatedAt: new Date().toISOString()
+          };
+          hasNewDeductions = true;
+
+          // Assim que a linha nova for processada e salva com sucesso, marca-a imediatamente como "baixada"
+          return {
+            ...part,
+            stockDeducted: true,
+          };
+        }
+      }
+
+      // Para linhas novas externas ou sem registro direto no inventário físico
+      return {
+        ...part,
+        stockDeducted: true,
+      };
+    });
+
+    if (hasNewDeductions) {
+      saveStoredInventory(updatedStock);
+      setStoredInventory(updatedStock);
+    }
+
+    // Atualiza imediatamente o estado da tabela de produtos para refletir as linhas como baixadas
+    setPartsItems(processedPartsItems);
+
     const log: MaintenanceLog = {
       id: idToUse,
       osNumber: osNumber.trim() || `OS-${Date.now().toString().slice(-6)}`,
@@ -775,7 +861,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       workshopOrMechanic: finalMechanicName || workshopOrMechanic.trim() || 'Mecânica Interna',
       description: description.trim(),
       partsOriginSummary,
-      partsItems: usePartsItemList ? partsItems : undefined,
+      partsItems: usePartsItemList ? processedPartsItems : undefined,
       laborItems: laborItems.length > 0 ? laborItems : undefined,
       partsCost: totalPartsCalculated,
       laborCost: totalLaborCalculated,
@@ -783,6 +869,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       currentHourMeterOrKm: parsedCurrentHourMeter,
       nextServiceDueHourMeterOrKm: parsedNextServiceDue,
       status: targetStatus,
+      stockDeducted: true,
       notes: notes.trim() || undefined,
       createdAt: editingLog ? editingLog.createdAt : new Date().toISOString(),
       nfeLink: hasNfe ? {
@@ -803,75 +890,13 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       } : (editingLog?.financialConditions || undefined),
     };
 
-    // 1. Executa a baixa real no Almoxarifado Interno se selecionado
-    if (deductStock && partsItems.length > 0) {
-      const currentStored = getStoredInventory();
-      const baseStock = currentStored.length > 0 ? currentStored : (inventory && inventory.length > 0 ? inventory : []);
-      if (baseStock.length > 0) {
-        let updatedStock = [...baseStock];
-        let hasDeductions = false;
-
-        // Se a OS já tinha tido baixa anterior registrada em edição, restaura os itens anteriores para calcular a diferença
-        if (editingLog && editingLog.stockDeducted && editingLog.partsItems) {
-          editingLog.partsItems.forEach(oldPart => {
-            if (oldPart.origin === 'almoxarifado_interno' || !oldPart.origin) {
-              const oldQty = parseCleanPriceNumber(oldPart.quantity);
-              if (oldQty > 0) {
-                const targetIdx = updatedStock.findIndex(inv => 
-                  (oldPart.inventoryItemId && inv.id === oldPart.inventoryItemId) ||
-                  (inv.code && oldPart.description && inv.code.trim().toLowerCase() === oldPart.description.trim().toLowerCase()) ||
-                  (inv.name && oldPart.description && inv.name.trim().toLowerCase() === oldPart.description.trim().toLowerCase())
-                );
-                if (targetIdx !== -1) {
-                  updatedStock[targetIdx] = {
-                    ...updatedStock[targetIdx],
-                    quantity: (Number(updatedStock[targetIdx].quantity) || 0) + oldQty,
-                  };
-                }
-              }
-            }
-          });
-        }
-
-        // Subtrai as quantidades atuais da OS do saldo do estoque
-        partsItems.forEach(part => {
-          if (part.origin === 'almoxarifado_interno' || !part.origin) {
-            const qty = parseCleanPriceNumber(part.quantity);
-            if (qty > 0) {
-              const targetIdx = updatedStock.findIndex(inv => 
-                (part.inventoryItemId && inv.id === part.inventoryItemId) ||
-                (inv.code && part.description && inv.code.trim().toLowerCase() === part.description.trim().toLowerCase()) ||
-                (inv.name && part.description && inv.name.trim().toLowerCase() === part.description.trim().toLowerCase())
-              );
-              if (targetIdx !== -1) {
-                const currentQty = Number(updatedStock[targetIdx].quantity) || 0;
-                const newQty = Math.max(0, currentQty - qty);
-                updatedStock[targetIdx] = {
-                  ...updatedStock[targetIdx],
-                  quantity: newQty,
-                  updatedAt: new Date().toISOString()
-                };
-                hasDeductions = true;
-              }
-            }
-          }
-        });
-
-        if (hasDeductions) {
-          saveStoredInventory(updatedStock);
-          setStoredInventory(updatedStock);
-          log.stockDeducted = true;
-        }
-      }
-    }
-
     // REGRA DE OURO:
     // createExpense é estritamente isTriggeringExpense.
     // Ao clicar em "Salvar Ordem de Serviço", isTriggeringExpense é false.
     // Os dados são salvos sem fechar o modal e sem enviar ao Contas a Pagar.
     onSave(log, {
       createExpense: isTriggeringExpense && grandTotal > 0,
-      deductStock: deductStock && internalPartsCount > 0,
+      deductStock: true,
       createPurchaseRequest: generatePurchaseRequest || (targetStatus === 'aguardando_pecas' && externalPartsCount > 0),
     });
 
@@ -1780,7 +1805,10 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                           return (
                             <tr 
                               key={item.id || index}
-                              className={`transition-colors hover:bg-stone-50/80 dark:hover:bg-stone-800/40 ${
+                              data-baixado={item.stockDeducted ? "true" : "false"}
+                              className={`item-row transition-colors hover:bg-stone-50/80 dark:hover:bg-stone-800/40 ${
+                                item.stockDeducted ? 'item-salvo' : 'item-pendente-baixa'
+                              } ${
                                 item.origin === 'recuperada_externa'
                                   ? 'bg-purple-50/30 dark:bg-purple-950/10'
                                   : item.origin === 'externo_compra'
@@ -1790,10 +1818,25 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                             >
                               {/* 1. Num. (ID) */}
                               <td className="py-2 px-3 align-middle font-mono text-[11px] font-semibold text-stone-600 dark:text-stone-400 whitespace-nowrap">
-                                <div className="flex items-center space-x-1">
+                                <div className="flex items-center space-x-1.5">
                                   <span className="bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 rounded border border-stone-200 dark:border-stone-700">
                                     {displayCode}
                                   </span>
+                                  {item.stockDeducted ? (
+                                    <span 
+                                      className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
+                                      title="Item baixado no almoxarifado"
+                                    >
+                                      Baixado
+                                    </span>
+                                  ) : (
+                                    <span 
+                                      className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                                      title="Item novo - baixa pendente ao salvar"
+                                    >
+                                      Novo
+                                    </span>
+                                  )}
                                 </div>
                               </td>
 
@@ -2123,21 +2166,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                     )}
                   </div>
 
-                  {/* 3. Checkbox de Baixa Automática no Almoxarifado */}
-                  {internalPartsCount > 0 && (
-                    <label className="inline-flex items-center space-x-2 text-[11px] font-semibold text-blue-900 dark:text-blue-200 bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-900/50 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        id="deductStock"
-                        checked={deductStock}
-                        onChange={(e) => setDeductStock(e.target.checked)}
-                        className="w-3.5 h-3.5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
-                      />
-                      <span>Baixa automática no Almoxarifado ({internalPartsCount})</span>
-                    </label>
-                  )}
-
-                  {/* 4. Custo Total Consolidado da OS */}
+                  {/* Custo Total Consolidado da OS */}
                   <div className="flex items-center space-x-2 ml-auto">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 whitespace-nowrap">
                       Custo Consolidado:

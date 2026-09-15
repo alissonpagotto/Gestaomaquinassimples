@@ -354,10 +354,13 @@ export const FleetModule: React.FC<FleetModuleProps> = ({
     // Update vehicle status and maintenance expenses
     const targetVehicle = machineries.find(m => m.id === log.machineryId);
     if (targetVehicle) {
+      const existingIdx = maintenanceLogs.findIndex(m => m.id === log.id);
+      const prevExpense = (existingIdx !== -1 && maintenanceLogs[existingIdx]) ? (maintenanceLogs[existingIdx].totalCost || 0) : 0;
+      const expenseDiff = log.totalCost - prevExpense;
       const updatedVehicle: Machinery = {
         ...targetVehicle,
         status: log.status === 'em_andamento' ? 'em_manutencao' : targetVehicle.status,
-        totalMaintenanceExpenses: (targetVehicle.totalMaintenanceExpenses || 0) + log.totalCost,
+        totalMaintenanceExpenses: Math.max(0, (targetVehicle.totalMaintenanceExpenses || 0) + expenseDiff),
       };
       onSaveMachineries(machineries.map(m => m.id === targetVehicle.id ? updatedVehicle : m));
     }
@@ -368,7 +371,7 @@ export const FleetModule: React.FC<FleetModuleProps> = ({
       if (latestInventory && latestInventory.length > 0) {
         onSaveInventory(latestInventory);
       } else if (log.partsItems && log.partsItems.length > 0) {
-        const internalParts = log.partsItems.filter(p => p.origin === 'almoxarifado_interno' || !p.origin);
+        const internalParts = log.partsItems.filter(p => !p.stockDeducted && (p.origin === 'almoxarifado_interno' || !p.origin));
         if (internalParts.length > 0 && inventory.length > 0) {
           let updatedInventory = [...inventory];
           internalParts.forEach(part => {
