@@ -62,6 +62,7 @@ interface ParsedNfeItem {
   totalPrice: number;
   barcode?: string;
   linkedInventoryId?: string;
+  markupPercent?: number;   // % Cálc. (% Margem/Markup de Lucro)
   salePrice?: number;       // V. Final (R$) - Preço de Venda Final
   wholesalePrice?: number;  // V. Atacado (R$) - Preço de Venda em Atacado
   promoPrice?: number;      // V. Promo (R$) - Preço Promocional
@@ -1552,9 +1553,18 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
             (inv.name && item.description && inv.name.trim().toLowerCase() === item.description.trim().toLowerCase()) ||
             (inv.fiscalName && item.description && inv.fiscalName.trim().toLowerCase() === item.description.trim().toLowerCase())
           );
+          const markup = match?.profitMargin;
+          let calculatedSale = match?.salePrice;
+          if (calculatedSale === undefined && markup !== undefined && item.unitPrice > 0) {
+            calculatedSale = Math.round((item.unitPrice * (1 + markup / 100)) * 100) / 100;
+          }
           return {
             ...item,
-            linkedInventoryId: match?.id
+            linkedInventoryId: match?.id,
+            markupPercent: markup,
+            salePrice: calculatedSale,
+            wholesalePrice: match?.wholesalePrice,
+            promoPrice: match?.promoPrice,
           };
         });
       }
@@ -1795,10 +1805,25 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
     const current = updatedItems[rowIndex];
     const targetProduct = productId ? localInventory.find(i => i.id === productId) : undefined;
 
+    let newMarkup = current.markupPercent;
+    let newSalePrice = targetProduct?.salePrice !== undefined ? targetProduct.salePrice : current.salePrice;
+
+    if (targetProduct) {
+      if (targetProduct.profitMargin !== undefined) {
+        newMarkup = targetProduct.profitMargin;
+      }
+      if (targetProduct.salePrice !== undefined) {
+        newSalePrice = targetProduct.salePrice;
+      } else if (newMarkup !== undefined && (current.unitPrice || 0) > 0) {
+        newSalePrice = Math.round(((current.unitPrice || 0) * (1 + newMarkup / 100)) * 100) / 100;
+      }
+    }
+
     updatedItems[rowIndex] = {
       ...current,
       linkedInventoryId: productId,
-      salePrice: targetProduct?.salePrice !== undefined ? targetProduct.salePrice : current.salePrice,
+      markupPercent: newMarkup,
+      salePrice: newSalePrice,
       wholesalePrice: targetProduct?.wholesalePrice !== undefined ? targetProduct.wholesalePrice : current.wholesalePrice,
       promoPrice: targetProduct?.promoPrice !== undefined ? targetProduct.promoPrice : current.promoPrice,
     };
@@ -1923,7 +1948,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
   // Atualização interativa dos itens da NF-e com recálculo automático dos totais
   const handleItemChange = (
     index: number,
-    field: 'description' | 'quantity' | 'unitPrice' | 'totalPrice' | 'salePrice' | 'wholesalePrice' | 'promoPrice',
+    field: 'description' | 'quantity' | 'unitPrice' | 'totalPrice' | 'markupPercent' | 'salePrice' | 'wholesalePrice' | 'promoPrice',
     value: string
   ) => {
     if (!parsedData || !parsedData.items) return;
@@ -1943,17 +1968,40 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       const num = sanitized === '' ? 0 : parseFloat(sanitized);
       currentItem.unitPrice = isNaN(num) ? 0 : num;
       currentItem.totalPrice = Math.round(((currentItem.quantity || 0) * currentItem.unitPrice) * 100) / 100;
+      // Se já houver % de margem configurada, recalcula o preço final proporcionalmente
+      if (currentItem.markupPercent !== undefined && currentItem.unitPrice > 0) {
+        currentItem.salePrice = Math.round((currentItem.unitPrice * (1 + currentItem.markupPercent / 100)) * 100) / 100;
+      }
     } else if (field === 'totalPrice') {
       const sanitized = value.replace(',', '.');
       const num = sanitized === '' ? 0 : parseFloat(sanitized);
       currentItem.totalPrice = isNaN(num) ? 0 : num;
       if (currentItem.quantity && currentItem.quantity > 0) {
         currentItem.unitPrice = Math.round((currentItem.totalPrice / currentItem.quantity) * 10000) / 10000;
+        if (currentItem.markupPercent !== undefined && currentItem.unitPrice > 0) {
+          currentItem.salePrice = Math.round((currentItem.unitPrice * (1 + currentItem.markupPercent / 100)) * 100) / 100;
+        }
+      }
+    } else if (field === 'markupPercent') {
+      // Regra solicitada: V. FINAL = V. UNIT + (V. UNIT * (% CÁLC / 100))
+      const sanitized = value.replace(',', '.');
+      const num = sanitized === '' ? undefined : parseFloat(sanitized);
+      currentItem.markupPercent = num === undefined || isNaN(num) ? undefined : num;
+      const unit = currentItem.unitPrice || 0;
+      if (currentItem.markupPercent !== undefined && unit > 0) {
+        currentItem.salePrice = Math.round((unit * (1 + currentItem.markupPercent / 100)) * 100) / 100;
+      } else if (currentItem.markupPercent === undefined) {
+        // Se limpou o markup, mantém o salePrice ou limpa se desejar
       }
     } else if (field === 'salePrice') {
       const sanitized = value.replace(',', '.');
       const num = sanitized === '' ? undefined : parseFloat(sanitized);
       currentItem.salePrice = num === undefined || isNaN(num) ? undefined : num;
+      // Se o usuário digitou o preço final diretamente, calcula a margem correspondente reversa
+      const unit = currentItem.unitPrice || 0;
+      if (currentItem.salePrice !== undefined && unit > 0) {
+        currentItem.markupPercent = Math.round(((currentItem.salePrice - unit) / unit) * 100 * 10) / 10;
+      }
     } else if (field === 'wholesalePrice') {
       const sanitized = value.replace(',', '.');
       const num = sanitized === '' ? undefined : parseFloat(sanitized);
@@ -2134,13 +2182,16 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
             invItem.unitCost = newUnitCost;
           }
 
-          // Sincronização automática dos preços de venda (V. Final, V. Atacado, V. Promo)
+          // Sincronização automática dos preços de venda (V. Final, % Markup, V. Atacado, V. Promo)
+          if (item.markupPercent !== undefined) {
+            invItem.profitMargin = item.markupPercent;
+          }
           if (item.salePrice !== undefined && Number(item.salePrice) >= 0) {
             invItem.salePrice = Number(item.salePrice);
-            if (invItem.unitCost > 0) {
+            if (invItem.unitCost > 0 && item.markupPercent === undefined) {
               invItem.profitMargin = Math.round(((invItem.salePrice - invItem.unitCost) / invItem.unitCost) * 100 * 10) / 10;
             }
-          } else if (invItem.profitMargin) {
+          } else if (invItem.profitMargin !== undefined && invItem.unitCost > 0) {
             invItem.salePrice = Math.round((invItem.unitCost * (1 + invItem.profitMargin / 100)) * 100) / 100;
           }
 
@@ -2162,9 +2213,10 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
           const autoCost = Number(item.unitPrice) || 0;
           const newProdId = `inv_auto_${Date.now()}_${idx}`;
 
+          const autoProfitMargin = item.markupPercent !== undefined ? item.markupPercent : 30;
           const autoSalePrice = item.salePrice !== undefined && Number(item.salePrice) >= 0
             ? Number(item.salePrice)
-            : Math.round((autoCost * 1.3) * 100) / 100;
+            : Math.round((autoCost * (1 + autoProfitMargin / 100)) * 100) / 100;
 
           const newInvItem: InventoryItem = {
             id: newProdId,
@@ -2175,7 +2227,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
             unit: autoUnit,
             category: autoCat,
             unitCost: autoCost,
-            profitMargin: 30,
+            profitMargin: autoProfitMargin,
             salePrice: autoSalePrice,
             wholesalePrice: item.wholesalePrice !== undefined && Number(item.wholesalePrice) >= 0 ? Number(item.wholesalePrice) : undefined,
             promoPrice: item.promoPrice !== undefined && Number(item.promoPrice) >= 0 ? Number(item.promoPrice) : undefined,
@@ -2829,47 +2881,52 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                         </div>
                       </div>
                       <div className="overflow-x-auto max-h-[380px] overflow-y-auto w-full">
-                        <table className="w-full text-left text-xs border-collapse">
-                          <thead className="bg-[#b0d2ed] dark:bg-stone-800 text-black uppercase text-[9.5px] font-black border-b border-[#96c1e5] dark:border-stone-700 sticky top-0 z-10 whitespace-nowrap">
+                        <table className="w-full text-left text-xs border-collapse table-fixed">
+                          <thead className="bg-[#b0d2ed] dark:bg-stone-800 text-black uppercase text-[9px] font-black border-b border-[#96c1e5] dark:border-stone-700 sticky top-0 z-10 whitespace-nowrap">
                             <tr>
-                              {/* 1. Área Verde: Identificação & De-Para (Compactas w-1/12 e w-3/12) */}
-                              <th className="py-1 px-1 w-1/12 min-w-[48px] text-center bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 border-r border-emerald-200/60 dark:border-emerald-800">
+                              {/* 1. Área Verde: Identificação & De-Para (Ultracompactas e Enxutas) */}
+                              <th className="py-1 px-1 w-10 text-center bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 border-r border-emerald-200/60 dark:border-emerald-800 shrink-0">
                                 Cód
                               </th>
-                              <th className="py-1 px-1.5 w-3/12 min-w-[140px] bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 border-r border-emerald-200/60 dark:border-emerald-800">
+                              <th className="py-1 px-1.5 w-[22%] min-w-[110px] max-w-[150px] bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 border-r border-emerald-200/60 dark:border-emerald-800 truncate">
                                 Descrição do Produto
                               </th>
-                              <th className="py-1 px-1.5 w-3/12 min-w-[150px] bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 border-r border-emerald-300 dark:border-emerald-700">
+                              <th className="py-1 px-1.5 w-[22%] min-w-[120px] max-w-[160px] bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 border-r border-emerald-300 dark:border-emerald-700 truncate">
                                 Produto no Sistema (De-Para)
                               </th>
 
                               {/* 2. Área Amarela: 1º. QTD (Quantidade + Unidade) */}
-                              <th className="py-1 px-1.5 w-[11%] min-w-[85px] text-right bg-amber-100/90 dark:bg-amber-950/50 text-amber-950 dark:text-amber-200 border-r border-amber-200 dark:border-amber-800">
+                              <th className="py-1 px-1 w-[11%] min-w-[70px] text-right bg-amber-100/90 dark:bg-amber-950/50 text-amber-950 dark:text-amber-200 border-r border-amber-200 dark:border-amber-800">
                                 Qtd
                               </th>
 
                               {/* 3. 2º. V. UNIT (R$) */}
-                              <th className="py-1 px-1 w-[11%] min-w-[80px] text-right bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 border-r border-stone-200 dark:border-stone-700">
+                              <th className="py-1 px-1 w-[11%] min-w-[72px] text-right bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 border-r border-stone-200 dark:border-stone-700">
                                 V. Unit (R$)
                               </th>
 
                               {/* 4. 3º. V. TOTAL (R$) */}
-                              <th className="py-1 px-1 w-[11%] min-w-[80px] text-right bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 border-r border-stone-200 dark:border-stone-700">
+                              <th className="py-1 px-1 w-[11%] min-w-[72px] text-right bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 border-r border-stone-200 dark:border-stone-700">
                                 V. Total (R$)
                               </th>
 
-                              {/* 5. Área Rosa: 4º. V. FINAL (R$) */}
-                              <th className="py-1 px-1 w-[12%] min-w-[85px] text-right bg-rose-100/90 dark:bg-rose-950/50 text-rose-950 dark:text-rose-200">
+                              {/* 5. Nova Coluna: % CÁLC. (Margem / Markup de Lucro) - Entre V. Total e V. Final */}
+                              <th className="py-1 px-1 w-[10%] min-w-[65px] text-right bg-purple-100/90 dark:bg-purple-950/50 text-purple-950 dark:text-purple-200 border-r border-purple-200 dark:border-purple-800">
+                                % Cálc.
+                              </th>
+
+                              {/* 6. Área Rosa: 4º. V. FINAL (R$) */}
+                              <th className="py-1 px-1 w-[13%] min-w-[78px] text-right bg-rose-100/90 dark:bg-rose-950/50 text-rose-950 dark:text-rose-200">
                                 V. Final (R$)
                               </th>
 
                               {/* Opcionais: Atacado & Promoção */}
                               {showExtraPrices && (
                                 <>
-                                  <th className="py-1 px-1 text-right w-[9%] min-w-[80px] bg-sky-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-l border-stone-200 dark:border-stone-700">
+                                  <th className="py-1 px-1 text-right w-[8%] min-w-[70px] bg-sky-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-l border-stone-200 dark:border-stone-700">
                                     V. Atacado (R$)
                                   </th>
-                                  <th className="py-1 px-1 text-right w-[9%] min-w-[80px] bg-sky-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-l border-stone-200 dark:border-stone-700">
+                                  <th className="py-1 px-1 text-right w-[8%] min-w-[70px] bg-sky-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-l border-stone-200 dark:border-stone-700">
                                     V. Promo (R$)
                                   </th>
                                 </>
@@ -2879,43 +2936,44 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                           <tbody className="divide-y divide-[#96c1e5]/30 bg-white/95 dark:bg-stone-900 text-black">
                             {parsedData.items.map((item, idx) => (
                               <tr key={idx} className="hover:bg-sky-50/50 dark:hover:bg-stone-800/30 transition-colors">
-                                {/* CÓD & NCM (Área Verde) */}
-                                <td className="py-0.5 px-1 font-mono text-black text-[9.5px] text-center align-middle bg-emerald-50/20 dark:bg-emerald-950/10 border-r border-emerald-100/60 dark:border-emerald-900/30">
+                                {/* CÓD & NCM (Área Verde - Super Enxuta) */}
+                                <td className="py-0.5 px-1 font-mono text-black text-[9px] text-center align-middle bg-emerald-50/20 dark:bg-emerald-950/10 border-r border-emerald-100/60 dark:border-emerald-900/30 w-10">
                                   <div className="font-bold text-black dark:text-stone-100 truncate" title={item.code || '-'}>
                                     {item.code || '-'}
                                   </div>
                                   {item.ncm && (
-                                    <div className="text-[8px] text-stone-500 dark:text-stone-400 font-normal leading-tight truncate" title={`NCM: ${item.ncm}`}>
+                                    <div className="text-[7.5px] text-stone-500 dark:text-stone-400 font-normal leading-tight truncate" title={`NCM: ${item.ncm}`}>
                                       {item.ncm}
                                     </div>
                                   )}
                                 </td>
 
-                                {/* DESCRIÇÃO DO PRODUTO (Área Verde) */}
-                                <td className="py-0.5 px-1 align-middle bg-emerald-50/20 dark:bg-emerald-950/10 border-r border-emerald-100/60 dark:border-emerald-900/30">
+                                {/* DESCRIÇÃO DO PRODUTO (Área Verde - Compacta com max-w) */}
+                                <td className="py-0.5 px-1 align-middle bg-emerald-50/20 dark:bg-emerald-950/10 border-r border-emerald-100/60 dark:border-emerald-900/30 w-[22%] min-w-[110px] max-w-[150px]">
                                   <input
                                     type="text"
                                     value={item.description}
                                     onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
-                                    className="w-full h-6 px-1.5 text-[10px] rounded border border-emerald-200/80 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 focus:ring-1 focus:ring-emerald-500 font-medium"
+                                    className="w-full h-6 px-1.5 text-[10px] rounded border border-emerald-200/80 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 focus:ring-1 focus:ring-emerald-500 font-medium truncate"
                                     placeholder="Descrição do produto"
+                                    title={item.description}
                                   />
                                 </td>
 
-                                {/* PRODUTO NO SISTEMA DE-PARA (Área Verde) */}
-                                <td className="py-0.5 px-1 align-middle bg-emerald-50/20 dark:bg-emerald-950/10 border-r border-emerald-200/60 dark:border-emerald-900/40">
+                                {/* PRODUTO NO SISTEMA DE-PARA (Área Verde - Compacta com max-w) */}
+                                <td className="py-0.5 px-1 align-middle bg-emerald-50/20 dark:bg-emerald-950/10 border-r border-emerald-200/60 dark:border-emerald-900/40 w-[22%] min-w-[120px] max-w-[160px]">
                                   {item.linkedInventoryId ? (
                                     (() => {
                                       const linked = localInventory.find(p => p.id === item.linkedInventoryId);
                                       return (
-                                        <div className="flex items-center justify-between gap-1 h-6 px-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded">
+                                        <div className="flex items-center justify-between gap-1 h-6 px-1 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded">
                                           <div className="min-w-0 flex-1 flex items-center space-x-1">
                                             <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                            <span className="text-[9.5px] font-bold text-black dark:text-stone-100 truncate" title={linked?.name}>
+                                            <span className="text-[9px] font-bold text-black dark:text-stone-100 truncate" title={linked?.name}>
                                               {linked?.code ? `[${linked.code}] ` : ''}{linked?.name || 'Vinculado'}
                                             </span>
-                                            <span className="text-[8.5px] text-emerald-900 dark:text-emerald-300 font-bold shrink-0 bg-emerald-100 dark:bg-emerald-900/60 px-0.5 rounded">
-                                              {linked?.quantity || 0} {linked?.unit || 'UN'}
+                                            <span className="text-[8px] text-emerald-900 dark:text-emerald-300 font-bold shrink-0 bg-emerald-100 dark:bg-emerald-900/60 px-0.5 rounded">
+                                              {linked?.quantity || 0}
                                             </span>
                                           </div>
                                           <button
@@ -2940,9 +2998,9 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                             handleLinkProduct(idx, e.target.value);
                                           }
                                         }}
-                                        className="flex-1 h-6 min-w-[100px] px-1 text-[9.5px] rounded border border-amber-300 dark:border-amber-700 bg-amber-50/60 dark:bg-stone-900 text-black dark:text-stone-100 focus:ring-1 focus:ring-[#0963cb] font-medium"
+                                        className="flex-1 min-w-0 h-6 px-1 text-[9px] rounded border border-amber-300 dark:border-amber-700 bg-amber-50/60 dark:bg-stone-900 text-black dark:text-stone-100 focus:ring-1 focus:ring-[#0963cb] font-medium truncate"
                                       >
-                                        <option value="">Selecione no estoque...</option>
+                                        <option value="">Vincular estoque...</option>
                                         <option value="__NEW__" className="font-bold text-[#0963cb]">
                                           + Cadastrar Novo
                                         </option>
@@ -2956,10 +3014,10 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                         type="button"
                                         onClick={() => handleOpenNewProductModal(idx)}
                                         title="Cadastrar Novo Produto no Estoque"
-                                        className="h-6 px-1.5 text-[9.5px] font-bold text-blue-900 dark:text-blue-200 bg-blue-100 dark:bg-blue-950/60 hover:bg-blue-200 dark:hover:bg-blue-900 border border-blue-300 dark:border-blue-700 rounded transition flex items-center space-x-0.5 shrink-0 cursor-pointer"
+                                        className="h-6 px-1 text-[9px] font-bold text-blue-900 dark:text-blue-200 bg-blue-100 dark:bg-blue-950/60 hover:bg-blue-200 dark:hover:bg-blue-900 border border-blue-300 dark:border-blue-700 rounded transition flex items-center space-x-0.5 shrink-0 cursor-pointer"
                                       >
                                         <Plus className="w-2.5 h-2.5" />
-                                        <span>Novo</span>
+                                        <span>+</span>
                                       </button>
                                     </div>
                                   )}
@@ -2967,18 +3025,18 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
 
                                 {/* 1º. QTD (Quantidade + Unidade de medida) - Área Amarela */}
                                 <td className="py-0.5 px-1 text-right align-middle bg-amber-50/40 dark:bg-amber-950/20 border-r border-amber-200/60 dark:border-amber-800/40">
-                                  <div className="flex items-center justify-end space-x-1">
+                                  <div className="flex items-center justify-end space-x-0.5">
                                     <input
                                       type="number"
                                       step="any"
                                       min="0"
                                       value={item.quantity}
                                       onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)}
-                                      className="w-13 h-6 px-1 text-[10px] text-right rounded border border-amber-300 dark:border-amber-700 bg-amber-50/80 dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-bold focus:ring-1 focus:ring-amber-500"
+                                      className="w-11 h-6 px-0.5 text-[10px] text-right rounded border border-amber-300 dark:border-amber-700 bg-amber-50/80 dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-bold focus:ring-1 focus:ring-amber-500"
                                       placeholder="0"
                                       title="Quantidade"
                                     />
-                                    <span className="text-[9px] text-amber-950 dark:text-amber-200 font-black uppercase shrink-0 px-1 py-0.5 bg-amber-100/90 dark:bg-amber-900/60 rounded border border-amber-200/80 dark:border-amber-800/80 text-center min-w-[22px]">
+                                    <span className="text-[8.5px] text-amber-950 dark:text-amber-200 font-black uppercase shrink-0 px-1 py-0.5 bg-amber-100/90 dark:bg-amber-900/60 rounded border border-amber-200/80 dark:border-amber-800/80 text-center min-w-[20px]">
                                       {item.unit || 'UN'}
                                     </span>
                                   </div>
@@ -2992,7 +3050,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                     min="0"
                                     value={item.unitPrice}
                                     onChange={(e) => handleItemChange(idx, 'unitPrice', e.target.value)}
-                                    className="w-full max-w-[85px] h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-semibold focus:ring-1 focus:ring-[#0963cb] ml-auto block"
+                                    className="w-full max-w-[78px] h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-semibold focus:ring-1 focus:ring-[#0963cb] ml-auto block"
                                     placeholder="0.00"
                                     title="Valor Unitário Original da NF (V. Unit)"
                                   />
@@ -3006,13 +3064,29 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                     min="0"
                                     value={item.totalPrice}
                                     onChange={(e) => handleItemChange(idx, 'totalPrice', e.target.value)}
-                                    className="w-full max-w-[90px] h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-bold focus:ring-1 focus:ring-[#0963cb] ml-auto block"
+                                    className="w-full max-w-[80px] h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-bold focus:ring-1 focus:ring-[#0963cb] ml-auto block"
                                     placeholder="0.00"
                                     title="Valor Total do Item na NF (V. Total)"
                                   />
                                 </td>
 
-                                {/* 4º. V. FINAL (R$) (O valor final sincronizado ao estoque - Área Rosa) */}
+                                {/* 4º. % CÁLC. (% Margem / Markup) - Cálculo Automático do V. FINAL */}
+                                <td className="py-0.5 px-1 text-right align-middle bg-purple-50/40 dark:bg-purple-950/20 border-r border-purple-200/60 dark:border-purple-800/40">
+                                  <div className="flex items-center justify-end space-x-0.5">
+                                    <input
+                                      type="number"
+                                      step="0.1"
+                                      value={item.markupPercent ?? ''}
+                                      onChange={(e) => handleItemChange(idx, 'markupPercent', e.target.value)}
+                                      placeholder="0"
+                                      className="w-full max-w-[55px] h-6 px-1 text-[10px] text-right rounded border border-purple-300 dark:border-purple-700 bg-purple-50/80 dark:bg-stone-900 text-purple-950 dark:text-purple-200 font-mono font-bold focus:ring-1 focus:ring-purple-500 ml-auto block"
+                                      title="Margem / Markup de Lucro (%): V. Final = V. Unit + (V. Unit * % / 100)"
+                                    />
+                                    <span className="text-[9px] font-black text-purple-900 dark:text-purple-300 shrink-0">%</span>
+                                  </div>
+                                </td>
+
+                                {/* 5º. V. FINAL (R$) (O valor final com precificação calculada/ajustada - Área Rosa) */}
                                 <td className="py-0.5 px-1 text-right align-middle bg-rose-50/40 dark:bg-rose-950/20">
                                   <input
                                     type="number"
@@ -3021,8 +3095,8 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                     value={item.salePrice ?? ''}
                                     onChange={(e) => handleItemChange(idx, 'salePrice', e.target.value)}
                                     placeholder="0.00"
-                                    className="w-full max-w-[90px] h-6 px-1 text-[10px] text-right rounded border border-rose-300 dark:border-rose-700 bg-rose-50/80 dark:bg-stone-900 text-rose-950 dark:text-stone-100 font-mono font-bold focus:ring-1 focus:ring-rose-500 ml-auto block"
-                                    title="Preço de Venda Final / Balcão (V. Final)"
+                                    className="w-full max-w-[82px] h-6 px-1 text-[10px] text-right rounded border border-rose-300 dark:border-rose-700 bg-rose-50/80 dark:bg-stone-900 text-rose-950 dark:text-stone-100 font-mono font-bold focus:ring-1 focus:ring-rose-500 ml-auto block"
+                                    title="Preço de Venda Final Sincronizado ao Estoque (V. Final)"
                                   />
                                 </td>
 
@@ -3037,7 +3111,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                         value={item.wholesalePrice ?? ''}
                                         onChange={(e) => handleItemChange(idx, 'wholesalePrice', e.target.value)}
                                         placeholder="0.00"
-                                        className="w-full max-w-[85px] h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-[#0963cb] ml-auto block"
+                                        className="w-full max-w-[75px] h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-[#0963cb] ml-auto block"
                                         title="Preço de Venda em Atacado (V. Atacado)"
                                       />
                                     </td>
@@ -3049,7 +3123,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                         value={item.promoPrice ?? ''}
                                         onChange={(e) => handleItemChange(idx, 'promoPrice', e.target.value)}
                                         placeholder="0.00"
-                                        className="w-full max-w-[85px] h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-[#0963cb] ml-auto block"
+                                        className="w-full max-w-[75px] h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-[#0963cb] ml-auto block"
                                         title="Preço Promocional (V. Promo)"
                                       />
                                     </td>
