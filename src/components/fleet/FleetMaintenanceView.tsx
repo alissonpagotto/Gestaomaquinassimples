@@ -23,7 +23,8 @@ import {
   Building2,
   Truck,
   Tag,
-  Hammer
+  Hammer,
+  X
 } from 'lucide-react';
 import { MaintenanceLog, Machinery, CompanyProfile, MaintenancePurchaseRequest, MaintenanceCategoryDefinition } from '../../types';
 import { formatCurrencyBRL, formatDateBR, getStoredMaintenanceCategories, saveStoredMaintenanceCategories } from '../../lib/storage';
@@ -55,6 +56,9 @@ export const FleetMaintenanceView: React.FC<FleetMaintenanceViewProps> = ({
   onUpdateStatus,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [selectedMonth, setSelectedMonth] = useState<string>('todos');
   const [selectedVehicle, setSelectedVehicle] = useState<string>('todos');
   const [selectedStatus, setSelectedStatus] = useState<string>('todos');
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
@@ -67,6 +71,75 @@ export const FleetMaintenanceView: React.FC<FleetMaintenanceViewProps> = ({
 
   /* CARD REFORMA & ENTRESSAFRA: FILTRO DE CLIQUE (OPCIONAL) */
   const [filterReformaOnly, setFilterReformaOnly] = useState(false);
+
+  // Manipulador rápido do filtro por Mês
+  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setSelectedMonth(val);
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+
+    const formatDateStr = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    if (val === 'todos') {
+      setStartDate('');
+      setEndDate('');
+    } else if (val === 'current') {
+      const first = new Date(currentYear, currentMonth, 1);
+      const last = new Date(currentYear, currentMonth + 1, 0);
+      setStartDate(formatDateStr(first));
+      setEndDate(formatDateStr(last));
+    } else if (val === 'previous') {
+      const first = new Date(currentYear, currentMonth - 1, 1);
+      const last = new Date(currentYear, currentMonth, 0);
+      setStartDate(formatDateStr(first));
+      setEndDate(formatDateStr(last));
+    } else if (val === 'last3') {
+      const first = new Date(currentYear, currentMonth - 2, 1);
+      const last = new Date(currentYear, currentMonth + 1, 0);
+      setStartDate(formatDateStr(first));
+      setEndDate(formatDateStr(last));
+    } else {
+      // Meses individuais '01' a '12' do ano corrente
+      const mIdx = parseInt(val, 10) - 1;
+      if (!isNaN(mIdx) && mIdx >= 0 && mIdx <= 11) {
+        const first = new Date(currentYear, mIdx, 1);
+        const last = new Date(currentYear, mIdx + 1, 0);
+        setStartDate(formatDateStr(first));
+        setEndDate(formatDateStr(last));
+      }
+    }
+  };
+
+  const handleClearAllFilters = () => {
+    setSearchTerm('');
+    setStartDate('');
+    setEndDate('');
+    setSelectedMonth('todos');
+    setSelectedLocation('todos');
+    setSelectedVehicle('todos');
+    setSelectedStatus('todos');
+    setSelectedPartsOrigin('todos');
+    setFilterReformaOnly(false);
+  };
+
+  const hasActiveFilters = Boolean(
+    searchTerm ||
+    startDate ||
+    endDate ||
+    selectedMonth !== 'todos' ||
+    selectedLocation !== 'todos' ||
+    selectedVehicle !== 'todos' ||
+    selectedStatus !== 'todos' ||
+    selectedPartsOrigin !== 'todos' ||
+    filterReformaOnly
+  );
 
   // Filtered maintenance logs
   const filteredLogs = useMemo(() => {
@@ -84,6 +157,11 @@ export const FleetMaintenanceView: React.FC<FleetMaintenanceViewProps> = ({
       const matchLocation = selectedLocation === 'todos' || log.location === selectedLocation;
       const matchOrigin = selectedPartsOrigin === 'todos' || log.partsOriginSummary === selectedPartsOrigin;
 
+      // Filtro de intervalo de datas
+      const logDate = log.date ? log.date.slice(0, 10) : '';
+      const matchStartDate = !startDate || (logDate ? logDate >= startDate : true);
+      const matchEndDate = !endDate || (logDate ? logDate <= endDate : true);
+
       /* CARD REFORMA & ENTRESSAFRA: FILTRAGEM AO CLICAR NO CARD */
       const isReformaOrEntressafra = 
         (log.type && (log.type.toLowerCase().includes('reforma') || log.type.toLowerCase().includes('entressafra'))) ||
@@ -92,9 +170,9 @@ export const FleetMaintenanceView: React.FC<FleetMaintenanceViewProps> = ({
 
       const matchReforma = !filterReformaOnly || isReformaOrEntressafra;
 
-      return matchSearch && matchVehicle && matchStatus && matchCategory && matchLocation && matchOrigin && matchReforma;
+      return matchSearch && matchVehicle && matchStatus && matchCategory && matchLocation && matchOrigin && matchReforma && matchStartDate && matchEndDate;
     });
-  }, [maintenanceLogs, searchTerm, selectedVehicle, selectedStatus, selectedCategory, selectedLocation, selectedPartsOrigin, filterReformaOnly]);
+  }, [maintenanceLogs, searchTerm, selectedVehicle, selectedStatus, selectedCategory, selectedLocation, selectedPartsOrigin, filterReformaOnly, startDate, endDate]);
 
   // Statistics
   const totalCost = filteredLogs.reduce((acc, curr) => acc + curr.totalCost, 0);
@@ -360,72 +438,158 @@ export const FleetMaintenanceView: React.FC<FleetMaintenanceViewProps> = ({
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
-        <div className="relative w-full md:w-72">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+      {/* Filter and Search Bar (Compact Single-Line) */}
+      <div className="bg-white dark:bg-stone-900 px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-800 shadow-xs flex flex-wrap items-center gap-2">
+        {/* 1. Busca por texto */}
+        <div className="relative min-w-[160px] sm:w-52">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar OS, veículo, oficina, peça..."
-            className="w-full pl-9 pr-3 py-2 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs sm:text-sm text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            placeholder="Buscar OS, veículo, peça..."
+            className="w-full pl-8 pr-2.5 py-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-1.5 focus:ring-indigo-600"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          {/* Local Filter */}
-          <select
-            value={selectedLocation}
-            onChange={(e) => setSelectedLocation(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-600 cursor-pointer"
-          >
-            <option value="todos">Todos os Locais</option>
-            <option value="roca">🌱 Roça (Campo)</option>
-            <option value="estrada">🚛 Estrada (Socorro)</option>
-            <option value="oficina_interna">🏠 Oficina Interna</option>
-            <option value="oficina_externa">🏢 Oficina Externa</option>
-          </select>
-
-          {/* Vehicle Filter */}
-          <select
-            value={selectedVehicle}
-            onChange={(e) => setSelectedVehicle(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-600 cursor-pointer"
-          >
-            <option value="todos">Todos os Veículos</option>
-            {machineries.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.licensePlateOrSerial ? `[${m.licensePlateOrSerial}] ` : ''}{m.model || m.name}
-              </option>
-            ))}
-          </select>
-
-          {/* Status Filter */}
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-600 cursor-pointer"
-          >
-            <option value="todos">Todos os Status</option>
-            <option value="concluida">Concluída</option>
-            <option value="em_andamento">Em Andamento</option>
-            <option value="aguardando_pecas">Aguardando Peças</option>
-            <option value="agendada">Agendada</option>
-          </select>
-
-          {/* Origem de Peças */}
-          <select
-            value={selectedPartsOrigin}
-            onChange={(e) => setSelectedPartsOrigin(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-600 cursor-pointer"
-          >
-            <option value="todos">Todas Origens</option>
-            <option value="almoxarifado">Almoxarifado</option>
-            <option value="externo">Compra Externa</option>
-            <option value="misto">Misto</option>
-          </select>
+        {/* 2. Período de Datas (De: e Até:) */}
+        <div className="flex items-center space-x-1.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg px-2 py-1">
+          <Calendar className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+          <span className="text-[10px] font-bold text-stone-500 uppercase tracking-tight">De:</span>
+          <input 
+            type="date" 
+            value={startDate}
+            onChange={(e) => {
+              setStartDate(e.target.value);
+              setSelectedMonth('custom');
+            }}
+            className="bg-transparent text-xs text-stone-900 dark:text-stone-100 focus:outline-none cursor-pointer"
+          />
+          <span className="text-stone-300 dark:text-stone-600">|</span>
+          <span className="text-[10px] font-bold text-stone-500 uppercase tracking-tight">Até:</span>
+          <input 
+            type="date" 
+            value={endDate}
+            onChange={(e) => {
+              setEndDate(e.target.value);
+              setSelectedMonth('custom');
+            }}
+            className="bg-transparent text-xs text-stone-900 dark:text-stone-100 focus:outline-none cursor-pointer"
+          />
+          {(startDate || endDate) && (
+            <button
+              type="button"
+              onClick={() => {
+                setStartDate('');
+                setEndDate('');
+                setSelectedMonth('todos');
+              }}
+              title="Limpar período de datas"
+              className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-0.5 ml-0.5"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
         </div>
+
+        {/* 3. Mês */}
+        <select
+          value={selectedMonth}
+          onChange={handleMonthChange}
+          className="py-1 px-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs font-semibold focus:outline-none focus:ring-1.5 focus:ring-indigo-600 cursor-pointer"
+        >
+          <option value="todos">Mês: Todos</option>
+          <option value="current">Mês Atual</option>
+          <option value="previous">Mês Anterior</option>
+          <option value="last3">Últimos 3 Meses</option>
+          <option disabled>──────────</option>
+          <option value="01">Janeiro</option>
+          <option value="02">Fevereiro</option>
+          <option value="03">Março</option>
+          <option value="04">Abril</option>
+          <option value="05">Maio</option>
+          <option value="06">Junho</option>
+          <option value="07">Julho</option>
+          <option value="08">Agosto</option>
+          <option value="09">Setembro</option>
+          <option value="10">Outubro</option>
+          <option value="11">Novembro</option>
+          <option value="12">Dezembro</option>
+        </select>
+
+        {/* 4. Todos os Locais */}
+        <select
+          value={selectedLocation}
+          onChange={(e) => setSelectedLocation(e.target.value)}
+          className="py-1 px-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs font-semibold focus:outline-none focus:ring-1.5 focus:ring-indigo-600 cursor-pointer"
+        >
+          <option value="todos">Todos os Locais</option>
+          <option value="roca">🌱 Roça (Campo)</option>
+          <option value="estrada">🚛 Estrada (Socorro)</option>
+          <option value="oficina_interna">🏠 Oficina Interna</option>
+          <option value="oficina_externa">🏢 Oficina Externa</option>
+        </select>
+
+        {/* 5. Todos os Veículos */}
+        <select
+          value={selectedVehicle}
+          onChange={(e) => setSelectedVehicle(e.target.value)}
+          className="py-1 px-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs font-semibold focus:outline-none focus:ring-1.5 focus:ring-indigo-600 cursor-pointer max-w-[170px] truncate"
+        >
+          <option value="todos">Todos os Veículos</option>
+          {machineries.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.licensePlateOrSerial ? `[${m.licensePlateOrSerial}] ` : ''}{m.model || m.name}
+            </option>
+          ))}
+        </select>
+
+        {/* 6. Todos os Status */}
+        <select
+          value={selectedStatus}
+          onChange={(e) => setSelectedStatus(e.target.value)}
+          className="py-1 px-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs font-semibold focus:outline-none focus:ring-1.5 focus:ring-indigo-600 cursor-pointer"
+        >
+          <option value="todos">Todos os Status</option>
+          <option value="concluida">Concluída</option>
+          <option value="em_andamento">Em Andamento</option>
+          <option value="aguardando_pecas">Aguardando Peças</option>
+          <option value="agendada">Agendada</option>
+        </select>
+
+        {/* 7. Todas as Origens */}
+        <select
+          value={selectedPartsOrigin}
+          onChange={(e) => setSelectedPartsOrigin(e.target.value)}
+          className="py-1 px-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs font-semibold focus:outline-none focus:ring-1.5 focus:ring-indigo-600 cursor-pointer"
+        >
+          <option value="todos">Todas Origens</option>
+          <option value="almoxarifado">Almoxarifado</option>
+          <option value="externo">Compra Externa</option>
+          <option value="misto">Misto</option>
+        </select>
+
+        {/* 8. Limpar Filtros */}
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={handleClearAllFilters}
+            className="py-1 px-2 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 text-xs font-bold transition flex items-center space-x-1 cursor-pointer ml-auto"
+            title="Limpar todos os filtros"
+          >
+            <X className="w-3 h-3 text-stone-500" />
+            <span>Limpar</span>
+          </button>
+        )}
       </div>
 
       {/* Maintenance Logs Table (Clean, Compact and Full-Width without Horizontal Scroll) */}
