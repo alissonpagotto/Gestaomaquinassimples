@@ -24,6 +24,7 @@ import {
   Truck,
   Tag,
   Hammer,
+  Eye,
   X
 } from 'lucide-react';
 import { MaintenanceLog, Machinery, CompanyProfile, MaintenancePurchaseRequest, MaintenanceCategoryDefinition } from '../../types';
@@ -725,24 +726,29 @@ export const FleetMaintenanceView: React.FC<FleetMaintenanceViewProps> = ({
 
                       {/* Ações */}
                       <td className="py-2 px-2 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end space-x-1">
+                        <div className="flex items-center justify-end space-x-1.5">
+                          {/* Botão de Ação Rápida: Abrir itens */}
                           <button
+                            type="button"
                             onClick={() => setViewingLog(log)}
-                            title="Visualizar / Imprimir Laudo da OS"
-                            className="p-1.5 text-stone-400 hover:text-indigo-600 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+                            title="Abrir itens / Visualizar detalhes da OS"
+                            className="inline-flex items-center space-x-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded-lg border border-blue-200 dark:border-blue-800 text-[11px] font-bold transition cursor-pointer shrink-0 active:scale-95 shadow-2xs"
                           >
-                            <FileText className="w-3.5 h-3.5" />
+                            <Eye className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                            <span>Abrir itens</span>
                           </button>
 
                           <button
+                            type="button"
                             onClick={() => onEditMaintenance(log)}
                             title="Editar OS"
-                            className="p-1.5 text-stone-400 hover:text-indigo-600 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+                            className="p-1.5 text-stone-400 hover:text-blue-600 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
 
                           <button
+                            type="button"
                             onClick={() => onDeleteMaintenance(log.id)}
                             title="Excluir OS"
                             className="p-1.5 text-stone-400 hover:text-rose-600 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
