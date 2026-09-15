@@ -16,6 +16,7 @@ import {
   Trash2, 
   Package, 
   ShoppingCart, 
+  Search,
   CheckCircle2, 
   HelpCircle,
   Clock,
@@ -1317,7 +1318,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 </div>
               </div>
 
-              {/* Tabela / Lista de Peças */}
+              {/* Tabela / Grid de Peças Horizontal Compacta (Padrão ERP) */}
               {partsItems.length === 0 ? (
                 <div className="p-6 text-center border-2 border-dashed border-blue-200 dark:border-stone-800 bg-blue-50/40 dark:bg-stone-800/20 rounded-2xl space-y-3">
                   <Package className="w-8 h-8 mx-auto text-blue-400" />
@@ -1335,280 +1336,209 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {partsItems.map((item, index) => (
-                    <div 
-                      key={item.id || index}
-                      className={`p-3.5 rounded-2xl border space-y-3 shadow-xs transition ${
-                        item.origin === 'recuperada_externa'
-                          ? 'bg-purple-50/70 dark:bg-purple-950/20 border-purple-200 dark:border-purple-900/50'
-                          : item.origin === 'externo_compra'
-                          ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50'
-                          : 'bg-blue-50/70 dark:bg-stone-800/40 border-blue-200 dark:border-stone-800'
-                      }`}
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-[11px] font-bold text-blue-900 dark:text-stone-300 uppercase tracking-wider font-mono">
-                            Item #{index + 1}
-                          </span>
-                          {item.origin === 'recuperada_externa' && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                              Serviço Terceiro / Recuperação
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          {/* Seletor de Origem com as 3 opções */}
-                          <div className="flex items-center bg-white dark:bg-stone-800 rounded-xl p-0.5 border border-blue-200 dark:border-stone-700 shadow-2xs">
-                            <button
-                              type="button"
-                              onClick={() => handleUpdatePartItem(index, { origin: 'almoxarifado_interno' })}
-                              className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition cursor-pointer flex items-center space-x-1 ${
-                                item.origin === 'almoxarifado_interno'
-                                  ? 'bg-blue-600 text-white shadow-xs'
-                                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
-                              }`}
-                            >
-                              <span>📦 Almoxarifado</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleUpdatePartItem(index, { origin: 'externo_compra' })}
-                              className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition cursor-pointer flex items-center space-x-1 ${
-                                item.origin === 'externo_compra'
-                                  ? 'bg-amber-600 text-white shadow-xs'
-                                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
-                              }`}
-                            >
-                              <span>🛒 Compra Nova</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleUpdatePartItem(index, { origin: 'recuperada_externa' })}
-                              className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition cursor-pointer flex items-center space-x-1 ${
-                                item.origin === 'recuperada_externa'
-                                  ? 'bg-purple-600 text-white shadow-xs'
-                                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
-                              }`}
-                            >
-                              <span>🔧 Recuperada / Torno</span>
-                            </button>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleRemovePartItem(index)}
-                            className="p-1.5 text-stone-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-stone-700 transition cursor-pointer"
-                            title="Remover item"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
-                        {/* 1. SE FOR ALMOXARIFADO INTERNO */}
-                        {item.origin === 'almoxarifado_interno' && (
-                          <>
-                            <div className="sm:col-span-6">
-                              <label className="block text-[10px] font-bold text-blue-900 dark:text-stone-400 mb-0.5">
-                                Item do Estoque (Almoxarifado)
-                              </label>
-                              <select
-                                value={item.inventoryItemId || ''}
-                                onChange={(e) => handleUpdatePartItem(index, { inventoryItemId: e.target.value })}
-                                className="w-full px-2.5 py-1.5 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600"
-                              >
-                                <option value="">Selecione do estoque ou digite a descrição ao lado...</option>
-                                {inventory.map(inv => (
-                                  <option key={inv.id} value={inv.id}>
-                                    {inv.name} (Saldo: {inv.quantity} {inv.unit} | {formatCurrencyBRL(inv.unitCost)})
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-
-                            <div className="sm:col-span-6">
-                              <label className="block text-[10px] font-bold text-blue-900 dark:text-stone-400 mb-0.5">
-                                Descrição da Peça / Código
-                              </label>
-                              <input
-                                type="text"
-                                value={item.description}
-                                onChange={(e) => handleUpdatePartItem(index, { description: e.target.value })}
-                                placeholder="Ex: Filtro de Combustível S10 / Faca 4230..."
-                                className="w-full px-2.5 py-1.5 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-lg text-xs text-stone-900 dark:text-stone-100 font-semibold focus:ring-2 focus:ring-blue-600"
-                                required
-                              />
-                            </div>
-                          </>
-                        )}
-
-                        {/* 2. SE FOR COMPRA NOVA EXTERNA */}
-                        {item.origin === 'externo_compra' && (
-                          <>
-                            <div className="sm:col-span-6">
-                              <label className="block text-[10px] font-bold text-blue-900 dark:text-stone-400 mb-0.5">
-                                Fornecedor / Loja de Peças
-                              </label>
-                              <div className="flex gap-1.5">
-                                <select
-                                  value={item.supplierName || ''}
-                                  onChange={(e) => handleUpdatePartItem(index, { supplierName: e.target.value })}
-                                  className="flex-1 px-2.5 py-1.5 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600"
-                                >
-                                  <option value="">Selecione o Fornecedor...</option>
-                                  {suppliers.map(sup => (
-                                    <option key={sup.id} value={sup.name}>{sup.name} ({sup.category})</option>
-                                  ))}
-                                  <option value="Loja de Peças da Cidade">Loja de Peças Local</option>
-                                  <option value="Concessionária Autorizada">Concessionária Autorizada</option>
-                                </select>
-                                <input
-                                  type="text"
-                                  placeholder="Ou digite..."
-                                  value={item.supplierName || ''}
-                                  onChange={(e) => handleUpdatePartItem(index, { supplierName: e.target.value })}
-                                  className="w-28 px-2 py-1.5 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-lg text-xs text-stone-900 dark:text-stone-100"
-                                />
-                              </div>
-                            </div>
-
-                            <div className="sm:col-span-6">
-                              <label className="block text-[10px] font-bold text-blue-900 dark:text-stone-400 mb-0.5">
-                                Descrição da Peça Comprada / Código
-                              </label>
-                              <input
-                                type="text"
-                                value={item.description}
-                                onChange={(e) => handleUpdatePartItem(index, { description: e.target.value })}
-                                placeholder="Ex: Rolamento Cônico 30210, Correia Dentada..."
-                                className="w-full px-2.5 py-1.5 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-lg text-xs text-stone-900 dark:text-stone-100 font-semibold focus:ring-2 focus:ring-blue-600"
-                                required
-                              />
-                            </div>
-                          </>
-                        )}
-
-                        {/* 3. SE FOR RECUPERADA / SERVIÇO EXTERNO (TORNO, RETÍFICA, SOLDA) */}
-                        {item.origin === 'recuperada_externa' && (
-                          <>
-                            <div className="sm:col-span-4">
-                              <label className="block text-[10px] font-bold text-purple-900 dark:text-purple-300 mb-0.5 flex items-center space-x-1">
-                                <Hammer className="w-3 h-3 text-purple-600" />
-                                <span>Prestador / Torno / Retífica Terceira *</span>
-                              </label>
-                              <input
-                                type="text"
-                                value={item.serviceProvider || item.supplierName || ''}
-                                onChange={(e) => handleUpdatePartItem(index, { 
-                                  serviceProvider: e.target.value,
-                                  supplierName: e.target.value
-                                })}
-                                placeholder="Ex: Torneadora Central, Retífica União, Soldas Especiais..."
-                                className="w-full px-2.5 py-1.5 bg-white dark:bg-stone-800 border border-purple-200 dark:border-purple-800 rounded-lg text-xs text-stone-900 dark:text-stone-100 font-semibold focus:ring-2 focus:ring-purple-600"
-                                required
-                              />
-                            </div>
-
-                            <div className="sm:col-span-4">
-                              <label className="block text-[10px] font-bold text-purple-900 dark:text-purple-300 mb-0.5">
-                                Peça / Componente em Recuperação *
-                              </label>
-                              <input
-                                type="text"
-                                value={item.description}
-                                onChange={(e) => handleUpdatePartItem(index, { description: e.target.value })}
-                                placeholder="Ex: Cilindro Hidráulico de Elevação, Eixo Traseiro, Cardan..."
-                                className="w-full px-2.5 py-1.5 bg-white dark:bg-stone-800 border border-purple-200 dark:border-purple-800 rounded-lg text-xs text-stone-900 dark:text-stone-100 font-semibold focus:ring-2 focus:ring-purple-600"
-                                required
-                              />
-                            </div>
-
-                            <div className="sm:col-span-4">
-                              <label className="block text-[10px] font-bold text-purple-900 dark:text-purple-300 mb-0.5">
-                                Descrição do Serviço Executado
-                              </label>
-                              <input
-                                type="text"
-                                value={item.serviceDescription || ''}
-                                onChange={(e) => handleUpdatePartItem(index, { serviceDescription: e.target.value })}
-                                placeholder="Ex: Enchimento e usinagem de colo de eixo, embuchamento em bronze..."
-                                className="w-full px-2.5 py-1.5 bg-white dark:bg-stone-800 border border-purple-200 dark:border-purple-800 rounded-lg text-xs text-stone-900 dark:text-stone-100 font-semibold focus:ring-2 focus:ring-purple-600"
-                              />
-                            </div>
-                          </>
-                        )}
-
-                        {/* Qtd, Unidade, Preço Unitário, Total */}
-                        <div className="sm:col-span-3">
-                          <label className="block text-[10px] font-bold text-blue-900 dark:text-stone-400 mb-0.5">
-                            Qtd
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0.01"
-                            value={item.quantity}
-                            onChange={(e) => handleUpdatePartItem(index, { quantity: parseFloat(e.target.value) || 0 })}
-                            className="w-full px-2.5 py-1.5 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-lg text-xs text-stone-900 dark:text-stone-100 font-semibold focus:ring-2 focus:ring-blue-600"
-                          />
-                        </div>
-
-                        <div className="sm:col-span-3">
-                          <label className="block text-[10px] font-bold text-blue-900 dark:text-stone-400 mb-0.5">
-                            Unidade
-                          </label>
-                          <select
-                            value={item.unit}
-                            onChange={(e) => handleUpdatePartItem(index, { unit: e.target.value })}
-                            className="w-full px-2.5 py-1.5 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-lg text-xs text-stone-900 dark:text-stone-100 font-semibold focus:ring-2 focus:ring-blue-600"
-                          >
-                            <option value="un">un (Unidade / Serviço)</option>
-                            <option value="serv">serv (Serviço)</option>
-                            <option value="L">L (Litros)</option>
-                            <option value="kg">kg (Quilos)</option>
-                            <option value="cx">cx (Caixa)</option>
-                            <option value="par">par (Par)</option>
-                            <option value="kit">kit (Kit)</option>
-                          </select>
-                        </div>
-
-                        <div className="sm:col-span-3">
-                          <label className="block text-[10px] font-bold text-blue-900 dark:text-stone-400 mb-0.5">
-                            {item.origin === 'recuperada_externa' ? 'Custo do Serviço (R$)' : 'Valor Unitário (R$)'}
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={item.unitCost || ''}
-                            onChange={(e) => handleUpdatePartItem(index, { unitCost: parseFloat(e.target.value) || 0 })}
-                            placeholder="0,00"
-                            className={`w-full px-2.5 py-1.5 bg-white dark:bg-stone-800 border rounded-lg text-xs text-stone-900 dark:text-stone-100 font-semibold focus:ring-2 ${
+                <div className="border border-stone-200 dark:border-stone-800 rounded-xl overflow-hidden bg-white dark:bg-stone-900 shadow-2xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse table-fixed min-w-[820px]">
+                      <colgroup>
+                        <col className="w-[18%]" />
+                        <col className="w-[36%]" />
+                        <col className="w-[8%]" />
+                        <col className="w-[11%]" />
+                        <col className="w-[12%]" />
+                        <col className="w-[11%]" />
+                        <col className="w-[4%]" />
+                      </colgroup>
+                      <thead>
+                        <tr className="bg-stone-100/80 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-700 text-[10px] font-bold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
+                          <th className="py-2 px-2.5">Origem</th>
+                          <th className="py-2 px-2.5">Descrição da Peça / Serviço</th>
+                          <th className="py-2 px-1 text-center">Qtd.</th>
+                          <th className="py-2 px-1.5">Unidade</th>
+                          <th className="py-2 px-2 text-right">Valor Unit. (R$)</th>
+                          <th className="py-2 px-2.5 text-right">Subtotal</th>
+                          <th className="py-2 px-1 text-center"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100 dark:divide-stone-800 text-xs">
+                        {partsItems.map((item, index) => (
+                          <tr 
+                            key={item.id || index}
+                            className={`transition-colors hover:bg-stone-50/70 dark:hover:bg-stone-800/40 ${
                               item.origin === 'recuperada_externa'
-                                ? 'border-purple-300 dark:border-purple-800 focus:ring-purple-600 font-bold'
-                                : 'border-blue-200 dark:border-stone-700 focus:ring-blue-600'
+                                ? 'bg-purple-50/40 dark:bg-purple-950/15'
+                                : item.origin === 'externo_compra'
+                                ? 'bg-amber-50/30 dark:bg-amber-950/15'
+                                : ''
                             }`}
-                          />
-                        </div>
+                          >
+                            {/* 1. Origem do Item */}
+                            <td className="py-1.5 px-2 align-middle">
+                              <select
+                                value={item.origin}
+                                onChange={(e) => handleUpdatePartItem(index, { origin: e.target.value as any })}
+                                className={`w-full px-2 py-1 text-xs font-semibold rounded-md border focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                                  item.origin === 'recuperada_externa'
+                                    ? 'bg-purple-100/70 dark:bg-purple-900/40 text-purple-900 dark:text-purple-300 border-purple-300 dark:border-purple-800'
+                                    : item.origin === 'externo_compra'
+                                    ? 'bg-amber-100/70 dark:bg-amber-900/40 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-800'
+                                    : 'bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 border-stone-300 dark:border-stone-700'
+                                }`}
+                              >
+                                <option value="almoxarifado_interno">📦 Almoxarifado</option>
+                                <option value="externo_compra">🛒 Compra Nova</option>
+                                <option value="recuperada_externa">🔧 Torno / Recuperada</option>
+                              </select>
+                            </td>
 
-                        <div className="sm:col-span-3">
-                          <label className="block text-[10px] font-bold text-blue-900 dark:text-stone-400 mb-0.5">
-                            Subtotal
-                          </label>
-                          <div className={`px-2.5 py-1.5 rounded-lg text-xs font-bold font-mono flex items-center justify-between ${
-                            item.origin === 'recuperada_externa'
-                              ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-900 dark:text-purple-300'
-                              : 'bg-blue-100/60 dark:bg-stone-800/80 text-blue-900 dark:text-blue-400'
-                          }`}>
-                            <span>{formatCurrencyBRL(item.totalCost || 0)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                            {/* 2. Descrição do Item com Busca / Seleção Integrada */}
+                            <td className="py-1.5 px-2 align-middle">
+                              {item.origin === 'almoxarifado_interno' ? (
+                                <div className="space-y-1">
+                                  <div className="relative flex items-center">
+                                    <input
+                                      type="text"
+                                      value={item.description}
+                                      onChange={(e) => handleUpdatePartItem(index, { description: e.target.value })}
+                                      placeholder="Descrição ou código da peça..."
+                                      className="w-full px-2 py-1 pr-6 text-xs rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                      required
+                                    />
+                                    <span className="absolute right-1.5 text-stone-400 pointer-events-none">
+                                      <Search className="w-3.5 h-3.5" />
+                                    </span>
+                                  </div>
+                                  {inventory && inventory.length > 0 && (
+                                    <select
+                                      value={item.inventoryItemId || ''}
+                                      onChange={(e) => handleUpdatePartItem(index, { inventoryItemId: e.target.value })}
+                                      className="w-full px-1.5 py-0.5 text-[11px] text-stone-600 dark:text-stone-400 bg-stone-50 dark:bg-stone-800/70 border border-stone-200 dark:border-stone-700 rounded focus:outline-none"
+                                    >
+                                      <option value="">Vincular saldo do estoque interno...</option>
+                                      {inventory.map(inv => (
+                                        <option key={inv.id} value={inv.id}>
+                                          {inv.name} (Saldo: {inv.quantity} {inv.unit} • {formatCurrencyBRL(inv.unitCost)})
+                                        </option>
+                                      ))}
+                                    </select>
+                                  )}
+                                </div>
+                              ) : item.origin === 'externo_compra' ? (
+                                <div className="space-y-1">
+                                  <input
+                                    type="text"
+                                    value={item.description}
+                                    onChange={(e) => handleUpdatePartItem(index, { description: e.target.value })}
+                                    placeholder="Ex: Rolamento Cônico, Correia Dentada..."
+                                    className="w-full px-2 py-1 text-xs rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-medium focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                    required
+                                  />
+                                  <input
+                                    type="text"
+                                    placeholder="Fornecedor / Loja de Peças..."
+                                    value={item.supplierName || ''}
+                                    onChange={(e) => handleUpdatePartItem(index, { supplierName: e.target.value })}
+                                    className="w-full px-1.5 py-0.5 text-[11px] text-stone-600 dark:text-stone-400 bg-stone-50 dark:bg-stone-800/70 border border-stone-200 dark:border-stone-700 rounded focus:outline-none"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="space-y-1">
+                                  <input
+                                    type="text"
+                                    value={item.description}
+                                    onChange={(e) => handleUpdatePartItem(index, { description: e.target.value })}
+                                    placeholder="Componente (ex: Cilindro Hidráulico, Cardan)..."
+                                    className="w-full px-2 py-1 text-xs rounded-md border border-purple-300 dark:border-purple-800 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-medium focus:outline-none focus:ring-1 focus:ring-purple-500"
+                                    required
+                                  />
+                                  <div className="flex gap-1">
+                                    <input
+                                      type="text"
+                                      placeholder="Torno / Prestador *"
+                                      value={item.serviceProvider || item.supplierName || ''}
+                                      onChange={(e) => handleUpdatePartItem(index, { 
+                                        serviceProvider: e.target.value,
+                                        supplierName: e.target.value
+                                      })}
+                                      className="w-1/2 px-1.5 py-0.5 text-[11px] text-purple-900 dark:text-purple-300 bg-purple-50/60 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded focus:outline-none"
+                                      required
+                                    />
+                                    <input
+                                      type="text"
+                                      placeholder="Serviço (ex: usinagem)..."
+                                      value={item.serviceDescription || ''}
+                                      onChange={(e) => handleUpdatePartItem(index, { serviceDescription: e.target.value })}
+                                      className="w-1/2 px-1.5 py-0.5 text-[11px] text-stone-600 dark:text-stone-400 bg-stone-50 dark:bg-stone-800/70 border border-stone-200 dark:border-stone-700 rounded focus:outline-none"
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+
+                            {/* 3. Quantidade */}
+                            <td className="py-1.5 px-1 align-middle">
+                              <input
+                                type="number"
+                                step="any"
+                                min="0.01"
+                                value={item.quantity}
+                                onChange={(e) => handleUpdatePartItem(index, { quantity: parseFloat(e.target.value) || 0 })}
+                                className="w-full px-1.5 py-1 text-xs font-mono font-bold text-center rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              />
+                            </td>
+
+                            {/* 4. Unidade */}
+                            <td className="py-1.5 px-1.5 align-middle">
+                              <select
+                                value={item.unit}
+                                onChange={(e) => handleUpdatePartItem(index, { unit: e.target.value })}
+                                className="w-full px-1.5 py-1 text-xs rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              >
+                                <option value="un">UN</option>
+                                <option value="serv">SERV</option>
+                                <option value="L">L</option>
+                                <option value="kg">KG</option>
+                                <option value="cx">CX</option>
+                                <option value="par">PAR</option>
+                                <option value="kit">KIT</option>
+                              </select>
+                            </td>
+
+                            {/* 5. Valor Unitário */}
+                            <td className="py-1.5 px-2 align-middle">
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={item.unitCost || ''}
+                                onChange={(e) => handleUpdatePartItem(index, { unitCost: parseFloat(e.target.value) || 0 })}
+                                placeholder="0,00"
+                                className="w-full px-2 py-1 text-xs font-mono text-right rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              />
+                            </td>
+
+                            {/* 6. Subtotal Calculado */}
+                            <td className="py-1.5 px-2.5 align-middle text-right">
+                              <span className="text-xs font-mono font-bold text-stone-800 dark:text-stone-200 whitespace-nowrap">
+                                {formatCurrencyBRL(item.totalCost || 0)}
+                              </span>
+                            </td>
+
+                            {/* 7. Exclusão rápida */}
+                            <td className="py-1.5 px-1 align-middle text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleRemovePartItem(index)}
+                                className="p-1 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded-md transition cursor-pointer"
+                                title="Remover item da OS"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
 
