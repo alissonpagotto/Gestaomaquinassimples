@@ -62,10 +62,12 @@ interface ParsedNfeItem {
   totalPrice: number;
   barcode?: string;
   linkedInventoryId?: string;
-  markupPercent?: number;   // % Cálc. (% Margem/Markup de Lucro)
-  salePrice?: number;       // V. Final (R$) - Preço de Venda Final
-  wholesalePrice?: number;  // V. Atacado (R$) - Preço de Venda em Atacado
-  promoPrice?: number;      // V. Promo (R$) - Preço Promocional
+  markupPercent?: number;          // % Cálc. (% Margem/Markup de Lucro V. Final)
+  salePrice?: number;              // V. Final (R$) - Preço de Venda Final
+  wholesaleMarkupPercent?: number; // % Atac. (% Margem/Markup Atacado)
+  wholesalePrice?: number;         // V. Atacado (R$) - Preço de Venda em Atacado
+  promoMarkupPercent?: number;     // % Promo. (% Margem/Markup Promoção)
+  promoPrice?: number;             // V. Promo (R$) - Preço Promocional
 }
 
 interface ParsedNfeInstallment {
@@ -1558,12 +1560,25 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
           if (calculatedSale === undefined && markup !== undefined && item.unitPrice > 0) {
             calculatedSale = Math.round((item.unitPrice * (1 + markup / 100)) * 100) / 100;
           }
+
+          let calcWholesaleMarkup: number | undefined = undefined;
+          if (match?.wholesalePrice !== undefined && item.unitPrice > 0) {
+            calcWholesaleMarkup = Math.round(((match.wholesalePrice - item.unitPrice) / item.unitPrice) * 100 * 10) / 10;
+          }
+
+          let calcPromoMarkup: number | undefined = undefined;
+          if (match?.promoPrice !== undefined && item.unitPrice > 0) {
+            calcPromoMarkup = Math.round(((match.promoPrice - item.unitPrice) / item.unitPrice) * 100 * 10) / 10;
+          }
+
           return {
             ...item,
             linkedInventoryId: match?.id,
             markupPercent: markup,
             salePrice: calculatedSale,
+            wholesaleMarkupPercent: calcWholesaleMarkup,
             wholesalePrice: match?.wholesalePrice,
+            promoMarkupPercent: calcPromoMarkup,
             promoPrice: match?.promoPrice,
           };
         });
@@ -1807,15 +1822,27 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
 
     let newMarkup = current.markupPercent;
     let newSalePrice = targetProduct?.salePrice !== undefined ? targetProduct.salePrice : current.salePrice;
+    let newWholesaleMarkup = current.wholesaleMarkupPercent;
+    let newWholesalePrice = targetProduct?.wholesalePrice !== undefined ? targetProduct.wholesalePrice : current.wholesalePrice;
+    let newPromoMarkup = current.promoMarkupPercent;
+    let newPromoPrice = targetProduct?.promoPrice !== undefined ? targetProduct.promoPrice : current.promoPrice;
 
     if (targetProduct) {
+      const unit = current.unitPrice || 0;
       if (targetProduct.profitMargin !== undefined) {
         newMarkup = targetProduct.profitMargin;
       }
       if (targetProduct.salePrice !== undefined) {
         newSalePrice = targetProduct.salePrice;
-      } else if (newMarkup !== undefined && (current.unitPrice || 0) > 0) {
-        newSalePrice = Math.round(((current.unitPrice || 0) * (1 + newMarkup / 100)) * 100) / 100;
+      } else if (newMarkup !== undefined && unit > 0) {
+        newSalePrice = Math.round((unit * (1 + newMarkup / 100)) * 100) / 100;
+      }
+
+      if (targetProduct.wholesalePrice !== undefined && unit > 0) {
+        newWholesaleMarkup = Math.round(((targetProduct.wholesalePrice - unit) / unit) * 100 * 10) / 10;
+      }
+      if (targetProduct.promoPrice !== undefined && unit > 0) {
+        newPromoMarkup = Math.round(((targetProduct.promoPrice - unit) / unit) * 100 * 10) / 10;
       }
     }
 
@@ -1824,8 +1851,10 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       linkedInventoryId: productId,
       markupPercent: newMarkup,
       salePrice: newSalePrice,
-      wholesalePrice: targetProduct?.wholesalePrice !== undefined ? targetProduct.wholesalePrice : current.wholesalePrice,
-      promoPrice: targetProduct?.promoPrice !== undefined ? targetProduct.promoPrice : current.promoPrice,
+      wholesaleMarkupPercent: newWholesaleMarkup,
+      wholesalePrice: newWholesalePrice,
+      promoMarkupPercent: newPromoMarkup,
+      promoPrice: newPromoPrice,
     };
     setParsedData({
       ...parsedData,
@@ -1948,7 +1977,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
   // Atualização interativa dos itens da NF-e com recálculo automático dos totais
   const handleItemChange = (
     index: number,
-    field: 'description' | 'quantity' | 'unitPrice' | 'totalPrice' | 'markupPercent' | 'salePrice' | 'wholesalePrice' | 'promoPrice',
+    field: 'description' | 'quantity' | 'unitPrice' | 'totalPrice' | 'markupPercent' | 'salePrice' | 'wholesaleMarkupPercent' | 'wholesalePrice' | 'promoMarkupPercent' | 'promoPrice',
     value: string
   ) => {
     if (!parsedData || !parsedData.items) return;
@@ -1968,9 +1997,15 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       const num = sanitized === '' ? 0 : parseFloat(sanitized);
       currentItem.unitPrice = isNaN(num) ? 0 : num;
       currentItem.totalPrice = Math.round(((currentItem.quantity || 0) * currentItem.unitPrice) * 100) / 100;
-      // Se já houver % de margem configurada, recalcula o preço final proporcionalmente
+      // Se já houver % de margem configurada, recalcula os preços de venda proporcionalmente
       if (currentItem.markupPercent !== undefined && currentItem.unitPrice > 0) {
         currentItem.salePrice = Math.round((currentItem.unitPrice * (1 + currentItem.markupPercent / 100)) * 100) / 100;
+      }
+      if (currentItem.wholesaleMarkupPercent !== undefined && currentItem.unitPrice > 0) {
+        currentItem.wholesalePrice = Math.round((currentItem.unitPrice * (1 + currentItem.wholesaleMarkupPercent / 100)) * 100) / 100;
+      }
+      if (currentItem.promoMarkupPercent !== undefined && currentItem.unitPrice > 0) {
+        currentItem.promoPrice = Math.round((currentItem.unitPrice * (1 + currentItem.promoMarkupPercent / 100)) * 100) / 100;
       }
     } else if (field === 'totalPrice') {
       const sanitized = value.replace(',', '.');
@@ -1981,6 +2016,12 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
         if (currentItem.markupPercent !== undefined && currentItem.unitPrice > 0) {
           currentItem.salePrice = Math.round((currentItem.unitPrice * (1 + currentItem.markupPercent / 100)) * 100) / 100;
         }
+        if (currentItem.wholesaleMarkupPercent !== undefined && currentItem.unitPrice > 0) {
+          currentItem.wholesalePrice = Math.round((currentItem.unitPrice * (1 + currentItem.wholesaleMarkupPercent / 100)) * 100) / 100;
+        }
+        if (currentItem.promoMarkupPercent !== undefined && currentItem.unitPrice > 0) {
+          currentItem.promoPrice = Math.round((currentItem.unitPrice * (1 + currentItem.promoMarkupPercent / 100)) * 100) / 100;
+        }
       }
     } else if (field === 'markupPercent') {
       // Regra solicitada: V. FINAL = V. UNIT + (V. UNIT * (% CÁLC / 100))
@@ -1990,8 +2031,6 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       const unit = currentItem.unitPrice || 0;
       if (currentItem.markupPercent !== undefined && unit > 0) {
         currentItem.salePrice = Math.round((unit * (1 + currentItem.markupPercent / 100)) * 100) / 100;
-      } else if (currentItem.markupPercent === undefined) {
-        // Se limpou o markup, mantém o salePrice ou limpa se desejar
       }
     } else if (field === 'salePrice') {
       const sanitized = value.replace(',', '.');
@@ -2002,14 +2041,42 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
       if (currentItem.salePrice !== undefined && unit > 0) {
         currentItem.markupPercent = Math.round(((currentItem.salePrice - unit) / unit) * 100 * 10) / 10;
       }
+    } else if (field === 'wholesaleMarkupPercent') {
+      // Regra solicitada: V. ATACADO = V. UNIT + (V. UNIT * (% ATAC / 100))
+      const sanitized = value.replace(',', '.');
+      const num = sanitized === '' ? undefined : parseFloat(sanitized);
+      currentItem.wholesaleMarkupPercent = num === undefined || isNaN(num) ? undefined : num;
+      const unit = currentItem.unitPrice || 0;
+      if (currentItem.wholesaleMarkupPercent !== undefined && unit > 0) {
+        currentItem.wholesalePrice = Math.round((unit * (1 + currentItem.wholesaleMarkupPercent / 100)) * 100) / 100;
+      }
     } else if (field === 'wholesalePrice') {
       const sanitized = value.replace(',', '.');
       const num = sanitized === '' ? undefined : parseFloat(sanitized);
       currentItem.wholesalePrice = num === undefined || isNaN(num) ? undefined : num;
+      // Se digitou diretamente no preço atacado, calcula a margem reversa
+      const unit = currentItem.unitPrice || 0;
+      if (currentItem.wholesalePrice !== undefined && unit > 0) {
+        currentItem.wholesaleMarkupPercent = Math.round(((currentItem.wholesalePrice - unit) / unit) * 100 * 10) / 10;
+      }
+    } else if (field === 'promoMarkupPercent') {
+      // Regra solicitada: V. PROMO = V. UNIT + (V. UNIT * (% PROMO / 100))
+      const sanitized = value.replace(',', '.');
+      const num = sanitized === '' ? undefined : parseFloat(sanitized);
+      currentItem.promoMarkupPercent = num === undefined || isNaN(num) ? undefined : num;
+      const unit = currentItem.unitPrice || 0;
+      if (currentItem.promoMarkupPercent !== undefined && unit > 0) {
+        currentItem.promoPrice = Math.round((unit * (1 + currentItem.promoMarkupPercent / 100)) * 100) / 100;
+      }
     } else if (field === 'promoPrice') {
       const sanitized = value.replace(',', '.');
       const num = sanitized === '' ? undefined : parseFloat(sanitized);
       currentItem.promoPrice = num === undefined || isNaN(num) ? undefined : num;
+      // Se digitou diretamente no preço promocional, calcula a margem reversa
+      const unit = currentItem.unitPrice || 0;
+      if (currentItem.promoPrice !== undefined && unit > 0) {
+        currentItem.promoMarkupPercent = Math.round(((currentItem.promoPrice - unit) / unit) * 100 * 10) / 10;
+      }
     }
 
     updatedItems[index] = currentItem;
@@ -2920,13 +2987,19 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                 V. Final (R$)
                               </th>
 
-                              {/* Opcionais: Atacado & Promoção */}
+                              {/* Opcionais: Atacado & Promoção com Porcentagens de Margem */}
                               {showExtraPrices && (
                                 <>
-                                  <th className="py-1 px-1 text-right w-[8%] min-w-[70px] bg-sky-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-l border-stone-200 dark:border-stone-700">
+                                  <th className="py-1 px-1 text-right w-[6%] min-w-[50px] bg-cyan-100/90 dark:bg-cyan-950/50 text-cyan-950 dark:text-cyan-200 border-l border-cyan-200 dark:border-cyan-800">
+                                    % Atac.
+                                  </th>
+                                  <th className="py-1 px-1 text-right w-[7%] min-w-[65px] bg-cyan-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 border-r border-stone-200 dark:border-stone-700">
                                     V. Atacado (R$)
                                   </th>
-                                  <th className="py-1 px-1 text-right w-[8%] min-w-[70px] bg-sky-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-l border-stone-200 dark:border-stone-700">
+                                  <th className="py-1 px-1 text-right w-[6%] min-w-[50px] bg-orange-100/90 dark:bg-orange-950/50 text-orange-950 dark:text-orange-200 border-l border-orange-200 dark:border-orange-800">
+                                    % Promo.
+                                  </th>
+                                  <th className="py-1 px-1 text-right w-[7%] min-w-[65px] bg-orange-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 border-r border-stone-200 dark:border-stone-700">
                                     V. Promo (R$)
                                   </th>
                                 </>
@@ -3100,10 +3173,27 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                   />
                                 </td>
 
-                                {/* Opcionais: Atacado & Promoção */}
+                                {/* Opcionais: Atacado & Promoção com Inputs de Porcentagem (% Atac. e % Promo.) */}
                                 {showExtraPrices && (
                                   <>
-                                    <td className="py-0.5 px-1 text-right align-middle border-l border-stone-200 dark:border-stone-700">
+                                    {/* % ATAC. */}
+                                    <td className="py-0.5 px-1 text-right align-middle bg-cyan-50/40 dark:bg-cyan-950/20 border-l border-cyan-200/60 dark:border-cyan-800/40">
+                                      <div className="flex items-center justify-end space-x-0.5">
+                                        <input
+                                          type="number"
+                                          step="0.1"
+                                          value={item.wholesaleMarkupPercent ?? ''}
+                                          onChange={(e) => handleItemChange(idx, 'wholesaleMarkupPercent', e.target.value)}
+                                          placeholder="0"
+                                          className="w-full max-w-[48px] h-6 px-0.5 text-[10px] text-right rounded border border-cyan-300 dark:border-cyan-700 bg-cyan-50/80 dark:bg-stone-900 text-cyan-950 dark:text-cyan-200 font-mono font-bold focus:ring-1 focus:ring-cyan-500 ml-auto block"
+                                          title="Margem Atacado (%): V. Atacado = V. Unit + (V. Unit * % / 100)"
+                                        />
+                                        <span className="text-[8.5px] font-black text-cyan-900 dark:text-cyan-300 shrink-0">%</span>
+                                      </div>
+                                    </td>
+
+                                    {/* V. ATACADO (R$) */}
+                                    <td className="py-0.5 px-1 text-right align-middle border-r border-stone-200 dark:border-stone-700">
                                       <input
                                         type="number"
                                         step="0.01"
@@ -3111,11 +3201,29 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                         value={item.wholesalePrice ?? ''}
                                         onChange={(e) => handleItemChange(idx, 'wholesalePrice', e.target.value)}
                                         placeholder="0.00"
-                                        className="w-full max-w-[75px] h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-[#0963cb] ml-auto block"
+                                        className="w-full max-w-[65px] h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-[#0963cb] ml-auto block"
                                         title="Preço de Venda em Atacado (V. Atacado)"
                                       />
                                     </td>
-                                    <td className="py-0.5 px-1 text-right align-middle border-l border-stone-200 dark:border-stone-700">
+
+                                    {/* % PROMO. */}
+                                    <td className="py-0.5 px-1 text-right align-middle bg-orange-50/40 dark:bg-orange-950/20 border-l border-orange-200/60 dark:border-orange-800/40">
+                                      <div className="flex items-center justify-end space-x-0.5">
+                                        <input
+                                          type="number"
+                                          step="0.1"
+                                          value={item.promoMarkupPercent ?? ''}
+                                          onChange={(e) => handleItemChange(idx, 'promoMarkupPercent', e.target.value)}
+                                          placeholder="0"
+                                          className="w-full max-w-[48px] h-6 px-0.5 text-[10px] text-right rounded border border-orange-300 dark:border-orange-700 bg-orange-50/80 dark:bg-stone-900 text-orange-950 dark:text-orange-200 font-mono font-bold focus:ring-1 focus:ring-orange-500 ml-auto block"
+                                          title="Margem Promoção (%): V. Promo = V. Unit + (V. Unit * % / 100)"
+                                        />
+                                        <span className="text-[8.5px] font-black text-orange-900 dark:text-orange-300 shrink-0">%</span>
+                                      </div>
+                                    </td>
+
+                                    {/* V. PROMO (R$) */}
+                                    <td className="py-0.5 px-1 text-right align-middle border-r border-stone-200 dark:border-stone-700">
                                       <input
                                         type="number"
                                         step="0.01"
@@ -3123,7 +3231,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                         value={item.promoPrice ?? ''}
                                         onChange={(e) => handleItemChange(idx, 'promoPrice', e.target.value)}
                                         placeholder="0.00"
-                                        className="w-full max-w-[75px] h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-[#0963cb] ml-auto block"
+                                        className="w-full max-w-[65px] h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-[#0963cb] ml-auto block"
                                         title="Preço Promocional (V. Promo)"
                                       />
                                     </td>
