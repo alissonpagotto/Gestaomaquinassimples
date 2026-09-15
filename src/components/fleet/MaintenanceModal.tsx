@@ -1376,12 +1376,12 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                   <div className="overflow-x-auto overflow-y-visible">
                     <table className="w-full text-left border-collapse table-fixed min-w-[760px]">
                       <colgroup>
-                        <col className="w-[11%]" /> {/* Num. (ID) */}
-                        <col className="w-[45%]" /> {/* Descrição */}
-                        <col className="w-[15%]" /> {/* Valor Unitário */}
-                        <col className="w-[12%]" /> {/* Qtde */}
-                        <col className="w-[13%]" /> {/* Total */}
-                        <col className="w-[4%]" />  {/* Ações */}
+                        <col className="w-[11%]" />
+                        <col className="w-[45%]" />
+                        <col className="w-[15%]" />
+                        <col className="w-[12%]" />
+                        <col className="w-[13%]" />
+                        <col className="w-[4%]" />
                       </colgroup>
                       <thead>
                         <tr className="bg-stone-100 dark:bg-stone-800/90 border-b border-stone-200 dark:border-stone-700 text-[10px] font-bold text-stone-600 dark:text-stone-300 uppercase tracking-wider select-none">
