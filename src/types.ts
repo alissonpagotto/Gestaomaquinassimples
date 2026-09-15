@@ -670,6 +670,12 @@ export interface MaintenancePartItem {
   stockDeducted?: boolean; // Controle interno para evitar baixa duplicada no estoque
 }
 
+export interface MaintenanceLaborPeriod {
+  id: string;
+  startTime: string; // Ex: "08:00"
+  endTime: string;   // Ex: "12:00"
+}
+
 export interface MaintenanceLaborItem {
   id: string;
   description?: string;
@@ -681,6 +687,7 @@ export interface MaintenanceLaborItem {
   totalCost: number;
   date?: string; // Data em que as horas foram trabalhadas
   dataLancamento?: string; // Data do lançamento das horas
+  periods?: MaintenanceLaborPeriod[]; // Múltiplos períodos de Entrada e Saída
 }
 
 export interface MaintenanceNfeLink {

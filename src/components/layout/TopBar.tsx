@@ -58,7 +58,7 @@ export const TopBar: React.FC<TopBarProps> = ({
     .filter((s): s is typeof ALL_SHORTCUTS[number] => Boolean(s));
 
   return (
-    <div id="top-bar-container" className="no-print sticky top-0 z-30 bg-[#0963cb] border-b border-[#0852a8] shadow-xs">
+    <div id="top-bar-container" className="no-print sticky top-0 z-30 bg-[#0963cb] dark:bg-stone-900 border-b border-blue-900/30 dark:border-stone-800 shadow-sm">
       
       {/* Top Banner: Período de Teste */}
       <div className="bg-rose-50 dark:bg-rose-950/40 border-b border-rose-200 dark:border-rose-900/50 px-4 py-1.5 flex items-center justify-between text-xs text-rose-700 dark:text-rose-300">
@@ -80,8 +80,8 @@ export const TopBar: React.FC<TopBarProps> = ({
         </div>
       </div>
 
-      {/* Horizontal Carousel & Controls Bar: Fundo azul padrão #0963cb */}
-      <div className="px-3 sm:px-4 py-1.5 flex items-center justify-between gap-2 bg-[#0963cb]">
+      {/* Horizontal Carousel & Controls Bar: Fundo azul vibrante #0963cb */}
+      <div className="px-3 sm:px-4 py-1.5 flex items-center justify-between gap-2 bg-[#0963cb] dark:bg-stone-900">
         
         {/* Mobile menu trigger */}
         <button
@@ -98,7 +98,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           {/* Scroll Left Button */}
           <button
             onClick={scrollLeft}
-            className="p-1 rounded-full text-white/80 hover:text-white hover:bg-white/15 transition shrink-0 cursor-pointer"
+            className="p-1 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition shrink-0 cursor-pointer"
             aria-label="Rolar para esquerda"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -127,19 +127,16 @@ export const TopBar: React.FC<TopBarProps> = ({
                     inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition shrink-0 cursor-pointer border select-none
                     ${
                       isSelected
-                        ? 'bg-[#b0d2ed] text-[#000000] border-[#91bddf] shadow-xs'
-                        : 'bg-[#074ea3]/80 hover:bg-[#074ea3] text-white hover:text-white border-blue-400/30'
+                        ? 'bg-white text-blue-950 border-white shadow-xs dark:bg-sky-600 dark:text-white dark:border-sky-500'
+                        : 'bg-blue-600/60 hover:bg-blue-600/80 text-white/95 border-blue-400/40 dark:bg-stone-800 dark:text-stone-200 dark:border-stone-700'
                     }
                   `}
-                  style={isSelected ? { backgroundColor: '#b0d2ed', color: '#000000' } : undefined}
                 >
                   <Icon 
-                    className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-[#000000]' : 'text-blue-100'}`} 
-                    style={isSelected ? { color: '#000000' } : undefined}
+                    className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-blue-900 dark:text-white' : 'text-blue-200 dark:text-stone-300'}`} 
                   />
                   <span 
-                    className={isSelected ? 'text-[#000000] font-bold' : 'text-white'}
-                    style={isSelected ? { color: '#000000', fontWeight: 700 } : undefined}
+                    className={isSelected ? 'text-blue-950 dark:text-white font-bold' : 'text-white dark:text-stone-200 font-semibold'}
                   >
                     {pill.label}
                   </span>
@@ -151,7 +148,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           {/* Scroll Right Button */}
           <button
             onClick={scrollRight}
-            className="p-1 rounded-full text-white/80 hover:text-white hover:bg-white/15 transition shrink-0 cursor-pointer"
+            className="p-1 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition shrink-0 cursor-pointer"
             aria-label="Rolar para direita"
           >
             <ChevronRight className="w-4 h-4" />
@@ -160,7 +157,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         </div>
 
         {/* Right Tools: Modal de Personalizar Atalhos, Supabase, Notificações e Tema */}
-        <div className="flex items-center space-x-1.5 shrink-0 pl-2 border-l border-white/20">
+        <div className="flex items-center space-x-1.5 shrink-0 pl-2 border-l border-white/20 dark:border-stone-700">
           
           {/* Botão de Atalhos do Topo (Abre o Modal com Checkboxes) */}
           {onOpenCustomizeShortcuts && (
@@ -170,9 +167,9 @@ export const TopBar: React.FC<TopBarProps> = ({
               onClick={onOpenCustomizeShortcuts}
               title="Personalizar Atalhos do Topo"
               aria-label="Personalizar Atalhos do Topo"
-              className="p-2 rounded-lg text-white/90 hover:text-white hover:bg-white/15 transition cursor-pointer flex items-center justify-center active:scale-95"
+              className="p-2 rounded-lg text-white hover:bg-white/15 transition cursor-pointer flex items-center justify-center active:scale-95"
             >
-              <SlidersHorizontal className="w-4 h-4 text-white" />
+              <SlidersHorizontal className="w-4 h-4" />
             </button>
           )}
 
@@ -183,7 +180,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           <button
             onClick={() => setActiveTab('funcionarios')}
             title="Notificações e Avisos de CNH"
-            className="relative p-2 rounded-lg text-white/90 hover:text-white hover:bg-white/15 transition cursor-pointer"
+            className="relative p-2 rounded-lg text-white hover:bg-white/15 transition cursor-pointer"
           >
             <Bell className="w-4 h-4" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
@@ -196,7 +193,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             onClick={() => setIsDarkMode(prev => !prev)}
             title={isDarkMode ? 'Mudar para modo claro (Light)' : 'Mudar para modo escuro (Dark)'}
             aria-label="Alternar tema claro e escuro"
-            className="p-2 rounded-lg text-white/90 hover:text-white hover:bg-white/15 transition cursor-pointer flex items-center justify-center active:scale-95"
+            className="p-2 rounded-lg text-white hover:bg-white/15 transition cursor-pointer flex items-center justify-center active:scale-95"
           >
             {isDarkMode ? (
               <Sun className="w-4 h-4 fill-amber-400/20 text-amber-300" />

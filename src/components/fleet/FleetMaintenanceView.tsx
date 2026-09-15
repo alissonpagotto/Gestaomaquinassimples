@@ -344,9 +344,9 @@ export const FleetMaintenanceView: React.FC<FleetMaintenanceViewProps> = ({
           {/* Botão Nova OS */}
           <button
             onClick={onOpenNewMaintenance}
-            className="inline-flex items-center space-x-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm transition active:scale-95 cursor-pointer shrink-0"
+            className="inline-flex items-center space-x-2 px-4 py-2.5 bg-[#8da7eb] hover:bg-[#7292e7] text-slate-950 border border-[#7292e7] text-xs font-black rounded-xl shadow-xs transition active:scale-95 cursor-pointer shrink-0"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 text-slate-950" />
             <span>Nova Ordem de Manutenção</span>
           </button>
         </div>

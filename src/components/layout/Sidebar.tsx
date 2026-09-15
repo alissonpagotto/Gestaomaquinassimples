@@ -107,7 +107,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <aside 
         id="main-sidebar"
         className={`
-          no-print fixed inset-y-0 left-0 z-40 w-64 bg-blue-700 dark:bg-stone-900 border-r border-blue-800/60 dark:border-stone-800 flex flex-col justify-between transition-transform duration-300 ease-in-out
+          no-print fixed inset-y-0 left-0 z-40 w-64 bg-blue-700 dark:bg-stone-900 border-r border-blue-800/60 flex flex-col justify-between transition-transform duration-300 ease-in-out
           ${isOpenMobile ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
@@ -115,9 +115,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex flex-col flex-1 overflow-y-auto bg-blue-700 dark:bg-stone-900 scrollbar-none">
           
           {/* Brand Header */}
-          <div className="p-4 sm:p-5 border-b border-blue-600/40 dark:border-stone-800 flex items-center space-x-3 cursor-pointer" onClick={() => handleSelect('dashboard')}>
+          <div className="p-4 sm:p-5 border-b border-blue-800/60 flex items-center space-x-3 cursor-pointer bg-blue-800/40 dark:bg-stone-900" onClick={() => handleSelect('dashboard')}>
             {companyProfile?.logoUrl ? (
-              <div className="w-10 h-10 rounded-xl bg-white/10 dark:bg-emerald-950/60 border border-white/20 dark:border-emerald-700 p-1 flex items-center justify-center shadow-xs shrink-0 overflow-hidden">
+              <div className="w-10 h-10 rounded-xl bg-white dark:bg-emerald-950/60 border border-slate-200 dark:border-emerald-700 p-1 flex items-center justify-center shadow-xs shrink-0 overflow-hidden">
                 <img 
                   src={companyProfile.logoUrl} 
                   alt="Logo" 
@@ -126,7 +126,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 />
               </div>
             ) : (
-              <div className="w-10 h-10 rounded-xl bg-blue-500 dark:bg-emerald-600 flex items-center justify-center text-white shadow-md shadow-blue-900/30 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-blue-500 dark:bg-emerald-600 flex items-center justify-center text-white shadow-sm shrink-0">
                 <Sprout className="w-6 h-6 stroke-[2.5]" />
               </div>
             )}
@@ -134,15 +134,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <h2 className="text-base font-extrabold text-white truncate tracking-tight font-['Outfit']">
                 {companyProfile?.tradeName || 'Silagem Fácil'}
               </h2>
-              <p className="text-[10px] font-black text-blue-100/80 dark:text-stone-400 tracking-wider uppercase">
+              <p className="text-[10px] font-black text-blue-200 dark:text-stone-400 tracking-wider uppercase">
                 GESTÃO AGRÍCOLA
               </p>
             </div>
           </div>
 
           {/* Navigation Section Header */}
-          <div className="px-4 pt-3 pb-1 text-[11px] font-black text-black dark:text-stone-400 uppercase tracking-wider">
-            <span style={{ color: '#000000' }} className="text-black">MENU PRINCIPAL</span>
+          <div className="px-4 pt-3 pb-1 text-[11px] font-bold text-blue-200/70 dark:text-stone-400 uppercase tracking-wider">
+            <span>MENU PRINCIPAL</span>
           </div>
 
           {/* Navigation List */}
@@ -166,19 +166,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer group
                     ${
                       isActive
-                        ? 'bg-blue-500 text-white font-bold shadow-sm shadow-blue-900/30 dark:bg-sky-600 dark:text-white'
-                        : 'text-black dark:text-stone-300 hover:bg-blue-600/30 dark:hover:bg-stone-800 hover:text-white dark:hover:text-white'
+                        ? 'bg-blue-500 text-white font-bold shadow-sm shadow-blue-900/30 border border-blue-400/50 dark:bg-sky-600 dark:text-white dark:border-sky-500'
+                        : 'text-white/80 dark:text-stone-300 hover:bg-blue-600/40 dark:hover:bg-stone-800 hover:text-white'
                     }
                   `}
                 >
                   <div className="flex items-center space-x-3 truncate">
                     <Icon 
-                      style={!isActive ? { color: '#000000' } : undefined}
-                      className={`w-4 h-4 shrink-0 transition ${isActive ? 'text-white' : 'text-black dark:text-stone-400 group-hover:text-white'}`} 
+                      className={`w-4 h-4 shrink-0 transition ${isActive ? 'text-white' : 'text-blue-200 group-hover:text-white'}`} 
                     />
                     <span 
-                      style={!isActive ? { color: '#000000' } : undefined}
-                      className={`truncate ${isActive ? 'text-white' : 'text-black'}`}
+                      className={`truncate ${isActive ? 'text-white font-bold' : 'text-white/90 group-hover:text-white'}`}
                     >
                       {item.label}
                     </span>
@@ -189,7 +187,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   )}
 
                   {!isActive && item.hasSubmenu && (
-                    <ChevronRight className="w-3.5 h-3.5 text-black/70 dark:text-stone-500 group-hover:text-white shrink-0" />
+                    <ChevronRight className="w-3.5 h-3.5 text-blue-300/60 dark:text-stone-500 group-hover:text-white shrink-0" />
                   )}
                 </button>
               );
@@ -199,19 +197,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Bottom Section: Logout */}
-        <div className="p-3 border-t border-blue-600/40 dark:border-stone-800 bg-blue-700 dark:bg-stone-900">
+        <div className="p-3 border-t border-blue-800/60 bg-blue-800/30 dark:bg-stone-900">
           <button
             id="btn-sidebar-logout"
             onClick={() => {
               setActiveTab('dashboard');
             }}
-            className="w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-[#8b2323] hover:bg-rose-600/20 hover:text-white dark:text-rose-400 dark:hover:bg-rose-950/30 transition cursor-pointer"
+            className="w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-rose-200 hover:bg-rose-900/40 hover:text-white dark:text-rose-400 dark:hover:bg-rose-950/30 transition cursor-pointer"
           >
             <LogOut 
-              style={{ color: '#b10e0e' }} 
-              className="w-4 h-4 text-[#b10e0e] [&>path:nth-of-type(2)]:stroke-[#cb2b2b] [&>path:nth-of-type(2)]:text-[#cb2b2b]" 
+              className="w-4 h-4 text-rose-400" 
             />
-            <span style={{ color: '#8b2323' }} className="text-[#8b2323]">Sair</span>
+            <span>Sair</span>
           </button>
         </div>
 

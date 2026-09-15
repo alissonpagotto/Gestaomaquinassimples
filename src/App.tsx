@@ -342,7 +342,7 @@ export default function App() {
       const savedTheme = localStorage.getItem('silagem_facil_theme');
       if (savedTheme === 'dark') return true;
       if (savedTheme === 'light') return false;
-      return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      return false; // Modo Claro (Modo Dia) padrão
     } catch {
       return false;
     }
@@ -678,8 +678,7 @@ export default function App() {
 
       {/* Main Body Area with left padding for desktop sidebar */}
       <div 
-        style={{ backgroundColor: '#0a8bc1' }}
-        className="lg:pl-64 flex flex-col flex-1 min-h-screen bg-[#0a8bc1] dark:bg-stone-950"
+        className="lg:pl-64 flex flex-col flex-1 min-h-screen bg-slate-100/70 dark:bg-stone-950"
       >
         
         {/* Top Bar with Trial Notice and Horizontal Pill Carousel */}

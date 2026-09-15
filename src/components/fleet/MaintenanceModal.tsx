@@ -44,6 +44,7 @@ import {
   MaintenanceExecutorType,
   MaintenancePartItem,
   MaintenanceLaborItem,
+  MaintenanceLaborPeriod,
   MaintenanceNfeLink,
   MaintenanceFinancialConditions,
   PaymentMethod,
@@ -369,11 +370,17 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       // Mão de Obra
       if (editingLog.laborItems && editingLog.laborItems.length > 0) {
         const defaultDateStr = editingLog.date || new Date().toISOString().split('T')[0];
-        setLaborItems(editingLog.laborItems.map(item => ({
-          ...item,
-          date: item.date || item.dataLancamento || defaultDateStr,
-          dataLancamento: item.dataLancamento || item.date || defaultDateStr,
-        })));
+        setLaborItems(editingLog.laborItems.map((item, i) => {
+          const periods = item.periods && item.periods.length > 0
+            ? item.periods
+            : [{ id: `p_${Date.now()}_${i}_1`, startTime: '', endTime: '' }];
+          return {
+            ...item,
+            date: item.date || item.dataLancamento || defaultDateStr,
+            dataLancamento: item.dataLancamento || item.date || defaultDateStr,
+            periods,
+          };
+        }));
         const internalLaborSum = editingLog.laborItems.reduce((acc, curr) => acc + (curr.totalCost || 0), 0);
         const diff = (editingLog.laborCost || 0) - internalLaborSum;
         setLaborCost(diff > 0.01 ? String(Math.round(diff * 100) / 100) : '');
@@ -512,7 +519,36 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
     }
   };
 
-  // --- MÃO DE OBRA INTERNA: ADICIONAR, ATUALIZAR E REMOVER MECÂNICOS ---
+  // --- MÃO DE OBRA INTERNA: CÁLCULO DE PERÍODOS DE PONTO (ENTRADA & SAÍDA) ---
+  // Função que calcula a diferença de tempo de cada período preenchido (Saída menos Entrada)
+  const calculatePeriodHours = (startTime?: string, endTime?: string): number => {
+    if (!startTime || !endTime) return 0;
+    const [startH, startM] = startTime.split(':').map(val => parseInt(val, 10));
+    const [endH, endM] = endTime.split(':').map(val => parseInt(val, 10));
+    if (isNaN(startH) || isNaN(startM) || isNaN(endH) || isNaN(endM)) return 0;
+
+    const startTotalMinutes = startH * 60 + startM;
+    const endTotalMinutes = endH * 60 + endM;
+
+    let diffMinutes = endTotalMinutes - startTotalMinutes;
+    if (diffMinutes < 0) {
+      // Caso cruze a meia-noite (turno noturno)
+      diffMinutes += 24 * 60;
+    }
+    return Math.round((diffMinutes / 60) * 100) / 100;
+  };
+
+  const formatPeriodDuration = (startTime?: string, endTime?: string): string => {
+    if (!startTime || !endTime) return '--';
+    const hoursDecimal = calculatePeriodHours(startTime, endTime);
+    if (hoursDecimal <= 0) return '0h';
+    const totalMinutes = Math.round(hoursDecimal * 60);
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}m`;
+  };
+
   const handleAddLaborItem = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const newItem: MaintenanceLaborItem = {
@@ -521,13 +557,110 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       mechanicName: '',
       description: 'Mão de Obra / Manutenção',
       executorType: 'mecanico_interno',
-      hours: 1,
+      hours: 0,
       hourlyRate: 0,
       totalCost: 0,
       date: todayStr,
       dataLancamento: todayStr,
+      periods: [
+        { id: `p_${Date.now()}_1`, startTime: '', endTime: '' }
+      ],
     };
     setLaborItems(prev => [...prev, newItem]);
+  };
+
+  const handleAddLaborPeriod = (laborIndex: number) => {
+    setLaborItems(prev => {
+      const updated = [...prev];
+      const item = { ...updated[laborIndex] };
+      const periods = item.periods && item.periods.length > 0 
+        ? [...item.periods] 
+        : [{ id: `p_${Date.now()}_1`, startTime: '', endTime: '' }];
+
+      periods.push({
+        id: `p_${Date.now()}_${periods.length + 1}`,
+        startTime: '',
+        endTime: '',
+      });
+
+      item.periods = periods;
+      updated[laborIndex] = item;
+      return updated;
+    });
+  };
+
+  const handleRemoveLaborPeriod = (laborIndex: number, periodIndex: number) => {
+    setLaborItems(prev => {
+      const updated = [...prev];
+      const item = { ...updated[laborIndex] };
+      if (!item.periods) return prev;
+
+      const periods = item.periods.filter((_, idx) => idx !== periodIndex);
+      if (periods.length === 0) {
+        periods.push({ id: `p_${Date.now()}_1`, startTime: '', endTime: '' });
+      }
+      item.periods = periods;
+
+      // Recalcula soma dos intervalos válidos daquele funcionário
+      let totalCalculatedHours = 0;
+      periods.forEach(p => {
+        if (p.startTime && p.endTime) {
+          totalCalculatedHours += calculatePeriodHours(p.startTime, p.endTime);
+        }
+      });
+      totalCalculatedHours = Math.round(totalCalculatedHours * 100) / 100;
+      item.hours = totalCalculatedHours;
+
+      const rate = typeof item.hourlyRate === 'number' ? item.hourlyRate : (parseFloat(String(item.hourlyRate || 0)) || 0);
+      item.totalCost = Math.round(totalCalculatedHours * rate * 100) / 100;
+
+      updated[laborIndex] = item;
+      return updated;
+    });
+  };
+
+  const handleUpdateLaborPeriod = (
+    laborIndex: number,
+    periodIndex: number,
+    field: 'startTime' | 'endTime',
+    value: string
+  ) => {
+    setLaborItems(prev => {
+      const updated = [...prev];
+      const item = { ...updated[laborIndex] };
+      const periods = item.periods ? [...item.periods] : [{ id: `p_${Date.now()}_1`, startTime: '', endTime: '' }];
+
+      if (!periods[periodIndex]) {
+        periods[periodIndex] = { id: `p_${Date.now()}_${periodIndex + 1}`, startTime: '', endTime: '' };
+      }
+
+      periods[periodIndex] = {
+        ...periods[periodIndex],
+        [field]: value,
+      };
+
+      item.periods = periods;
+
+      // LÓGICA DE CÁLCULO AUTOMÁTICO (JAVASCRIPT):
+      // Calcula automaticamente a diferença de tempo de cada período preenchido (Saída menos Entrada),
+      // soma todos os intervalos válidos daquele funcionário e atualiza instantaneamente o campo "Horas" (Total)
+      // e o "Subtotal (R$)" da linha dele.
+      let totalCalculatedHours = 0;
+      periods.forEach(p => {
+        if (p.startTime && p.endTime) {
+          totalCalculatedHours += calculatePeriodHours(p.startTime, p.endTime);
+        }
+      });
+
+      totalCalculatedHours = Math.round(totalCalculatedHours * 100) / 100;
+      item.hours = totalCalculatedHours;
+
+      const rate = typeof item.hourlyRate === 'number' ? item.hourlyRate : (parseFloat(String(item.hourlyRate || 0)) || 0);
+      item.totalCost = Math.round(totalCalculatedHours * rate * 100) / 100;
+
+      updated[laborIndex] = item;
+      return updated;
+    });
   };
 
   const handleUpdateLaborItem = (index: number, updates: Partial<MaintenanceLaborItem>) => {
@@ -963,10 +1096,10 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
         role="dialog"
         aria-modal="true"
       >
-        {/* Header Superior em Azul Escuro */}
-        <div className="flex items-center justify-between px-5 py-2.5 border-b border-blue-900/60 dark:border-stone-800 bg-blue-800 dark:bg-stone-900 text-white shrink-0">
+        {/* Header Superior em Azul Vibrante #0963cb / bg-blue-800 */}
+        <div className="flex items-center justify-between px-5 py-2.5 border-b border-blue-900/70 dark:border-stone-800 bg-blue-800 dark:bg-stone-900 text-white shrink-0">
           <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-lg bg-white/10 dark:bg-blue-950/60 text-white flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-blue-700 dark:bg-blue-950/60 text-white flex items-center justify-center border border-blue-600/50 dark:border-stone-700">
               <Wrench className="w-4 h-4 text-white" />
             </div>
             <div>
@@ -974,26 +1107,26 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 <h3 className="text-sm sm:text-base font-bold text-white font-['Outfit']">
                   {editingLog ? `Editar OS: ${editingLog.osNumber || editingLog.id}` : 'Nova Ordem de Serviço (OS)'}
                 </h3>
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-blue-500/40 text-blue-50 border border-blue-400/40">
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-blue-900/80 text-blue-100 border border-blue-600/50 dark:bg-stone-800 dark:text-stone-100 dark:border-stone-700">
                   {osNumber}
                 </span>
               </div>
-              <p className="text-[11px] text-blue-100/90 dark:text-stone-400">
+              <p className="text-[11px] text-blue-200 dark:text-stone-300 font-medium">
                 Manutenção na Roça, Estrada ou Oficina • Baixa de Estoque • NF-e • Contas a Pagar
               </p>
             </div>
           </div>
           {/* Canto superior direito: Seletor Global de Status da OS + Botão Fechar */}
           <div className="flex items-center space-x-2.5 sm:space-x-3">
-            <div className="flex items-center space-x-1.5 bg-blue-950/50 dark:bg-stone-800/80 px-2 py-1 rounded-lg border border-blue-600/50 dark:border-stone-700 shadow-inner">
-              <span className="text-[10.5px] font-bold text-blue-200 dark:text-stone-300 uppercase tracking-wider whitespace-nowrap hidden sm:inline">
+            <div className="flex items-center space-x-1.5 bg-blue-900/60 dark:bg-stone-800/80 px-2 py-1 rounded-lg border border-blue-700/60 dark:border-stone-700 shadow-2xs">
+              <span className="text-[10.5px] font-bold text-blue-100 dark:text-stone-300 uppercase tracking-wider whitespace-nowrap hidden sm:inline">
                 Status:
               </span>
               <select
                 id="maintenance-status-select"
                 value={status}
                 onChange={(e) => setStatus(e.target.value as any)}
-                className={`px-2 py-0.5 border rounded-md text-xs font-bold transition-all duration-150 cursor-pointer focus:ring-2 focus:ring-white/40 focus:outline-hidden shadow-xs ${getStatusSelectStyle(status)}`}
+                className={`px-2 py-0.5 border rounded-md text-xs font-bold transition-all duration-150 cursor-pointer focus:ring-2 focus:ring-white/30 focus:outline-hidden shadow-xs ${getStatusSelectStyle(status)}`}
                 title="Status da Ordem de Serviço (Fixo em todas as abas)"
               >
                 <option value="em_andamento" className="bg-white text-amber-950 dark:bg-stone-900 dark:text-amber-300 font-bold">⏳ Em Andamento</option>
@@ -1006,30 +1139,30 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
 
             <button
               onClick={onClose}
-              className="p-1.5 text-blue-200 hover:text-white dark:text-stone-400 dark:hover:text-stone-200 rounded-lg hover:bg-blue-700/60 dark:hover:bg-stone-800 transition cursor-pointer"
+              className="p-1.5 text-blue-200 hover:text-white dark:text-stone-400 dark:hover:text-stone-200 rounded-lg hover:bg-blue-700/50 dark:hover:bg-stone-800 transition cursor-pointer"
               title="Fechar janela"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4 text-white" />
             </button>
           </div>
         </div>
 
         {/* Subtabs de Navegação do Formulário (3 Abas Unificadas) */}
-        <div className="flex items-center border-b border-blue-200 dark:border-stone-800 px-5 bg-blue-50/70 dark:bg-stone-900 overflow-x-auto gap-2 shrink-0">
+        <div className="flex items-center border-b border-stone-200 dark:border-stone-800 px-5 bg-stone-50 dark:bg-stone-900 overflow-x-auto gap-2 shrink-0">
           <button
             type="button"
             id="tab-diagnostico-equipe-local"
             onClick={() => setActiveTab('geral')}
             className={`py-2 px-3 text-xs font-bold border-b-2 transition whitespace-nowrap flex items-center space-x-1.5 cursor-pointer ${
               activeTab === 'geral'
-                ? 'border-blue-700 text-blue-800 dark:border-blue-400 dark:text-blue-400'
-                : 'border-transparent text-blue-950/70 hover:text-blue-950 dark:text-stone-400 dark:hover:text-stone-200'
+                ? 'border-blue-600 text-blue-700 bg-white dark:bg-stone-800 dark:text-sky-400 font-bold shadow-2xs'
+                : 'border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200'
             }`}
           >
             <Wrench className="w-3.5 h-3.5" />
             <span>1. Diagnóstico, Equipe & Local</span>
             {laborItems.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[9px] bg-blue-200 dark:bg-blue-900/50 text-blue-900 dark:text-blue-300 font-bold">
+              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[9px] bg-blue-100 text-blue-800 font-bold">
                 {laborItems.length} {laborItems.length === 1 ? 'mecânico' : 'mecânicos'}
               </span>
             )}
@@ -1041,14 +1174,14 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
             onClick={() => setActiveTab('pecas')}
             className={`py-2 px-3 text-xs font-bold border-b-2 transition whitespace-nowrap flex items-center space-x-1.5 cursor-pointer ${
               activeTab === 'pecas'
-                ? 'border-blue-700 text-blue-800 dark:border-blue-400 dark:text-blue-400'
-                : 'border-transparent text-blue-950/70 hover:text-blue-950 dark:text-stone-400 dark:hover:text-stone-200'
+                ? 'border-blue-600 text-blue-700 bg-white dark:bg-stone-800 dark:text-sky-400 font-bold shadow-2xs'
+                : 'border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200'
             }`}
           >
             <Package className="w-3.5 h-3.5" />
             <span>2. Peças & Estoque</span>
             {partsItems.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[9px] bg-blue-200 dark:bg-blue-900/50 text-blue-900 dark:text-blue-300 font-bold">
+              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[9px] bg-blue-100 text-blue-800 font-bold">
                 {partsItems.length}
               </span>
             )}
@@ -1060,8 +1193,8 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
             onClick={() => setActiveTab('fiscal_financeiro')}
             className={`py-2 px-3 text-xs font-bold border-b-2 transition whitespace-nowrap flex items-center space-x-1.5 cursor-pointer ${
               activeTab === 'fiscal_financeiro'
-                ? 'border-blue-700 text-blue-800 dark:border-blue-400 dark:text-blue-400'
-                : 'border-transparent text-blue-950/70 hover:text-blue-950 dark:text-stone-400 dark:hover:text-stone-200'
+                ? 'border-blue-600 text-blue-700 bg-white dark:bg-stone-800 dark:text-sky-400 font-bold shadow-2xs'
+                : 'border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200'
             }`}
           >
             <CreditCard className="w-3.5 h-3.5" />
@@ -1117,18 +1250,18 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
               {/* --- COLUNA DA ESQUERDA: DADOS DO VEÍCULO, AFERIÇÃO, DIAGNÓSTICO, LOCAL E EXECUÇÃO --- */}
               <div className="space-y-2">
                 {/* Bloco 1: Identificação da OS e Veículo */}
-                <div className="p-2.5 bg-blue-50/70 dark:bg-stone-800/40 rounded-xl border border-blue-200 dark:border-stone-800">
+                <div className="p-2.5 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 shadow-2xs">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     {/* Número da OS */}
                     <div>
-                      <label className="block text-[10.5px] font-bold text-blue-900 dark:text-stone-300 mb-0.5 truncate">
+                      <label className="block text-[10.5px] font-bold text-stone-700 dark:text-stone-300 mb-0.5 truncate">
                         Número da OS
                       </label>
                       <input
                         type="text"
                         value={osNumber}
                         onChange={(e) => setOsNumber(e.target.value)}
-                        className="w-full px-2 py-1 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-lg text-xs font-mono font-bold text-blue-950 dark:text-stone-100 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                        className="w-full px-2 py-1 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-mono font-bold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#8da7eb] focus:border-[#8da7eb]"
                         placeholder="OS-2026-0001"
                         required
                       />
@@ -1136,40 +1269,40 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
 
                     {/* Data da Abertura */}
                     <div>
-                      <label className="block text-[10.5px] font-bold text-blue-900 dark:text-stone-300 mb-0.5 truncate">
+                      <label className="block text-[10.5px] font-bold text-stone-700 dark:text-stone-300 mb-0.5 truncate">
                         Abertura *
                       </label>
                       <input
                         type="date"
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
-                        className="w-full px-2 py-1 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                        className="w-full px-2 py-1 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#8da7eb] focus:border-[#8da7eb]"
                         required
                       />
                     </div>
 
                     {/* Previsão de Término */}
                     <div>
-                      <label className="block text-[10.5px] font-bold text-blue-900 dark:text-stone-300 mb-0.5 truncate">
+                      <label className="block text-[10.5px] font-bold text-stone-700 dark:text-stone-300 mb-0.5 truncate">
                         Previsão Término
                       </label>
                       <input
                         type="date"
                         value={completionDate}
                         onChange={(e) => setCompletionDate(e.target.value)}
-                        className="w-full px-2 py-1 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                        className="w-full px-2 py-1 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#8da7eb] focus:border-[#8da7eb]"
                       />
                     </div>
 
                     {/* Veículo / Máquina */}
                     <div>
-                      <label className="block text-[10.5px] font-bold text-blue-900 dark:text-stone-300 mb-0.5 truncate">
+                      <label className="block text-[10.5px] font-bold text-stone-700 dark:text-stone-300 mb-0.5 truncate">
                         Máquina *
                       </label>
                       <select
                         value={machineryId}
                         onChange={(e) => handleMachineryChange(e.target.value)}
-                        className="w-full px-2 py-1 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 cursor-pointer"
+                        className="w-full px-2 py-1 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#8da7eb] focus:border-[#8da7eb] cursor-pointer"
                         required
                       >
                         <option value="">Selecione...</option>
@@ -1185,10 +1318,10 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 </div>
 
                 {/* Bloco 2: Aferição e Controle (Horímetro e Próxima Revisão) */}
-                <div className="p-2.5 bg-blue-50/70 dark:bg-stone-800/40 rounded-xl border border-blue-200 dark:border-stone-800">
+                <div className="p-2.5 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 shadow-2xs">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-[10.5px] font-bold text-blue-900 dark:text-stone-300 mb-0.5 truncate">
+                      <label className="block text-[10.5px] font-bold text-stone-700 dark:text-stone-300 mb-0.5 truncate">
                         Horímetro / KM Atual
                       </label>
                       <input
@@ -1197,12 +1330,12 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                         value={formatThousand(currentHourMeterOrKm)}
                         onChange={(e) => handleThousandInput(e.target.value, setCurrentHourMeterOrKm)}
                         placeholder="Ex: 5.000"
-                        className="w-full px-2 py-1 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                        className="w-full px-2 py-1 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#8da7eb] focus:border-[#8da7eb]"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10.5px] font-bold text-blue-900 dark:text-stone-300 mb-0.5 truncate">
+                      <label className="block text-[10.5px] font-bold text-stone-700 dark:text-stone-300 mb-0.5 truncate">
                         Próxima Revisão (h/KM)
                       </label>
                       <input
@@ -1211,17 +1344,17 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                         value={formatThousand(nextServiceDue)}
                         onChange={(e) => handleThousandInput(e.target.value, setNextServiceDue)}
                         placeholder="Ex: 6.000"
-                        className="w-full px-2 py-1 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                        className="w-full px-2 py-1 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#8da7eb] focus:border-[#8da7eb]"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Bloco 3: Tipo de Manutenção e Categoria */}
-                <div className="p-2.5 bg-blue-50/70 dark:bg-stone-800/40 rounded-xl border border-blue-200 dark:border-stone-800 space-y-1.5">
+                <div className="p-2.5 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 space-y-1.5 shadow-2xs">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-[10.5px] font-bold text-blue-900 dark:text-stone-300 mb-0.5">
+                      <label className="block text-[10.5px] font-bold text-stone-700 dark:text-stone-300 mb-0.5">
                         Tipo de Manutenção
                       </label>
                       <div className="grid grid-cols-2 gap-1">
@@ -1237,8 +1370,8 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                             onClick={() => setType(t.id as any)}
                             className={`py-1 px-1.5 text-[10.5px] font-bold rounded-lg border text-center transition cursor-pointer ${
                               type === t.id || (t.id === 'reforma_entressafra' && (type as any) === 'revisao_periodica')
-                                ? 'ring-2 ring-blue-600 bg-blue-600 text-white border-blue-600 shadow-xs'
-                                : 'bg-white dark:bg-stone-800 border-blue-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-blue-100/50'
+                                ? 'ring-2 ring-blue-500 bg-blue-600 text-white border-blue-600 shadow-xs font-bold'
+                                : 'bg-stone-50 dark:bg-stone-800 border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100'
                             }`}
                           >
                             {t.label}
@@ -1249,13 +1382,13 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
 
                     <div>
                       <div className="flex items-center justify-between mb-0.5">
-                        <label className="block text-[10.5px] font-bold text-blue-900 dark:text-stone-300">
+                        <label className="block text-[10.5px] font-bold text-stone-700 dark:text-stone-300">
                           Categoria do Serviço
                         </label>
                         <button
                           type="button"
                           onClick={() => setIsCategoriesModalOpen(true)}
-                          className="text-[10px] text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 font-bold flex items-center space-x-1 hover:underline cursor-pointer"
+                          className="text-[10px] text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-bold flex items-center space-x-1 hover:underline cursor-pointer"
                           title="Gerenciar, incluir, editar ou excluir categorias de serviço"
                         >
                           <Tag className="w-2.5 h-2.5" />
@@ -1266,7 +1399,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                         <select
                           value={serviceCategory}
                           onChange={(e) => setServiceCategory(e.target.value)}
-                          className="flex-1 px-2 py-1 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600 cursor-pointer"
+                          className="flex-1 px-2 py-1 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500 cursor-pointer"
                         >
                           {categoriesList.map((cat) => (
                             <option key={cat.id} value={cat.name}>
@@ -1282,7 +1415,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                         <button
                           type="button"
                           onClick={() => setIsCategoriesModalOpen(true)}
-                          className="p-1 border border-blue-200 dark:border-stone-700 bg-white dark:bg-stone-800 hover:bg-blue-100/60 dark:hover:bg-stone-800 rounded-lg text-blue-700 dark:text-blue-400 transition cursor-pointer shrink-0"
+                          className="p-1 border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg text-blue-600 dark:text-blue-400 transition cursor-pointer shrink-0"
                           title="Incluir, editar ou excluir categorias"
                         >
                           <Plus className="w-3 h-3" />
@@ -1293,7 +1426,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
 
                   {serviceCategory === 'Outro' && (
                     <div>
-                      <label className="block text-[10.5px] font-bold text-blue-900 dark:text-stone-300 mb-0.5">
+                      <label className="block text-[10.5px] font-bold text-stone-700 dark:text-stone-300 mb-0.5">
                         Especifique a Categoria
                       </label>
                       <input
@@ -1301,15 +1434,15 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                         value={customCategory}
                         onChange={(e) => setCustomCategory(e.target.value)}
                         placeholder="Ex: Regulagem de Rotor de Craqueador"
-                        className="w-full px-2 py-1 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100"
+                        className="w-full px-2 py-1 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100"
                       />
                     </div>
                   )}
                 </div>
 
                 {/* Bloco 4: Descrição do Problema / Diagnóstico */}
-                <div className="p-2.5 bg-blue-50/70 dark:bg-stone-800/40 rounded-xl border border-blue-200 dark:border-stone-800">
-                  <label className="block text-[10.5px] font-bold text-blue-900 dark:text-stone-300 mb-0.5">
+                <div className="p-2.5 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 shadow-2xs">
+                  <label className="block text-[10.5px] font-bold text-stone-700 dark:text-stone-300 mb-0.5">
                     Descrição do Diagnóstico / Serviço Executado *
                   </label>
                   <textarea
@@ -1317,16 +1450,16 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Ex: Troca de óleo da caixa de transmissão e substituição de 4 facas do rotor da ensiladeira que empenaram no talhão 3..."
                     rows={2}
-                    className="w-full px-2 py-1 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-lg text-xs text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600 resize-none"
+                    className="w-full px-2 py-1 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-xs text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500 resize-none"
                     required
                   />
                 </div>
 
                 {/* Bloco 5: Local da Manutenção */}
-                <div className="p-2.5 bg-blue-50/70 dark:bg-stone-800/50 rounded-xl border border-blue-200 dark:border-stone-800 space-y-1">
+                <div className="p-2.5 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 space-y-1 shadow-2xs">
                   <div className="flex items-center space-x-1.5">
-                    <MapPin className="w-3 h-3 text-blue-700 dark:text-blue-400" />
-                    <h4 className="text-[10.5px] font-bold text-blue-900 dark:text-stone-100 uppercase tracking-wider">
+                    <MapPin className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                    <h4 className="text-[10.5px] font-bold text-stone-800 dark:text-stone-100 uppercase tracking-wider">
                       Local da Manutenção
                     </h4>
                   </div>
@@ -1337,25 +1470,25 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                         id: 'roca',
                         title: 'Roça (Campo)',
                         subtitle: 'Lavoura/Silagem',
-                        color: 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300',
+                        color: 'border-emerald-500 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300',
                       },
                       {
                         id: 'estrada',
                         title: 'Estrada',
                         subtitle: 'Socorro Vicinal',
-                        color: 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300',
+                        color: 'border-amber-500 bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-300',
                       },
                       {
                         id: 'oficina_interna',
                         title: 'Oficina Interna',
                         subtitle: 'Nosso Barracão',
-                        color: 'border-blue-500 bg-blue-100/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-300',
+                        color: 'border-blue-600 bg-blue-600 text-white font-bold shadow-xs',
                       },
                       {
                         id: 'oficina_externa',
                         title: 'Oficina Externa',
                         subtitle: 'Concessionária/3º',
-                        color: 'border-purple-500 bg-purple-50/70 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300',
+                        color: 'border-purple-500 bg-purple-50 text-purple-900 dark:bg-purple-950/40 dark:text-purple-300',
                       },
                     ].map((loc) => (
                       <button
@@ -1364,12 +1497,12 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                         onClick={() => setLocation(loc.id as any)}
                         className={`py-1.5 px-2 rounded-lg border text-center transition cursor-pointer ${
                           location === loc.id
-                            ? `${loc.color} ring-2 ring-blue-600 font-bold shadow-xs`
-                            : 'bg-white dark:bg-stone-800 border-blue-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-blue-100/40'
+                            ? `${loc.color} ring-2 ring-blue-500 font-bold shadow-xs`
+                            : 'bg-stone-50 dark:bg-stone-800 border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100'
                         }`}
                       >
-                        <span className="text-xs font-bold block truncate">{loc.title}</span>
-                        <span className="text-[9px] text-stone-500 dark:text-stone-400 block truncate">{loc.subtitle}</span>
+                        <span className={`text-xs font-bold block truncate ${location === loc.id && loc.id === 'oficina_interna' ? 'text-white' : ''}`}>{loc.title}</span>
+                        <span className={`text-[9px] block truncate ${location === loc.id && loc.id === 'oficina_interna' ? 'text-blue-100' : 'text-stone-500 dark:text-stone-400'}`}>{loc.subtitle}</span>
                       </button>
                     ))}
                   </div>
@@ -1388,16 +1521,16 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                           ? 'Ponto de referência: Ex: Box 2 do Barracão Principal'
                           : 'Ponto de referência: Ex: Oficina Diesel Power - Toledo/PR'
                       }
-                      className="w-full px-2.5 py-1 h-8 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-lg text-xs text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600"
+                      className="w-full px-2.5 py-1 h-8 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-xs text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
 
                 {/* Bloco 6: Modalidade de Execução do Serviço */}
-                <div className="p-2.5 bg-blue-50/70 dark:bg-stone-800/50 rounded-xl border border-blue-200 dark:border-stone-800 space-y-1">
+                <div className="p-2.5 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 space-y-1 shadow-2xs">
                   <div className="flex items-center space-x-1.5">
-                    <UserCheck className="w-3 h-3 text-blue-700 dark:text-blue-400" />
-                    <h4 className="text-[10.5px] font-bold text-blue-900 dark:text-stone-100 uppercase tracking-wider">
+                    <UserCheck className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                    <h4 className="text-[10.5px] font-bold text-stone-800 dark:text-stone-100 uppercase tracking-wider">
                       Modalidade de Execução
                     </h4>
                   </div>
@@ -1415,12 +1548,12 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                         onClick={() => handleExecutorTypeChange(ex.id as any)}
                         className={`py-1.5 px-2 rounded-lg border text-center transition cursor-pointer ${
                           executorType === ex.id
-                            ? 'border-blue-600 bg-blue-100 text-blue-950 dark:bg-blue-950/60 dark:text-blue-200 ring-2 ring-blue-600 font-bold shadow-xs'
-                            : 'bg-white dark:bg-stone-800 border-blue-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-blue-100/40'
+                            ? 'border-blue-600 bg-blue-600 text-white font-bold ring-2 ring-blue-500 shadow-xs'
+                            : 'bg-stone-50 dark:bg-stone-800 border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100'
                         }`}
                       >
-                        <span className="text-xs font-bold block truncate">{ex.label}</span>
-                        <span className="text-[9px] text-stone-500 block truncate">{ex.desc}</span>
+                        <span className={`text-xs font-bold block truncate ${executorType === ex.id ? 'text-white' : ''}`}>{ex.label}</span>
+                        <span className={`text-[9px] block truncate ${executorType === ex.id ? 'text-blue-100' : 'text-stone-500'}`}>{ex.desc}</span>
                       </button>
                     ))}
                   </div>
@@ -1432,7 +1565,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                         value={workshopOrMechanic}
                         onChange={(e) => setWorkshopOrMechanic(e.target.value)}
                         placeholder="Nome da Oficina Externa ou Prestador Socorro Terceiro *"
-                        className="w-full px-2.5 py-1 h-8 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600"
+                        className="w-full px-2.5 py-1 h-8 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                   )}
@@ -1442,11 +1575,11 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
               {/* --- COLUNA DA DIREITA: EXCLUSIVAMENTE MÃO DE OBRA INTERNA (MECÂNICOS) --- */}
               <div className="space-y-2">
                 {/* Bloco 1: MÃO DE OBRA INTERNA (MECÂNICOS) NO TOPO DIREITO */}
-                <div className="p-2.5 bg-blue-50/70 dark:bg-stone-800/50 rounded-xl border border-blue-200 dark:border-stone-800 space-y-1.5">
+                <div className="p-2.5 bg-blue-800 dark:bg-stone-900 rounded-xl border border-blue-700 dark:border-stone-800 space-y-1.5 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-1.5">
-                      <Users className="w-3 h-3 text-blue-700 dark:text-blue-400" />
-                      <h4 className="text-[10.5px] font-bold text-blue-900 dark:text-stone-100 uppercase tracking-wider">
+                      <Users className="w-3.5 h-3.5 text-white" />
+                      <h4 className="text-[10.5px] font-bold text-white uppercase tracking-wider">
                         Mão de Obra Interna (Mecânicos)
                       </h4>
                     </div>
@@ -1454,7 +1587,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                     <button
                       type="button"
                       onClick={handleAddLaborItem}
-                      className="inline-flex items-center space-x-1 px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white text-[10.5px] font-bold rounded-lg shadow-xs transition active:scale-95 cursor-pointer shrink-0"
+                      className="inline-flex items-center space-x-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[10.5px] font-bold rounded-lg shadow-xs border border-blue-400/40 transition active:scale-95 cursor-pointer shrink-0"
                     >
                       <Plus className="w-3 h-3" />
                       <span>+ Mecânico</span>
@@ -1463,15 +1596,15 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
 
                   {/* Lista dinâmica com amplo espaço vertical */}
                   {laborItems.length === 0 ? (
-                    <div className="py-3 px-2.5 text-center border border-dashed border-blue-200 dark:border-stone-800 bg-white dark:bg-stone-800/30 rounded-lg flex flex-col items-center justify-center space-y-1">
-                      <Users className="w-4 h-4 text-blue-400" />
-                      <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                    <div className="py-4 px-2.5 text-center border border-dashed border-blue-600/40 dark:border-stone-800 bg-blue-900/30 dark:bg-stone-800/30 rounded-lg flex flex-col items-center justify-center space-y-1">
+                      <Users className="w-5 h-5 text-blue-200" />
+                      <p className="text-[11px] text-blue-100 dark:text-stone-300">
                         Nenhum mecânico listado nesta OS.
                       </p>
                       <button
                         type="button"
                         onClick={handleAddLaborItem}
-                        className="px-2.5 py-0.5 bg-blue-600 text-white rounded-lg text-[11px] font-bold hover:bg-blue-700 transition cursor-pointer shadow-xs"
+                        className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[11px] font-bold transition cursor-pointer shadow-xs border border-blue-400/40"
                       >
                         + Adicionar Mão de Obra
                       </button>
@@ -1481,12 +1614,12 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                       {laborItems.map((item, index) => (
                         <div
                           key={item.id || index}
-                          className="p-2 bg-white dark:bg-stone-800 rounded-xl border border-blue-200 dark:border-stone-700 space-y-1 shadow-xs"
+                          className="p-2 bg-white dark:bg-stone-800/70 rounded-xl border border-stone-200 dark:border-stone-700 space-y-1 shadow-2xs"
                         >
                           {/* Cabeçalho do Card do Mecânico */}
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold text-blue-900 dark:text-stone-400 uppercase tracking-wider font-mono flex items-center space-x-1.5">
-                              <span className="w-4 h-4 rounded bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 flex items-center justify-center text-[9px] font-bold">
+                            <span className="text-[10px] font-bold text-stone-800 dark:text-stone-300 uppercase tracking-wider font-mono flex items-center space-x-1.5">
+                              <span className="w-4 h-4 rounded bg-blue-600 text-white flex items-center justify-center text-[9px] font-bold">
                                 {index + 1}
                               </span>
                               <span>Mecânico #{index + 1}</span>
@@ -1506,7 +1639,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                           <div className="grid grid-cols-12 gap-1.5 items-end">
                             {/* Selecionar Funcionário */}
                             <div className="col-span-12 sm:col-span-4">
-                              <label className="block text-[9.5px] font-bold text-stone-500 dark:text-stone-400 mb-0.5">
+                              <label className="block text-[9.5px] font-bold text-stone-600 dark:text-stone-400 mb-0.5">
                                 Funcionário / Mecânico
                               </label>
                               <select
@@ -1519,7 +1652,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                                     mechanicName: found ? found.name : (selectedId ? item.mechanicName : '')
                                   });
                                 }}
-                                className="w-full px-2 py-1 bg-white dark:bg-stone-900 border border-blue-200 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600 cursor-pointer"
+                                className="w-full px-2 py-1 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500 cursor-pointer"
                               >
                                 <option value="">Selecione funcionário...</option>
                                 {mechanicEmployees.map((emp) => (
@@ -1539,14 +1672,14 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                                   value={item.mechanicName || ''}
                                   onChange={(e) => handleUpdateLaborItem(index, { mechanicName: e.target.value })}
                                   placeholder="Ou nome avulso..."
-                                  className="w-full mt-0.5 px-2 py-0.5 bg-white dark:bg-stone-900 border border-blue-200 dark:border-stone-700 rounded-md text-[10px] text-stone-900 dark:text-stone-100"
+                                  className="w-full mt-0.5 px-2 py-0.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-md text-[10px] text-stone-900 dark:text-stone-100"
                                 />
                               )}
                             </div>
 
                             {/* Data do Lançamento */}
                             <div className="col-span-6 sm:col-span-2">
-                              <label className="block text-[9.5px] font-bold text-stone-500 dark:text-stone-400 mb-0.5 text-center">
+                              <label className="block text-[9.5px] font-bold text-stone-600 dark:text-stone-400 mb-0.5 text-center">
                                 Data
                               </label>
                               <input
@@ -1557,33 +1690,28 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                                   date: e.target.value 
                                 })}
                                 title="Data da execução das horas"
-                                className="w-full px-1.5 py-1 bg-white dark:bg-stone-900 border border-blue-200 dark:border-stone-700 rounded-lg text-xs font-semibold text-center text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600 cursor-pointer"
+                                className="w-full px-1.5 py-1 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-center text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500 cursor-pointer"
                               />
                             </div>
 
-                            {/* Horas (Aceita Fracionado/Decimal) */}
+                            {/* Horas (Total Calculado - Readonly) */}
                             <div className="col-span-3 sm:col-span-2">
-                              <label className="block text-[9.5px] font-bold text-stone-500 dark:text-stone-400 mb-0.5 text-center">
-                                Horas
+                              <label className="block text-[9.5px] font-bold text-stone-600 dark:text-stone-400 mb-0.5 text-center">
+                                Horas (Total)
                               </label>
                               <input
-                                type="number"
-                                step="any"
-                                min="0"
-                                value={item.hours !== undefined && item.hours !== null ? item.hours : ''}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  handleUpdateLaborItem(index, { hours: val === '' ? 0 : (parseFloat(val) || 0) });
-                                }}
-                                placeholder="Horas"
-                                title="Horas Trabalhadas (aceita decimais ex: 15.3)"
-                                className="w-full px-1.5 py-1 bg-white dark:bg-stone-900 border border-blue-200 dark:border-stone-700 rounded-lg text-xs font-bold text-center text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600"
+                                type="text"
+                                readOnly
+                                value={`${(item.hours !== undefined && item.hours !== null ? Number(item.hours) : 0).toFixed(2)}h`}
+                                placeholder="0.00h"
+                                title="Total de horas calculado automaticamente pela soma dos períodos de Entrada e Saída (somente leitura)"
+                                className="w-full px-1.5 py-1 bg-amber-50/90 dark:bg-stone-900 border border-amber-300 dark:border-amber-700/60 rounded-lg text-xs font-black text-center text-amber-950 dark:text-amber-300 cursor-not-allowed select-none shadow-xs"
                               />
                             </div>
 
                             {/* Valor da Hora */}
                             <div className="col-span-3 sm:col-span-2">
-                              <label className="block text-[9.5px] font-bold text-stone-500 dark:text-stone-400 mb-0.5 text-right">
+                              <label className="block text-[9.5px] font-bold text-stone-600 dark:text-stone-400 mb-0.5 text-right">
                                 R$ / hora
                               </label>
                               <input
@@ -1597,18 +1725,124 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                                 }}
                                 placeholder="R$/h"
                                 title="Valor da Hora (R$)"
-                                className="w-full px-1.5 py-1 bg-white dark:bg-stone-900 border border-blue-200 dark:border-stone-700 rounded-lg text-xs font-bold text-right text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600"
+                                className="w-full px-1.5 py-1 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-bold text-right text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500"
                               />
                             </div>
 
                             {/* Subtotal */}
                             <div className="col-span-12 sm:col-span-2">
-                              <label className="block text-[9.5px] font-bold text-stone-500 dark:text-stone-400 mb-0.5 text-right">
+                              <label className="block text-[9.5px] font-bold text-stone-600 dark:text-stone-400 mb-0.5 text-right">
                                 Subtotal
                               </label>
-                              <div className="px-2 py-1 bg-blue-100/70 dark:bg-blue-950/60 rounded-lg text-xs font-black text-blue-900 dark:text-blue-300 font-mono text-right truncate">
+                              <div className="px-2 py-1 bg-blue-50 dark:bg-blue-950/60 rounded-lg text-xs font-black text-blue-700 dark:text-blue-300 font-mono text-right truncate border border-blue-200 dark:border-blue-800">
                                 {formatCurrencyBRL(item.totalCost || 0)}
                               </div>
+                            </div>
+                          </div>
+
+                          {/* Bloco de Apontamento de Períodos de Entrada e Saída (Ponto do Mecânico) */}
+                          <div className="mt-2 pt-2 border-t border-stone-200 dark:border-stone-700/70 space-y-1.5 bg-stone-50 dark:bg-stone-900/50 p-2 rounded-lg border border-stone-200/80">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-1.5">
+                                <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                <span className="text-[10px] font-bold text-stone-800 dark:text-blue-200 uppercase tracking-wider">
+                                  Apontamento de Ponto (Entrada & Saída)
+                                </span>
+                              </div>
+
+                              {/* 2. Botão para adicionar múltiplos períodos (+ INTERVALO) */}
+                              <button
+                                type="button"
+                                onClick={() => handleAddLaborPeriod(index)}
+                                className="inline-flex items-center space-x-1 px-2 py-0.5 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold rounded-md shadow-xs border border-blue-500 transition active:scale-95 cursor-pointer"
+                                title="Adiciona novo período/intervalo para este mecânico no mesmo dia (ex: saída e retorno)"
+                              >
+                                <Plus className="w-3 h-3" />
+                                <span>+ Adicionar Período</span>
+                              </button>
+                            </div>
+
+                            {/* Minilinhas de Períodos de Entrada e Saída */}
+                            <div className="space-y-1">
+                              {(item.periods && item.periods.length > 0 
+                                ? item.periods 
+                                : [{ id: `p_${item.id || index}_1`, startTime: '', endTime: '' }]
+                              ).map((period, pIdx) => {
+                                const pNum = pIdx + 1;
+                                const periodHours = calculatePeriodHours(period.startTime, period.endTime);
+                                return (
+                                  <div
+                                    key={period.id || pIdx}
+                                    className="flex flex-wrap items-center justify-between gap-1.5 p-1.5 bg-white dark:bg-stone-800 rounded-md border border-stone-200 dark:border-stone-700 text-xs shadow-2xs"
+                                  >
+                                    <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                                      <span className="text-[10px] font-mono font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/70 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                                        Turno #{pNum}
+                                      </span>
+
+                                      {/* Entrada N */}
+                                      <div className="flex items-center space-x-1">
+                                        <label 
+                                          htmlFor={`labor-${index}-start-${pIdx}`} 
+                                          className="text-[9.5px] font-bold text-stone-700 dark:text-stone-300 whitespace-nowrap"
+                                        >
+                                          Entrada {pNum}:
+                                        </label>
+                                        <input
+                                          id={`labor-${index}-start-${pIdx}`}
+                                          type="time"
+                                          value={period.startTime || ''}
+                                          onChange={(e) => handleUpdateLaborPeriod(index, pIdx, 'startTime', e.target.value)}
+                                          className="px-1.5 py-0.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                                        />
+                                      </div>
+
+                                      <span className="text-stone-400 text-xs font-bold">às</span>
+
+                                      {/* Saída N */}
+                                      <div className="flex items-center space-x-1">
+                                        <label 
+                                          htmlFor={`labor-${index}-end-${pIdx}`} 
+                                          className="text-[9.5px] font-bold text-stone-700 dark:text-stone-300 whitespace-nowrap"
+                                        >
+                                          Saída {pNum}:
+                                        </label>
+                                        <input
+                                          id={`labor-${index}-end-${pIdx}`}
+                                          type="time"
+                                          value={period.endTime || ''}
+                                          onChange={(e) => handleUpdateLaborPeriod(index, pIdx, 'endTime', e.target.value)}
+                                          className="px-1.5 py-0.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    {/* Duração calculada e botão remover período */}
+                                    <div className="flex items-center space-x-1.5 ml-auto">
+                                      {period.startTime && period.endTime ? (
+                                        <span className="px-1.5 py-0.5 rounded text-[10.5px] font-mono font-bold bg-emerald-100 text-emerald-950 dark:bg-emerald-950/80 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800">
+                                          {formatPeriodDuration(period.startTime, period.endTime)} ({periodHours.toFixed(2)}h)
+                                        </span>
+                                      ) : (
+                                        <span className="text-[10px] text-stone-400 italic">
+                                          Preencha horários
+                                        </span>
+                                      )}
+
+                                      {(item.periods && item.periods.length > 1) && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveLaborPeriod(index, pIdx)}
+                                          className="p-1 text-stone-400 hover:text-rose-600 rounded hover:bg-rose-50 dark:hover:bg-stone-700 transition cursor-pointer"
+                                          title={`Excluir Período ${pNum}`}
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         </div>
@@ -1617,23 +1851,23 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                   )}
 
                   {/* Card de Consolidação da Mão de Obra */}
-                  <div className="p-2.5 bg-blue-100/80 dark:bg-blue-950/40 rounded-xl border border-blue-300 dark:border-blue-900/60 flex items-center justify-between">
+                  <div className="p-2.5 bg-blue-800 dark:bg-blue-950/60 rounded-xl border border-blue-700 flex items-center justify-between text-white shadow-xs">
                     <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
+                      <div className="w-6 h-6 rounded-lg bg-blue-700 text-white flex items-center justify-center shrink-0 border border-blue-600">
                         <Clock className="w-3.5 h-3.5" />
                       </div>
                       <div>
-                        <span className="text-xs font-bold text-blue-950 dark:text-blue-200 block leading-tight">
+                        <span className="text-xs font-bold text-white block leading-tight">
                           Total Mão de Obra
                         </span>
-                        <span className="text-[10.5px] text-blue-800 dark:text-blue-300 leading-tight">
+                        <span className="text-[10.5px] text-blue-200 leading-tight">
                           {laborItems.length} mecânico(s) • {totalInternalHoursCalculated}h
                         </span>
                       </div>
                     </div>
 
                     <div className="text-right">
-                      <span className="text-sm sm:text-base font-black text-blue-950 dark:text-blue-100 font-['Outfit']">
+                      <span className="text-sm sm:text-base font-black text-white font-['Outfit']">
                         {formatCurrencyBRL(totalInternalLaborCalculated)}
                       </span>
                     </div>
@@ -1652,7 +1886,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
               <div className="flex-1 flex flex-col space-y-3 min-h-0">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <h4 className="text-xs font-bold text-blue-900 dark:text-stone-100 uppercase tracking-wider flex items-center space-x-2">
+                  <h4 className="text-xs font-bold text-stone-800 dark:text-stone-100 uppercase tracking-wider flex items-center space-x-2">
                     <span>Peças, Insumos & Serviços de Recuperação</span>
                   </h4>
                   <p className="text-xs text-stone-500">
@@ -1662,15 +1896,15 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
 
                 <div className="flex flex-wrap items-center gap-2.5">
                   {/* Seletor Dropdown de Preço Padrão da OS */}
-                  <div className="flex items-center space-x-1.5 bg-stone-100 dark:bg-stone-800/80 px-2.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 shadow-2xs">
+                  <div className="flex items-center space-x-1.5 bg-stone-50 dark:bg-stone-800/80 px-2.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 shadow-2xs">
                     <Tag className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                    <span className="text-[11px] font-bold text-stone-600 dark:text-stone-300 whitespace-nowrap">
+                    <span className="text-[11px] font-bold text-stone-700 dark:text-stone-300 whitespace-nowrap">
                       Preço Padrão da OS:
                     </span>
                     <select
                       value={defaultPriceType}
                       onChange={(e) => handleDefaultPriceTypeChange(e.target.value as DefaultOsPriceType)}
-                      className="text-xs font-bold bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-100 border border-stone-300 dark:border-stone-600 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer shadow-2xs"
+                      className="text-xs font-bold bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-100 border border-stone-300 dark:border-stone-600 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs"
                       title="Selecione qual tabela de preço será preenchida automaticamente ao adicionar itens na OS"
                     >
                       <option value="venda">Preço de Venda (Final)</option>
@@ -1683,7 +1917,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                   <button
                     type="button"
                     onClick={handleAddPartItem}
-                    className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition active:scale-95 cursor-pointer"
+                    className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-xs border border-blue-400/40 transition active:scale-95 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Adicionar Peça / Serviço</span>
@@ -1702,7 +1936,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                     <button
                       type="button"
                       onClick={handleAddPartItem}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition cursor-pointer shadow-xs"
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition cursor-pointer shadow-xs border border-blue-400/40"
                     >
                       + Adicionar Produto / Peça (Linha)
                     </button>
@@ -2192,26 +2426,26 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
             <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-150">
               
               {/* RESUMO CONSOLIDADO DA ORDEM DE SERVIÇO PARA FATURAMENTO */}
-              <div className="p-4 bg-gradient-to-r from-blue-900 to-indigo-950 text-white rounded-2xl border border-blue-700/50 shadow-md">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-blue-800/60">
+              <div className="p-4 bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 text-white rounded-2xl border border-blue-700/60 shadow-md">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/15">
                   <div className="flex items-center space-x-2.5">
-                    <Receipt className="w-5 h-5 text-blue-300" />
+                    <Receipt className="w-5 h-5 text-blue-200" />
                     <div>
-                      <h3 className="text-sm font-bold text-white tracking-wide">
+                      <h3 className="text-sm font-black text-white tracking-wide">
                         Consolidado da Ordem de Serviço ({osNumber || 'Sem Número'})
                       </h3>
-                      <p className="text-[11px] text-blue-200">
+                      <p className="text-[11px] text-blue-100 font-medium">
                         Valores consolidados de peças, insumos e mão de obra prontos para faturamento
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    <span className="text-[11px] text-blue-300 font-semibold">Status:</span>
+                    <span className="text-[11px] text-blue-100 font-bold">Status:</span>
                     <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
                       status === 'concluida'
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
-                        : 'bg-amber-500/20 text-amber-300 border border-amber-400/30'
+                        ? 'bg-emerald-100 text-emerald-950 border border-emerald-300'
+                        : 'bg-amber-100 text-amber-950 border border-amber-300'
                     }`}>
                       {status === 'concluida' ? 'OS Concluída' : 'OS Em Andamento'}
                     </span>
@@ -2219,23 +2453,23 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3">
-                  <div className="p-3 bg-white/5 rounded-xl border border-white/10">
-                    <span className="block text-[11px] text-blue-200">Peças & Insumos ({partsItems.length} itens)</span>
-                    <span className="text-sm sm:text-base font-bold text-white">
+                  <div className="p-3 bg-white/10 dark:bg-stone-900/70 rounded-xl border border-white/15 dark:border-stone-700 shadow-2xs">
+                    <span className="block text-[11px] text-blue-100 dark:text-stone-400 font-semibold">Peças & Insumos ({partsItems.length} itens)</span>
+                    <span className="text-sm sm:text-base font-black text-white">
                       {formatCurrencyBRL(totalPartsCalculated)}
                     </span>
                   </div>
 
-                  <div className="p-3 bg-white/5 rounded-xl border border-white/10">
-                    <span className="block text-[11px] text-blue-200">Mão de Obra ({laborItems.length} mecânicos)</span>
-                    <span className="text-sm sm:text-base font-bold text-white">
+                  <div className="p-3 bg-white/10 dark:bg-stone-900/70 rounded-xl border border-white/15 dark:border-stone-700 shadow-2xs">
+                    <span className="block text-[11px] text-blue-100 dark:text-stone-400 font-semibold">Mão de Obra ({laborItems.length} mecânicos)</span>
+                    <span className="text-sm sm:text-base font-black text-white">
                       {formatCurrencyBRL(totalLaborCalculated)}
                     </span>
                   </div>
 
-                  <div className="p-3 bg-blue-600/30 rounded-xl border border-blue-400/30">
+                  <div className="p-3 bg-slate-950/80 text-white rounded-xl border border-blue-400/30 shadow-xs">
                     <span className="block text-[11px] text-blue-200 font-semibold">Total a Faturar na OS</span>
-                    <span className="text-base sm:text-lg font-black text-emerald-300">
+                    <span className="text-base sm:text-lg font-black text-emerald-400">
                       {formatCurrencyBRL(grandTotal)}
                     </span>
                   </div>
@@ -2243,11 +2477,11 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
               </div>
 
               {/* FLUXO B: VÍNCULO DE NF-E */}
-              <div className="p-4 bg-blue-50/70 dark:bg-stone-800/50 rounded-2xl border border-blue-200 dark:border-stone-800 space-y-3">
+              <div className="p-4 bg-white dark:bg-stone-800/80 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-3 shadow-2xs">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <FileText className="w-4 h-4 text-blue-700 dark:text-blue-400" />
-                    <h4 className="text-xs font-bold text-blue-900 dark:text-stone-100 uppercase tracking-wider">
+                    <FileText className="w-4 h-4 text-[#5075d6] dark:text-blue-400" />
+                    <h4 className="text-xs font-bold text-stone-800 dark:text-stone-100 uppercase tracking-wider">
                       Integração Fiscal: Vincular Nota Fiscal (NF-e)
                     </h4>
                   </div>
@@ -2257,9 +2491,9 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                       type="checkbox"
                       checked={hasNfe}
                       onChange={(e) => setHasNfe(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-[#5075d6] rounded focus:ring-[#8da7eb]"
                     />
-                    <span className="text-xs font-bold text-blue-900 dark:text-stone-300">
+                    <span className="text-xs font-bold text-stone-700 dark:text-stone-300">
                       Possui NF-e Vinculada
                     </span>
                   </label>
@@ -2268,7 +2502,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 {hasNfe && (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                     <div>
-                      <label className="block text-[11px] font-bold text-blue-900 dark:text-stone-400 mb-1">
+                      <label className="block text-[11px] font-bold text-stone-700 dark:text-stone-400 mb-1">
                         Número da NF-e
                       </label>
                       <input
@@ -2276,12 +2510,12 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                         value={nfeNumber}
                         onChange={(e) => setNfeNumber(e.target.value)}
                         placeholder="Ex: 000.045.892"
-                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-xl text-xs font-mono font-bold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600"
+                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-xs font-mono font-bold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#8da7eb]"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-blue-900 dark:text-stone-400 mb-1">
+                      <label className="block text-[11px] font-bold text-stone-700 dark:text-stone-400 mb-1">
                         Série
                       </label>
                       <input
@@ -2289,24 +2523,24 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                         value={nfeSeries}
                         onChange={(e) => setNfeSeries(e.target.value)}
                         placeholder="Ex: 1"
-                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600"
+                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#8da7eb]"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-blue-900 dark:text-stone-400 mb-1">
+                      <label className="block text-[11px] font-bold text-stone-700 dark:text-stone-400 mb-1">
                         Data de Emissão da Nota
                       </label>
                       <input
                         type="date"
                         value={nfeIssueDate}
                         onChange={(e) => setNfeIssueDate(e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600"
+                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#8da7eb]"
                       />
                     </div>
 
                     <div className="sm:col-span-2">
-                      <label className="block text-[11px] font-bold text-blue-900 dark:text-stone-400 mb-1">
+                      <label className="block text-[11px] font-bold text-stone-700 dark:text-stone-400 mb-1">
                         Chave de Acesso (44 dígitos)
                       </label>
                       <input
@@ -2315,12 +2549,12 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                         value={nfeAccessKey}
                         onChange={(e) => setNfeAccessKey(e.target.value)}
                         placeholder="41260800000000000000550010000458921000458920"
-                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-xl text-xs font-mono text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600"
+                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-xs font-mono text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#8da7eb]"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-blue-900 dark:text-stone-400 mb-1">
+                      <label className="block text-[11px] font-bold text-stone-700 dark:text-stone-400 mb-1">
                         Fornecedor / Razão Social
                       </label>
                       <input
@@ -2328,7 +2562,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                         value={nfeSupplierName}
                         onChange={(e) => setNfeSupplierName(e.target.value)}
                         placeholder="Ex: TratorPeças do Iguaçu Ltda"
-                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600"
+                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#8da7eb]"
                       />
                     </div>
                   </div>
@@ -2336,11 +2570,11 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
               </div>
 
               {/* INTEGRAÇÃO FINANCEIRA: CONTAS A PAGAR */}
-              <div className="p-4 bg-blue-50/70 dark:bg-stone-800/50 rounded-2xl border border-blue-200 dark:border-stone-800 space-y-4">
+              <div className="p-4 bg-white dark:bg-stone-800/80 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4 shadow-2xs">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <CreditCard className="w-4 h-4 text-blue-700 dark:text-blue-400" />
-                    <h4 className="text-xs font-bold text-blue-900 dark:text-stone-100 uppercase tracking-wider">
+                    <CreditCard className="w-4 h-4 text-[#5075d6] dark:text-blue-400" />
+                    <h4 className="text-xs font-bold text-stone-800 dark:text-stone-100 uppercase tracking-wider">
                       Integração Financeira: Gerar Lançamento no Contas a Pagar
                     </h4>
                   </div>
@@ -2350,9 +2584,9 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                       type="checkbox"
                       checked={createExpense}
                       onChange={(e) => setCreateExpense(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-[#5075d6] rounded focus:ring-[#8da7eb]"
                     />
-                    <span className="text-xs font-bold text-blue-900 dark:text-stone-300">
+                    <span className="text-xs font-bold text-stone-700 dark:text-stone-300">
                       Lançar no Financeiro
                     </span>
                   </label>
@@ -2362,13 +2596,13 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                     {/* Condição de Pagamento */}
                     <div>
-                      <label className="block text-[11px] font-bold text-blue-900 dark:text-stone-400 mb-1">
+                      <label className="block text-[11px] font-bold text-stone-700 dark:text-stone-400 mb-1">
                         Condição / Prazo de Pagamento
                       </label>
                       <select
                         value={paymentTerm}
                         onChange={(e) => setPaymentTerm(e.target.value as any)}
-                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-xl text-xs font-bold text-stone-900 dark:text-stone-100 cursor-pointer focus:ring-2 focus:ring-blue-600"
+                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-xs font-bold text-stone-900 dark:text-stone-100 cursor-pointer focus:ring-2 focus:ring-[#8da7eb]"
                       >
                         <option value="a_vista">À Vista (Hoje)</option>
                         <option value="15_dias">15 Dias</option>
@@ -2382,13 +2616,13 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
 
                     {/* Forma de Pagamento */}
                     <div>
-                      <label className="block text-[11px] font-bold text-blue-900 dark:text-stone-400 mb-1">
+                      <label className="block text-[11px] font-bold text-stone-700 dark:text-stone-400 mb-1">
                         Forma de Pagamento
                       </label>
                       <select
                         value={paymentMethod}
                         onChange={(e) => setPaymentMethod(e.target.value as any)}
-                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-xl text-xs font-bold text-stone-900 dark:text-stone-100 cursor-pointer focus:ring-2 focus:ring-blue-600"
+                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-xs font-bold text-stone-900 dark:text-stone-100 cursor-pointer focus:ring-2 focus:ring-[#8da7eb]"
                       >
                         <option value="boleto">Boleto Bancário</option>
                         <option value="pix">PIX / Transferência</option>
@@ -2400,20 +2634,20 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
 
                     {/* Data do 1º Vencimento */}
                     <div>
-                      <label className="block text-[11px] font-bold text-blue-900 dark:text-stone-400 mb-1">
+                      <label className="block text-[11px] font-bold text-stone-700 dark:text-stone-400 mb-1">
                         1º Vencimento
                       </label>
                       <input
                         type="date"
                         value={firstDueDate}
                         onChange={(e) => setFirstDueDate(e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-stone-100 font-semibold focus:ring-2 focus:ring-blue-600"
+                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-stone-100 font-semibold focus:ring-2 focus:ring-[#8da7eb]"
                       />
                     </div>
 
                     {/* Fornecedor para o Financeiro */}
                     <div className="sm:col-span-3">
-                      <label className="block text-[11px] font-bold text-blue-900 dark:text-stone-400 mb-1">
+                      <label className="block text-[11px] font-bold text-stone-700 dark:text-stone-400 mb-1">
                         Credor / Fornecedor do Pagamento
                       </label>
                       <input
@@ -2421,12 +2655,12 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                         value={financialSupplier || workshopOrMechanic}
                         onChange={(e) => setFinancialSupplier(e.target.value)}
                         placeholder="Nome da Oficina ou Fornecedor de Peças"
-                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-xl text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600"
+                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#8da7eb]"
                       />
                     </div>
 
                     {/* Botão e Ação Direta de Faturamento no Contas a Pagar */}
-                    <div className="sm:col-span-3 pt-3 flex flex-wrap items-center justify-between gap-3 border-t border-blue-200 dark:border-stone-700">
+                    <div className="sm:col-span-3 pt-3 flex flex-wrap items-center justify-between gap-3 border-t border-stone-200 dark:border-stone-700">
                       <div>
                         {expenseGenerated ? (
                           <div className="inline-flex items-center space-x-2 text-emerald-700 dark:text-emerald-300 font-bold text-xs bg-emerald-100/80 dark:bg-emerald-950/60 px-3 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700">
@@ -2501,7 +2735,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
 
               {/* Observações Internas */}
               <div>
-                <label className="block text-xs font-bold text-blue-900 dark:text-stone-300 mb-1">
+                <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
                   Observações Gerais / Histórico
                 </label>
                 <textarea
@@ -2509,7 +2743,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Ex: Peça substituída com garantia de 90 dias da concessionária..."
                   rows={2}
-                  className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-xl text-xs sm:text-sm text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600"
+                  className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-xs sm:text-sm text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[#8da7eb]"
                 />
               </div>
             </div>
@@ -2529,15 +2763,15 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
               </div>
 
               {/* Sub-totais discriminados */}
-              <div className="hidden md:flex items-center space-x-2 text-[11px] text-blue-200/90 dark:text-stone-400 bg-blue-900/60 dark:bg-stone-800/80 px-2.5 py-1 rounded-lg border border-blue-700/50 dark:border-stone-700">
+              <div className="hidden md:flex items-center space-x-2 text-[11px] text-blue-100 dark:text-stone-400 bg-blue-900/60 dark:bg-stone-800/80 px-2.5 py-1 rounded-lg border border-blue-700/60 dark:border-stone-700 shadow-2xs">
                 <span>Peças: <strong className="text-white font-mono">{formatCurrencyBRL(totalPartsCalculated)}</strong></span>
                 <span>•</span>
                 <span>M. Obra: <strong className="text-white font-mono">{formatCurrencyBRL(totalLaborCalculated)}</strong></span>
               </div>
 
               {saveSuccess && (
-                <span className="inline-flex items-center space-x-1.5 px-3 py-1 bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 rounded-lg text-xs font-bold animate-in fade-in duration-150">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                <span className="inline-flex items-center space-x-1.5 px-3 py-1 bg-emerald-100 border border-emerald-400 text-emerald-950 rounded-lg text-xs font-bold animate-in fade-in duration-150">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700" />
                   <span>OS Salva com Sucesso!</span>
                 </span>
               )}
@@ -2548,7 +2782,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 type="button"
                 id="btn-cancelar-os"
                 onClick={onClose}
-                className="px-3.5 py-2 rounded-xl border border-blue-400/30 bg-blue-900/50 hover:bg-blue-700/60 text-blue-100 text-xs font-bold transition cursor-pointer"
+                className="px-3.5 py-2 rounded-xl border border-blue-400/40 bg-blue-900/50 hover:bg-blue-700/60 text-blue-100 hover:text-white text-xs font-bold transition cursor-pointer shadow-xs"
               >
                 Cancelar
               </button>
@@ -2559,7 +2793,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 className="inline-flex items-center justify-center space-x-1.5 px-3.5 py-2 rounded-xl border border-blue-300/40 bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition cursor-pointer shadow-xs"
                 title="Fechar formulário de Ordem de Serviço"
               >
-                <X className="w-3.5 h-3.5 text-blue-200" />
+                <X className="w-3.5 h-3.5 text-blue-100" />
                 <span>Sair / Fechar</span>
               </button>
 
@@ -2568,7 +2802,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 type="button"
                 id="btn-salvar-os"
                 onClick={() => executeSave({ triggerExpense: false })}
-                className="inline-flex items-center justify-center space-x-2 px-5 py-2 text-white text-xs font-bold rounded-xl shadow-lg transition active:scale-95 cursor-pointer bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/40"
+                className="inline-flex items-center justify-center space-x-2 px-5 py-2 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95 cursor-pointer bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/40"
                 title="Salva o estado atual das peças, quantidades e mão de obra mantendo os itens na tela sem gerar despesa financeira"
               >
                 {saveSuccess ? (
@@ -2592,12 +2826,12 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                   setStatus('concluida');
                   executeSave({ markAsCompleted: true, redirectToFinance: true, triggerExpense: false });
                 }}
-                className="inline-flex items-center justify-center space-x-2 px-5 py-2 text-white text-xs font-bold rounded-xl shadow-lg transition active:scale-95 cursor-pointer bg-blue-600 hover:bg-blue-500 border border-blue-400/50 hover:shadow-blue-500/20"
+                className="inline-flex items-center justify-center space-x-2 px-5 py-2 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95 cursor-pointer bg-blue-600 hover:bg-blue-500 border border-blue-400/50"
                 title="Conclui a manutenção, salva o estado final e abre a Aba 3 para faturamento e formas de pagamento"
               >
-                <Receipt className="w-4 h-4 text-blue-200" />
+                <Receipt className="w-4 h-4 text-white" />
                 <span>Fechar OS e faturar</span>
-                <ArrowRight className="w-3.5 h-3.5 text-blue-200" />
+                <ArrowRight className="w-3.5 h-3.5 text-white" />
               </button>
             </div>
           </div>
