@@ -188,8 +188,6 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   const [activeSearchRowIndex, setActiveSearchRowIndex] = useState<number | null>(null);
   const [activeSearchInitialQuery, setActiveSearchInitialQuery] = useState('');
   const [autocompleteIndex, setAutocompleteIndex] = useState<number | null>(null);
-  const [priceDropdownIndex, setPriceDropdownIndex] = useState<number | null>(null);
-  const [priceDropdownPlacement, setPriceDropdownPlacement] = useState<'down' | 'up'>('down');
   const [unitCostRawInputs, setUnitCostRawInputs] = useState<Record<string, string>>({});
 
   // --- MÃO DE OBRA (LISTA DINÂMICA DE MECÂNICOS & AVULSO) ---
@@ -1414,24 +1412,24 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="border border-stone-200 dark:border-stone-800 rounded-lg overflow-visible bg-white dark:bg-stone-900 shadow-2xs min-h-[220px]">
-                  <div className="overflow-x-auto overflow-y-visible pb-10">
+                <div className="flex-1 flex flex-col border border-stone-200 dark:border-stone-800 rounded-xl overflow-hidden bg-white dark:bg-stone-900 shadow-2xs min-h-[440px]">
+                  <div className="flex-1 overflow-x-auto overflow-y-auto">
                     <table className="w-full text-left border-collapse table-fixed min-w-[840px]">
                       <colgroup>
-                        <col className="w-[9%]" />
-                        <col className="w-[35%]" />
+                        <col className="w-[8%]" />
+                        <col className="w-[34%]" />
                         <col className="w-[18%]" />
-                        <col className="w-[16%]" />
+                        <col className="w-[18%]" />
                         <col className="w-[9%]" />
                         <col className="w-[9%]" />
                         <col className="w-[4%]" />
                       </colgroup>
                       <thead>
-                        <tr className="bg-stone-100 dark:bg-stone-800/90 border-b border-stone-200 dark:border-stone-700 text-[10px] font-bold text-stone-600 dark:text-stone-300 uppercase tracking-wider select-none">
+                        <tr className="bg-stone-100 dark:bg-stone-800/90 border-b border-stone-200 dark:border-stone-700 text-[10px] font-bold text-stone-600 dark:text-stone-300 uppercase tracking-wider select-none sticky top-0 z-10">
                           <th className="py-2.5 px-3">NUM. (ID)</th>
                           <th className="py-2.5 px-3">DESCRIÇÃO</th>
                           <th className="py-2.5 px-3">ORIGEM</th>
-                          <th className="py-2.5 px-3 text-right">VALOR UNITÁRIO</th>
+                          <th className="py-2.5 px-3">VALOR UNITÁRIO</th>
                           <th className="py-2.5 px-3 text-center">QTDE</th>
                           <th className="py-2.5 px-3 text-right">TOTAL</th>
                           <th className="py-2.5 px-2 text-center"></th>
@@ -1516,8 +1514,6 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                             <tr 
                               key={item.id || index}
                               className={`transition-colors hover:bg-stone-50/80 dark:hover:bg-stone-800/40 ${
-                                priceDropdownIndex === index ? 'relative z-30' : ''
-                              } ${
                                 item.origin === 'recuperada_externa'
                                   ? 'bg-purple-50/30 dark:bg-purple-950/10'
                                   : item.origin === 'externo_compra'
@@ -1679,175 +1675,71 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                                 </div>
                               </td>
 
-                              {/* 4. Valor Unitário (Dropdown Interativo de Preços + Edição Manual em Tempo Real) */}
-                               <td className={`py-2 px-3 align-middle text-right relative ${priceDropdownIndex === index ? 'z-40' : ''}`}>
-                                 <div className={`relative inline-flex items-center justify-end ${priceDropdownIndex === index ? 'z-50' : ''}`}>
-                                   <span className="text-[11px] text-stone-400 mr-1 font-mono font-medium select-none">R$</span>
-                                   <div className="inline-flex items-center rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 shadow-2xs focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 overflow-hidden">
-                                     <input
-                                       type="text"
-                                       inputMode="decimal"
-                                       value={
-                                         unitCostRawInputs[item.id] !== undefined
-                                           ? unitCostRawInputs[item.id]
-                                           : (item.unitCost === 0 ? '' : item.unitCost)
-                                       }
-                                       onChange={(e) => {
-                                         const raw = e.target.value;
-                                         setUnitCostRawInputs(prev => ({ ...prev, [item.id]: raw }));
-                                         const parsed = parseCleanPriceNumber(raw);
-                                         handleUpdatePartItem(index, { unitCost: parsed });
-                                       }}
-                                       onBlur={() => {
-                                         setUnitCostRawInputs(prev => {
-                                           const copy = { ...prev };
-                                           delete copy[item.id];
-                                           return copy;
-                                         });
-                                       }}
-                                       placeholder="0,00"
-                                       title="Digite o valor unitário manualmente ou clique na seta para escolher na tabela de preços"
-                                       className="w-20 px-2 py-1 text-xs font-mono text-right bg-transparent text-stone-900 dark:text-stone-100 font-bold focus:outline-none"
-                                     />
-                                     <button
-                                       type="button"
-                                       onClick={(e) => {
-                                         e.stopPropagation();
-                                         if (priceDropdownIndex === index) {
-                                           setPriceDropdownIndex(null);
-                                         } else {
-                                           // Detecção inteligente de espaço na tela (abre para cima se próximo ao final)
-                                           const rect = e.currentTarget.getBoundingClientRect();
-                                           const spaceBelow = window.innerHeight - rect.bottom;
-                                           const shouldOpenUp = spaceBelow < 280;
-                                           setPriceDropdownPlacement(shouldOpenUp ? 'up' : 'down');
-                                           setPriceDropdownIndex(index);
-                                         }
-                                       }}
-                                       className={`px-1.5 py-1.5 flex items-center justify-center border-l border-stone-200 dark:border-stone-700 transition cursor-pointer ${
-                                         priceDropdownIndex === index
-                                           ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
-                                           : 'bg-stone-50 dark:bg-stone-800/80 text-stone-500 dark:text-stone-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-stone-700 dark:hover:text-stone-200'
-                                       }`}
-                                       title="Tabela de Preços: Custo, Venda Final, Atacado e Promocional"
-                                     >
-                                       <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${priceDropdownIndex === index ? 'rotate-180 text-white' : ''}`} />
-                                     </button>
-                                   </div>
+                              {/* 4. Valor Unitário (Input com Edição Manual + Dropdown Nativo Tabela de Preços no Estilo da Origem) */}
+                              <td className="py-2 px-3 align-middle">
+                                <div className="space-y-1">
+                                  <div className="flex items-center rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 shadow-2xs focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500 px-2 py-1">
+                                    <span className="text-[11px] text-stone-400 mr-1 font-mono font-medium select-none">R$</span>
+                                    <input
+                                      type="text"
+                                      inputMode="decimal"
+                                      value={
+                                        unitCostRawInputs[item.id] !== undefined
+                                          ? unitCostRawInputs[item.id]
+                                          : (item.unitCost === 0 ? '' : item.unitCost)
+                                      }
+                                      onChange={(e) => {
+                                        const raw = e.target.value;
+                                        setUnitCostRawInputs(prev => ({ ...prev, [item.id]: raw }));
+                                        const parsed = parseCleanPriceNumber(raw);
+                                        handleUpdatePartItem(index, { unitCost: parsed });
+                                      }}
+                                      onBlur={() => {
+                                        setUnitCostRawInputs(prev => {
+                                          const copy = { ...prev };
+                                          delete copy[item.id];
+                                          return copy;
+                                        });
+                                      }}
+                                      placeholder="0,00"
+                                      title="Digite o valor unitário manualmente ou selecione uma opção na tabela abaixo"
+                                      className="w-full text-xs font-mono text-right bg-transparent text-stone-900 dark:text-stone-100 font-bold focus:outline-none"
+                                    />
+                                  </div>
 
-                                   {/* Menu Dropdown Flutuante de Opções de Preço */}
-                                   {priceDropdownIndex === index && (
-                                     <>
-                                       {/* Backdrop invisível para fechar ao clicar fora */}
-                                       <div 
-                                         className="fixed inset-0 z-50 bg-black/5 cursor-default" 
-                                         onClick={(e) => {
-                                           e.stopPropagation();
-                                           setPriceDropdownIndex(null);
-                                         }} 
-                                       />
-
-                                       <div 
-                                         onClick={(e) => e.stopPropagation()}
-                                         className={`absolute right-0 ${
-                                           priceDropdownPlacement === 'up'
-                                             ? 'bottom-full mb-2 origin-bottom-right'
-                                             : 'top-full mt-2 origin-top-right'
-                                         } z-50 w-80 min-w-[260px] max-w-[340px] bg-white dark:bg-stone-900 rounded-xl shadow-2xl border-2 border-stone-200 dark:border-stone-700 overflow-hidden text-left ring-1 ring-black/10 dark:ring-white/10 animate-in fade-in zoom-in-95 duration-150`}
-                                       >
-                                         {/* Cabeçalho do Dropdown */}
-                                         <div className="px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800/90 border-b border-stone-200 dark:border-stone-700 flex items-center justify-between">
-                                           <div className="flex items-center space-x-2">
-                                             <Tag className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                                             <span className="text-[11px] font-bold text-stone-800 dark:text-stone-200 uppercase tracking-wider">
-                                               Tabela de Preços
-                                             </span>
-                                           </div>
-                                           {stockItem ? (
-                                             <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                                               Estoque Sincronizado
-                                             </span>
-                                           ) : (
-                                             <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800">
-                                               Margens Padrão
-                                             </span>
-                                           )}
-                                         </div>
-
-                                         {/* Identificação do Item / Saldo Estoque */}
-                                         {stockItem && (
-                                           <div className="px-3.5 py-1.5 bg-stone-100/70 dark:bg-stone-800/50 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400">
-                                             <span className="truncate max-w-[180px] font-semibold text-stone-700 dark:text-stone-300">
-                                               {stockItem.name}
-                                             </span>
-                                             <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
-                                               Saldo: {stockItem.quantity} {stockItem.unit}
-                                             </span>
-                                           </div>
-                                         )}
-
-                                         {/* Lista de Opções de Preço com Espaçamento e Efeito Hover */}
-                                         <div className="p-2 space-y-1.5">
-                                           {rowPriceOptions.map((opt) => {
-                                             const isSelected = Math.abs((item.unitCost || 0) - opt.value) < 0.009;
-                                             return (
-                                               <button
-                                                 key={opt.key}
-                                                 type="button"
-                                                 onClick={() => {
-                                                   setUnitCostRawInputs(prev => {
-                                                     const copy = { ...prev };
-                                                     delete copy[item.id];
-                                                     return copy;
-                                                   });
-                                                   handleUpdatePartItem(index, { unitCost: opt.value });
-                                                   setPriceDropdownIndex(null);
-                                                 }}
-                                                 className={`w-full px-3 py-2.5 rounded-lg text-left transition flex items-center justify-between cursor-pointer border ${
-                                                   isSelected 
-                                                     ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-950 dark:text-emerald-100 font-semibold' 
-                                                     : 'hover:bg-emerald-50 dark:hover:bg-stone-800 border-transparent text-stone-800 dark:text-stone-200 hover:border-emerald-200 dark:hover:border-stone-700'
-                                                 }`}
-                                               >
-                                                 <div className="min-w-0 pr-2">
-                                                   <div className="flex items-center space-x-2">
-                                                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border uppercase font-mono ${opt.badgeClass}`}>
-                                                       {opt.badge}
-                                                     </span>
-                                                     <span className="text-xs font-bold truncate text-stone-900 dark:text-stone-100">
-                                                       {opt.name}
-                                                     </span>
-                                                   </div>
-                                                   <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-0.5 pl-0.5">
-                                                     {opt.detail}
-                                                   </div>
-                                                 </div>
-
-                                                 <div className="text-right whitespace-nowrap pl-2">
-                                                   <span className={`text-xs font-mono ${isSelected ? 'text-emerald-700 dark:text-emerald-400 font-black' : 'text-stone-900 dark:text-stone-100 font-bold'}`}>
-                                                     {formatCurrencyBRL(opt.value)}
-                                                   </span>
-                                                   {isSelected && (
-                                                     <span className="block text-[9px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">
-                                                       ✓ Ativo
-                                                     </span>
-                                                   )}
-                                                 </div>
-                                               </button>
-                                             );
-                                           })}
-                                         </div>
-
-                                         {/* Rodapé informativo */}
-                                         <div className="px-3.5 py-2 bg-stone-50/90 dark:bg-stone-800/90 border-t border-stone-200 dark:border-stone-700 text-[10px] text-stone-500 dark:text-stone-400 flex items-center justify-between">
-                                           <span>Edição manual liberada no input</span>
-                                           <span className="font-mono text-[9px] text-stone-400">Clique fora p/ fechar</span>
-                                         </div>
-                                       </div>
-                                     </>
-                                   )}
-                                 </div>
-                               </td>
+                                  {/* Dropdown de Preço exatamente no mesmo formato do seletor de Origem */}
+                                  <select
+                                    value={
+                                      rowPriceOptions.find(opt => Math.abs((item.unitCost || 0) - opt.value) < 0.009)?.key || ''
+                                    }
+                                    onChange={(e) => {
+                                      const selectedKey = e.target.value;
+                                      const matchedOpt = rowPriceOptions.find(opt => opt.key === selectedKey);
+                                      if (matchedOpt) {
+                                        setUnitCostRawInputs(prev => {
+                                          const copy = { ...prev };
+                                          delete copy[item.id];
+                                          return copy;
+                                        });
+                                        handleUpdatePartItem(index, { unitCost: matchedOpt.value });
+                                      }
+                                    }}
+                                    className="w-full text-xs font-semibold py-1.5 px-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer shadow-2xs truncate"
+                                    title="Tabela de Preços: Custo, Venda Final, Atacado e Promocional"
+                                  >
+                                    <option value="" disabled>
+                                      {item.unitCost && !rowPriceOptions.some(opt => Math.abs((item.unitCost || 0) - opt.value) < 0.009)
+                                        ? `Personalizado (${formatCurrencyBRL(item.unitCost)})`
+                                        : 'Tabela de Preços...'}
+                                    </option>
+                                    {rowPriceOptions.map(opt => (
+                                      <option key={opt.key} value={opt.key}>
+                                        {opt.name}: {formatCurrencyBRL(opt.value)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </td>
 
                               {/* 5. Qtde */}
                               <td className="py-2 px-3 align-middle text-center">
