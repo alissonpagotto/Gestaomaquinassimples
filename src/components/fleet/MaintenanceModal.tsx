@@ -2693,7 +2693,38 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
 
                 {createExpense && (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                    {/* Condição / Prazo de Pagamento: Card Indicador e Botão Detalhamento de Parcelas */}
+                    {/* 1º Lugar: Forma de Pagamento */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-700 dark:text-stone-400 mb-1">
+                        Forma de Pagamento
+                      </label>
+                      <select
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value as any)}
+                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-xs font-bold text-stone-900 dark:text-stone-100 cursor-pointer focus:ring-2 focus:ring-[#8da7eb]"
+                      >
+                        <option value="boleto">Boleto Bancário</option>
+                        <option value="pix">PIX / Transferência</option>
+                        <option value="cartao_credito">Cartão de Crédito</option>
+                        <option value="dinheiro">Dinheiro em Espécie</option>
+                        <option value="safra_prazo">Cheque / Safra</option>
+                      </select>
+                    </div>
+
+                    {/* 2º Lugar: 1º Vencimento */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-700 dark:text-stone-400 mb-1">
+                        1º Vencimento
+                      </label>
+                      <input
+                        type="date"
+                        value={firstDueDate}
+                        onChange={(e) => setFirstDueDate(e.target.value)}
+                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-stone-100 font-semibold focus:ring-2 focus:ring-[#8da7eb]"
+                      />
+                    </div>
+
+                    {/* 3º Lugar: Condição / Prazo de Pagamento: Card Indicador e Botão Detalhamento de Parcelas */}
                     <div>
                       <label className="block text-[11px] font-bold text-stone-700 dark:text-stone-400 mb-1 flex items-center justify-between">
                         <span>Condição / Prazo de Pagamento</span>
@@ -2735,37 +2766,6 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                           <span>Detalhamento de Parcelas</span>
                         </button>
                       </div>
-                    </div>
-
-                    {/* Forma de Pagamento */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-stone-700 dark:text-stone-400 mb-1">
-                        Forma de Pagamento
-                      </label>
-                      <select
-                        value={paymentMethod}
-                        onChange={(e) => setPaymentMethod(e.target.value as any)}
-                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-xs font-bold text-stone-900 dark:text-stone-100 cursor-pointer focus:ring-2 focus:ring-[#8da7eb]"
-                      >
-                        <option value="boleto">Boleto Bancário</option>
-                        <option value="pix">PIX / Transferência</option>
-                        <option value="cartao_credito">Cartão de Crédito</option>
-                        <option value="dinheiro">Dinheiro em Espécie</option>
-                        <option value="safra_prazo">Cheque / Safra</option>
-                      </select>
-                    </div>
-
-                    {/* Data do 1º Vencimento */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-stone-700 dark:text-stone-400 mb-1">
-                        1º Vencimento
-                      </label>
-                      <input
-                        type="date"
-                        value={firstDueDate}
-                        onChange={(e) => setFirstDueDate(e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-stone-100 font-semibold focus:ring-2 focus:ring-[#8da7eb]"
-                      />
                     </div>
 
                     {/* Fornecedor para o Financeiro */}
