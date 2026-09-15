@@ -338,12 +338,18 @@ export const FleetModule: React.FC<FleetModuleProps> = ({
     const shouldDeductStock = flags?.deductStock ?? true;
     const shouldCreatePurchase = flags?.createPurchaseRequest ?? false;
 
-    if (editingMaintenanceLog) {
+    const existingIdx = maintenanceLogs.findIndex(m => m.id === log.id);
+    if (existingIdx !== -1) {
+      const updated = [...maintenanceLogs];
+      updated[existingIdx] = log;
+      onSaveMaintenanceLogs(updated);
+    } else if (editingMaintenanceLog) {
       const updated = maintenanceLogs.map(m => (m.id === editingMaintenanceLog.id ? log : m));
       onSaveMaintenanceLogs(updated);
     } else {
       onSaveMaintenanceLogs([log, ...maintenanceLogs]);
     }
+    setEditingMaintenanceLog(log);
 
     // Update vehicle status and maintenance expenses
     const targetVehicle = machineries.find(m => m.id === log.machineryId);
@@ -698,7 +704,10 @@ export const FleetModule: React.FC<FleetModuleProps> = ({
 
       <MaintenanceModal
         isOpen={isMaintenanceModalOpen}
-        onClose={() => setIsMaintenanceModalOpen(false)}
+        onClose={() => {
+          setIsMaintenanceModalOpen(false);
+          setEditingMaintenanceLog(null);
+        }}
         onSave={handleSaveMaintenance}
         editingLog={editingMaintenanceLog}
         machineries={machineries}

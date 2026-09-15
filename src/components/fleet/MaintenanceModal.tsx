@@ -28,7 +28,10 @@ import {
   Settings2,
   Users,
   Hammer,
-  ChevronDown
+  ChevronDown,
+  Receipt,
+  ArrowRight,
+  CheckCheck
 } from 'lucide-react';
 import { 
   MaintenanceLog, 
@@ -159,6 +162,12 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   const [nextServiceDue, setNextServiceDue] = useState('');
   const [notes, setNotes] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [currentOsId, setCurrentOsId] = useState<string>(editingLog?.id || '');
+  const [expenseGenerated, setExpenseGenerated] = useState(false);
+  const [feedbackBanner, setFeedbackBanner] = useState<{
+    type: 'save' | 'finalize' | 'billed';
+    message: string;
+  } | null>(null);
 
   // --- CATEGORIAS DE SERVIÇO DINÂMICAS ---
   const [categoriesList, setCategoriesList] = useState<MaintenanceCategoryDefinition[]>([]);
@@ -393,13 +402,18 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
         setPaymentMethod(editingLog.financialConditions.paymentMethod);
         setFirstDueDate(editingLog.financialConditions.firstDueDate);
         setFinancialSupplier(editingLog.financialConditions.supplierName || '');
+        setExpenseGenerated(!!editingLog.financialConditions.createAccountsPayable);
       } else {
         setCreateExpense(false);
+        setExpenseGenerated(false);
       }
 
+      setCurrentOsId(editingLog.id);
       setDeductStock(!editingLog.stockDeducted);
     } else {
       // Novo registro
+      const newOsId = `maint_${Date.now()}`;
+      setCurrentOsId(newOsId);
       const randomNum = Math.floor(1000 + Math.random() * 9000);
       const year = new Date().getFullYear();
       setOsNumber(`OS-${year}-${randomNum}`);
@@ -416,7 +430,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       setType('preventiva');
       setServiceCategory('Troca de Óleo & Filtros');
       setDescription('');
-      setStatus('concluida');
+      setStatus('em_andamento');
       setLocation('oficina_interna');
       setLocationDetails('');
       setExecutorType('equipe_propria');
@@ -435,7 +449,8 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       setNfeAccessKey('');
       setNfeSupplierName('');
       setNfeTotalAmount('');
-      setCreateExpense(true);
+      setCreateExpense(false);
+      setExpenseGenerated(false);
       setPaymentTerm('a_vista');
       setPaymentMethod('boleto');
       setFirstDueDate(new Date().toISOString().split('T')[0]);
@@ -445,6 +460,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       setPurchaseUrgency('alta');
     }
     setSaveSuccess(false);
+    setFeedbackBanner(null);
   }, [editingLog, isOpen, machineries]);
 
   // Máscara visual de milhar em tempo real (padrão pt-BR, ex: 5000 vira "5.000"; 12550 vira "12.550")
@@ -674,11 +690,31 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   const internalPartsCount = partsItems.filter(p => p.origin === 'almoxarifado_interno').length;
   const recoveredPartsCount = partsItems.filter(p => p.origin === 'recuperada_externa').length;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const executeSave = (options?: {
+    markAsCompleted?: boolean;
+    redirectToFinance?: boolean;
+    triggerExpense?: boolean;
+  }): boolean => {
     if (!machineryId || !description.trim()) {
       alert('Por favor, selecione o veículo e insira a descrição da Ordem de Serviço.');
-      return;
+      return false;
+    }
+
+    const isMarkingCompleted = !!options?.markAsCompleted;
+    const isTriggeringExpense = !!options?.triggerExpense;
+    const shouldGoToFinance = !!options?.redirectToFinance;
+
+    const targetStatus = isMarkingCompleted ? 'concluida' : status;
+    const todayIso = new Date().toISOString().split('T')[0];
+    const targetCompletionDate = isMarkingCompleted
+      ? (completionDate.trim() || todayIso)
+      : (completionDate.trim() || undefined);
+
+    if (isMarkingCompleted) {
+      setStatus('concluida');
+      if (!completionDate.trim()) {
+        setCompletionDate(todayIso);
+      }
     }
 
     const selectedMach = machineries.find(m => m.id === machineryId);
@@ -718,11 +754,16 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       ? Number(rawNext)
       : undefined;
 
+    const idToUse = currentOsId || editingLog?.id || `maint_${Date.now()}`;
+    if (!currentOsId) {
+      setCurrentOsId(idToUse);
+    }
+
     const log: MaintenanceLog = {
-      id: editingLog ? editingLog.id : `maint_${Date.now()}`,
+      id: idToUse,
       osNumber: osNumber.trim() || `OS-${Date.now().toString().slice(-6)}`,
       date,
-      completionDate: completionDate.trim() || undefined,
+      completionDate: targetCompletionDate,
       machineryId,
       machineryPlateOrName: machName,
       type,
@@ -741,7 +782,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       totalCost: grandTotal,
       currentHourMeterOrKm: parsedCurrentHourMeter,
       nextServiceDueHourMeterOrKm: parsedNextServiceDue,
-      status,
+      status: targetStatus,
       notes: notes.trim() || undefined,
       createdAt: editingLog ? editingLog.createdAt : new Date().toISOString(),
       nfeLink: hasNfe ? {
@@ -752,14 +793,14 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
         supplierName: nfeSupplierName.trim() || financialSupplier.trim() || undefined,
         totalNfeAmount: parseFloat(nfeTotalAmount) || grandTotal,
       } : undefined,
-      financialConditions: createExpense ? {
+      financialConditions: isTriggeringExpense ? {
         createAccountsPayable: true,
         paymentTerm,
         paymentMethod,
         firstDueDate,
         supplierName: financialSupplier.trim() || finalMechanicName || workshopOrMechanic.trim(),
         notes: `OS ${osNumber} - ${machName}`,
-      } : undefined,
+      } : (editingLog?.financialConditions || undefined),
     };
 
     // 1. Executa a baixa real no Almoxarifado Interno se selecionado
@@ -824,20 +865,50 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       }
     }
 
+    // REGRA DE OURO:
+    // createExpense é estritamente isTriggeringExpense.
+    // Ao clicar em "Salvar Ordem de Serviço", isTriggeringExpense é false.
+    // Os dados são salvos sem fechar o modal e sem enviar ao Contas a Pagar.
     onSave(log, {
-      createExpense: createExpense && (status === 'concluida' || status === 'em_andamento') && (totalPartsCalculated > 0 || totalLaborCalculated > 0),
+      createExpense: isTriggeringExpense && grandTotal > 0,
       deductStock: deductStock && internalPartsCount > 0,
-      createPurchaseRequest: generatePurchaseRequest || (status === 'aguardando_pecas' && externalPartsCount > 0),
+      createPurchaseRequest: generatePurchaseRequest || (targetStatus === 'aguardando_pecas' && externalPartsCount > 0),
     });
 
-    // Feedback visual temporário de salvamento sem fechar a janela automaticamente
-    setSaveSuccess(true);
-    setTimeout(() => {
-      setSaveSuccess(false);
-    }, 3500);
+    if (isTriggeringExpense) {
+      setExpenseGenerated(true);
+      setSaveSuccess(true);
+      setFeedbackBanner({
+        type: 'billed',
+        message: 'Faturamento confirmado! Lançamento gerado com sucesso no Contas a Pagar.'
+      });
+      setTimeout(() => {
+        setSaveSuccess(false);
+      }, 3500);
+    } else if (shouldGoToFinance) {
+      setActiveTab('fiscal_financeiro');
+      setCreateExpense(true);
+      setFeedbackBanner({
+        type: 'finalize',
+        message: 'OS Finalizada como Concluída! Defina as condições de pagamento abaixo para faturar.'
+      });
+    } else {
+      setSaveSuccess(true);
+      setFeedbackBanner({
+        type: 'save',
+        message: 'Ordem de Serviço salva com sucesso! Os itens continuam disponíveis para novas adições.'
+      });
+      setTimeout(() => {
+        setSaveSuccess(false);
+      }, 3500);
+    }
 
-    // NOTA: onClose() foi removido daqui para não fechar a modal automaticamente ao salvar.
-    // O fechamento definitivo é executado exclusivamente através do botão "Sair / Fechar" ou botão de fechar (X).
+    return true;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    executeSave({ triggerExpense: false });
   };
 
   // Mapeamento dinâmico de cores vibrantes e alto contraste para o Status da Ordem
@@ -958,6 +1029,36 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
           
           {/* Conteúdo Central com Rolagem Vertical Independente */}
           <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4 flex flex-col">
+
+            {/* Banner de Feedback de Ação */}
+            {feedbackBanner && (
+              <div className={`p-3 rounded-xl border flex items-center justify-between transition-all duration-200 shadow-xs ${
+                feedbackBanner.type === 'billed'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200'
+                  : feedbackBanner.type === 'finalize'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-200'
+                  : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-950 dark:text-emerald-100'
+              }`}>
+                <div className="flex items-center space-x-2.5">
+                  {feedbackBanner.type === 'billed' ? (
+                    <CheckCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  ) : feedbackBanner.type === 'finalize' ? (
+                    <Receipt className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" />
+                  ) : (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  )}
+                  <span className="text-xs font-bold">{feedbackBanner.message}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFeedbackBanner(null)}
+                  className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-1 cursor-pointer"
+                  title="Fechar mensagem"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           
           {/* ======================================================== */}
           {/* ABA 1 UNIFICADA: DIAGNÓSTICO, EQUIPE & LOCAL (2 COLUNAS) */}
@@ -2054,8 +2155,59 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
           {/* ABA 3: FISCAL (NF-E), COMPRAS & FINANCEIRO (CONTAS A PAGAR) */}
           {/* ======================================================== */}
           {activeTab === 'fiscal_financeiro' && (
-            <div className="space-y-6 animate-in fade-in duration-150">
+            <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-150">
               
+              {/* RESUMO CONSOLIDADO DA ORDEM DE SERVIÇO PARA FATURAMENTO */}
+              <div className="p-4 bg-gradient-to-r from-blue-900 to-indigo-950 text-white rounded-2xl border border-blue-700/50 shadow-md">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-blue-800/60">
+                  <div className="flex items-center space-x-2.5">
+                    <Receipt className="w-5 h-5 text-blue-300" />
+                    <div>
+                      <h3 className="text-sm font-bold text-white tracking-wide">
+                        Consolidado da Ordem de Serviço ({osNumber || 'Sem Número'})
+                      </h3>
+                      <p className="text-[11px] text-blue-200">
+                        Valores consolidados de peças, insumos e mão de obra prontos para faturamento
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[11px] text-blue-300 font-semibold">Status:</span>
+                    <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                      status === 'concluida'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
+                        : 'bg-amber-500/20 text-amber-300 border border-amber-400/30'
+                    }`}>
+                      {status === 'concluida' ? 'OS Concluída' : 'OS Em Andamento'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3">
+                  <div className="p-3 bg-white/5 rounded-xl border border-white/10">
+                    <span className="block text-[11px] text-blue-200">Peças & Insumos ({partsItems.length} itens)</span>
+                    <span className="text-sm sm:text-base font-bold text-white">
+                      {formatCurrencyBRL(totalPartsCalculated)}
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-white/5 rounded-xl border border-white/10">
+                    <span className="block text-[11px] text-blue-200">Mão de Obra ({laborItems.length} mecânicos)</span>
+                    <span className="text-sm sm:text-base font-bold text-white">
+                      {formatCurrencyBRL(totalLaborCalculated)}
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-blue-600/30 rounded-xl border border-blue-400/30">
+                    <span className="block text-[11px] text-blue-200 font-semibold">Total a Faturar na OS</span>
+                    <span className="text-base sm:text-lg font-black text-emerald-300">
+                      {formatCurrencyBRL(grandTotal)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {/* FLUXO B: VÍNCULO DE NF-E */}
               <div className="p-4 bg-blue-50/70 dark:bg-stone-800/50 rounded-2xl border border-blue-200 dark:border-stone-800 space-y-3">
                 <div className="flex items-center justify-between">
@@ -2238,6 +2390,35 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                         className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-xl text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600"
                       />
                     </div>
+
+                    {/* Botão e Ação Direta de Faturamento no Contas a Pagar */}
+                    <div className="sm:col-span-3 pt-3 flex flex-wrap items-center justify-between gap-3 border-t border-blue-200 dark:border-stone-700">
+                      <div>
+                        {expenseGenerated ? (
+                          <div className="inline-flex items-center space-x-2 text-emerald-700 dark:text-emerald-300 font-bold text-xs bg-emerald-100/80 dark:bg-emerald-950/60 px-3 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700">
+                            <CheckCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                            <span>Lançamento Confirmado no Contas a Pagar</span>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-stone-600 dark:text-stone-400">
+                            Pronto para gerar despesa no valor de <strong className="text-stone-900 dark:text-stone-100">{formatCurrencyBRL(grandTotal)}</strong>
+                          </p>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        id="btn-confirmar-faturamento-contas-pagar"
+                        onClick={() => {
+                          setCreateExpense(true);
+                          executeSave({ triggerExpense: true, markAsCompleted: true });
+                        }}
+                        className="inline-flex items-center space-x-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95 cursor-pointer"
+                      >
+                        <CreditCard className="w-4 h-4" />
+                        <span>Confirmar Faturamento & Lançar no Contas a Pagar</span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -2328,12 +2509,12 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
               )}
             </div>
 
-            <div className="flex items-center space-x-2.5 w-full sm:w-auto justify-end">
+            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end">
               <button
                 type="button"
                 id="btn-cancelar-os"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl border border-blue-400/30 bg-blue-900/50 hover:bg-blue-700/60 text-blue-100 text-xs font-bold transition cursor-pointer"
+                className="px-3.5 py-2 rounded-xl border border-blue-400/30 bg-blue-900/50 hover:bg-blue-700/60 text-blue-100 text-xs font-bold transition cursor-pointer"
               >
                 Cancelar
               </button>
@@ -2341,20 +2522,20 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 type="button"
                 id="btn-sair-fechar-os"
                 onClick={onClose}
-                className="inline-flex items-center justify-center space-x-1.5 px-4 py-2 rounded-xl border border-blue-300/40 bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition cursor-pointer shadow-xs"
+                className="inline-flex items-center justify-center space-x-1.5 px-3.5 py-2 rounded-xl border border-blue-300/40 bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition cursor-pointer shadow-xs"
                 title="Fechar formulário de Ordem de Serviço"
               >
                 <X className="w-3.5 h-3.5 text-blue-200" />
                 <span>Sair / Fechar</span>
               </button>
+
+              {/* 1. Botão Verde: Salva estado atual sem fechar e sem enviar ao Contas a Pagar */}
               <button
-                type="submit"
+                type="button"
                 id="btn-salvar-os"
-                className={`inline-flex items-center justify-center space-x-2 px-6 py-2 text-white text-xs font-bold rounded-xl shadow-lg transition active:scale-95 cursor-pointer ${
-                  saveSuccess
-                    ? 'bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/40'
-                    : 'bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/40'
-                }`}
+                onClick={() => executeSave({ triggerExpense: false })}
+                className="inline-flex items-center justify-center space-x-2 px-5 py-2 text-white text-xs font-bold rounded-xl shadow-lg transition active:scale-95 cursor-pointer bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/40"
+                title="Salva o estado atual das peças, quantidades e mão de obra mantendo os itens na tela sem gerar despesa financeira"
               >
                 {saveSuccess ? (
                   <>
@@ -2367,6 +2548,19 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                     <span>Salvar Ordem de Serviço</span>
                   </>
                 )}
+              </button>
+
+              {/* 2. Botão de Destaque: Conclui a OS, persiste e leva para a Aba 3 para faturar */}
+              <button
+                type="button"
+                id="btn-fechar-e-faturar-os"
+                onClick={() => executeSave({ markAsCompleted: true, redirectToFinance: true, triggerExpense: false })}
+                className="inline-flex items-center justify-center space-x-2 px-5 py-2 text-white text-xs font-bold rounded-xl shadow-lg transition active:scale-95 cursor-pointer bg-blue-600 hover:bg-blue-500 border border-blue-400/50 hover:shadow-blue-500/20"
+                title="Conclui a manutenção, salva o estado final e abre a Aba 3 para faturamento e formas de pagamento"
+              >
+                <Receipt className="w-4 h-4 text-blue-200" />
+                <span>Fechar OS e faturar</span>
+                <ArrowRight className="w-3.5 h-3.5 text-blue-200" />
               </button>
             </div>
           </div>
