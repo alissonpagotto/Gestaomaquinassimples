@@ -1206,10 +1206,10 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
         </div>
 
         {/* Form Body com Estrutura Flexível: Topo e Base Fixos, Centro Rolável */}
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden bg-stone-100/80 dark:bg-stone-950">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#46aff5] dark:bg-stone-950">
           
           {/* Conteúdo Central com Rolagem Vertical Independente */}
-          <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4 flex flex-col">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4 flex flex-col bg-[#46aff5] dark:bg-stone-950">
 
             {/* Banner de Feedback de Ação */}
             {feedbackBanner && (
@@ -1250,7 +1250,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
               {/* --- COLUNA DA ESQUERDA: DADOS DO VEÍCULO, AFERIÇÃO, DIAGNÓSTICO, LOCAL E EXECUÇÃO --- */}
               <div className="space-y-2">
                 {/* Bloco 1: Identificação da OS e Veículo */}
-                <div className="p-2.5 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 shadow-2xs">
+                <div className="p-2.5 bg-[#dcf3ff] dark:bg-stone-900 rounded-xl border border-blue-200 dark:border-stone-800 shadow-2xs">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     {/* Número da OS */}
                     <div>
@@ -1318,7 +1318,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 </div>
 
                 {/* Bloco 2: Aferição e Controle (Horímetro e Próxima Revisão) */}
-                <div className="p-2.5 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 shadow-2xs">
+                <div className="p-2.5 bg-[#dcf3ff] dark:bg-stone-900 rounded-xl border border-blue-200 dark:border-stone-800 shadow-2xs">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
                       <label className="block text-[10.5px] font-bold text-stone-700 dark:text-stone-300 mb-0.5 truncate">
@@ -1351,7 +1351,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 </div>
 
                 {/* Bloco 3: Tipo de Manutenção e Categoria */}
-                <div className="p-2.5 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 space-y-1.5 shadow-2xs">
+                <div className="p-2.5 bg-[#dcf3ff] dark:bg-stone-900 rounded-xl border border-blue-200 dark:border-stone-800 space-y-1.5 shadow-2xs">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
                       <label className="block text-[10.5px] font-bold text-stone-700 dark:text-stone-300 mb-0.5">
@@ -1441,7 +1441,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 </div>
 
                 {/* Bloco 4: Descrição do Problema / Diagnóstico */}
-                <div className="p-2.5 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 shadow-2xs">
+                <div className="p-2.5 bg-[#dcf3ff] dark:bg-stone-900 rounded-xl border border-blue-200 dark:border-stone-800 shadow-2xs">
                   <label className="block text-[10.5px] font-bold text-stone-700 dark:text-stone-300 mb-0.5">
                     Descrição do Diagnóstico / Serviço Executado *
                   </label>
@@ -1456,7 +1456,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 </div>
 
                 {/* Bloco 5: Local da Manutenção */}
-                <div className="p-2.5 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 space-y-1 shadow-2xs">
+                <div className="p-2.5 bg-[#dcf3ff] dark:bg-stone-900 rounded-xl border border-blue-200 dark:border-stone-800 space-y-1 shadow-2xs">
                   <div className="flex items-center space-x-1.5">
                     <MapPin className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                     <h4 className="text-[10.5px] font-bold text-stone-800 dark:text-stone-100 uppercase tracking-wider">
@@ -1527,7 +1527,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 </div>
 
                 {/* Bloco 6: Modalidade de Execução do Serviço */}
-                <div className="p-2.5 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 space-y-1 shadow-2xs">
+                <div className="p-2.5 bg-[#dcf3ff] dark:bg-stone-900 rounded-xl border border-blue-200 dark:border-stone-800 space-y-1 shadow-2xs">
                   <div className="flex items-center space-x-1.5">
                     <UserCheck className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                     <h4 className="text-[10.5px] font-bold text-stone-800 dark:text-stone-100 uppercase tracking-wider">
@@ -1575,7 +1575,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
               {/* --- COLUNA DA DIREITA: EXCLUSIVAMENTE MÃO DE OBRA INTERNA (MECÂNICOS) --- */}
               <div className="space-y-2">
                 {/* Bloco 1: MÃO DE OBRA INTERNA (MECÂNICOS) NO TOPO DIREITO */}
-                <div className="p-2.5 bg-blue-800 dark:bg-stone-900 rounded-xl border border-blue-700 dark:border-stone-800 space-y-1.5 shadow-sm">
+                <div className="p-2.5 bg-[#2a93ff] dark:bg-stone-900 rounded-xl border border-blue-400/50 dark:border-stone-800 space-y-1.5 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-1.5">
                       <Users className="w-3.5 h-3.5 text-white" />
