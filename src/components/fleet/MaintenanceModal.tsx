@@ -190,6 +190,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   const [autocompleteIndex, setAutocompleteIndex] = useState<number | null>(null);
   const [priceDropdownIndex, setPriceDropdownIndex] = useState<number | null>(null);
   const [priceDropdownPlacement, setPriceDropdownPlacement] = useState<'down' | 'up'>('down');
+  const [unitCostRawInputs, setUnitCostRawInputs] = useState<Record<string, string>>({});
 
   // --- MÃO DE OBRA (LISTA DINÂMICA DE MECÂNICOS & AVULSO) ---
   const [laborItems, setLaborItems] = useState<MaintenanceLaborItem[]>([]);
@@ -246,8 +247,9 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       } else {
         setPartsItems([]);
         setPartsCostManual(editingLog.partsCost ? String(editingLog.partsCost) : '');
-        setUsePartsItemList(false);
+        setUsePartsItemList(true);
       }
+      setUnitCostRawInputs({});
 
       // Mão de Obra
       if (editingLog.laborItems && editingLog.laborItems.length > 0) {
@@ -316,6 +318,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       setPartsItems([]);
       setPartsCostManual('');
       setUsePartsItemList(true);
+      setUnitCostRawInputs({});
       setLaborItems([]);
       setLaborCost('');
       setNextServiceDue('');
@@ -337,6 +340,32 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
     }
     setSaveSuccess(false);
   }, [editingLog, isOpen, machineries]);
+
+  // Sanitização e parsing em tempo real de valores monetários / números digitados ou selecionados
+  // Remove formatação de moeda (R$, espaços), trata vírgula decimal e pontos de milhar
+  const parseCleanPriceNumber = (val: any): number => {
+    if (val === undefined || val === null || val === '') return 0;
+    if (typeof val === 'number') return isNaN(val) ? 0 : val;
+    let str = String(val).trim().replace(/[R$\s]/g, '');
+    if (!str) return 0;
+    // Se possui ponto e vírgula (ex: 1.250,50 ou 1,250.50):
+    if (str.includes(',') && str.includes('.')) {
+      const lastComma = str.lastIndexOf(',');
+      const lastDot = str.lastIndexOf('.');
+      if (lastComma > lastDot) {
+        // Padrão pt-BR: 1.250,50 -> remove ponto, substitui vírgula por ponto
+        str = str.replace(/\./g, '').replace(',', '.');
+      } else {
+        // Padrão americano: 1,250.50 -> remove vírgula
+        str = str.replace(/,/g, '');
+      }
+    } else if (str.includes(',')) {
+      // Padrão brasileiro sem milhar: 150,50 -> 150.50
+      str = str.replace(',', '.');
+    }
+    const parsed = parseFloat(str);
+    return isNaN(parsed) ? 0 : parsed;
+  };
 
   // Máscara visual de milhar em tempo real (padrão pt-BR, ex: 5000 vira "5.000"; 12550 vira "12.550")
   const formatThousand = (val: string | number | undefined): string => {
@@ -449,6 +478,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
 
   // Adicionar item de peça à lista
   const handleAddPartItem = () => {
+    setUsePartsItemList(true);
     const newItem: MaintenancePartItem = {
       id: `part_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
       description: '',
@@ -462,9 +492,13 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   };
 
   const handleUpdatePartItem = (index: number, updates: Partial<MaintenancePartItem>) => {
+    setUsePartsItemList(true);
     setPartsItems(prev => {
       const updated = [...prev];
-      const item = { ...updated[index], ...updates };
+      const current = updated[index];
+      if (!current) return prev;
+
+      const item = { ...current, ...updates };
       
       // Se mudou para recuperada externa: desvincula de qualquer item de estoque
       if (updates.origin === 'recuperada_externa') {
@@ -478,23 +512,24 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
         if (stockItem) {
           item.description = stockItem.name;
           item.unit = stockItem.unit || 'un';
-          item.unitCost = stockItem.unitCost || 0;
+          item.unitCost = parseCleanPriceNumber(stockItem.unitCost);
         }
       }
 
       // Se for recuperada externa e atualizou externalServiceCost
       if (item.origin === 'recuperada_externa') {
         if (updates.externalServiceCost !== undefined) {
-          item.unitCost = updates.externalServiceCost;
+          const cost = parseCleanPriceNumber(updates.externalServiceCost);
+          item.externalServiceCost = cost;
+          item.unitCost = cost;
         }
-        const qty = item.quantity || 1;
-        const cost = item.externalServiceCost !== undefined ? item.externalServiceCost : (item.unitCost || 0);
-        item.totalCost = Math.round(qty * cost * 100) / 100;
-      } else {
-        const qty = item.quantity || 0;
-        const cost = item.unitCost || 0;
-        item.totalCost = Math.round(qty * cost * 100) / 100;
       }
+
+      const qty = parseCleanPriceNumber(item.quantity);
+      const cost = parseCleanPriceNumber(item.unitCost);
+      item.quantity = qty;
+      item.unitCost = cost;
+      item.totalCost = Math.round(qty * cost * 100) / 100;
 
       updated[index] = item;
       return updated;
@@ -515,7 +550,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
         inventoryItemId: product.id,
         description: product.name,
         unit: product.unit || 'un',
-        unitCost: product.unitCost || 0,
+        unitCost: parseCleanPriceNumber(product.unitCost),
         origin: 'almoxarifado_interno',
       });
     }
@@ -527,26 +562,26 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   };
 
   // Cálculo total de peças
-  const totalPartsCalculated = usePartsItemList
-    ? partsItems.reduce((acc, curr) => acc + (curr.totalCost || 0), 0)
-    : parseFloat(partsCostManual) || 0;
+  const totalPartsCalculated = (usePartsItemList || partsItems.length > 0)
+    ? partsItems.reduce((acc, curr) => acc + (Number(curr.totalCost) || 0), 0)
+    : (parseCleanPriceNumber(partsCostManual) || 0);
 
   const totalStockPartsCost = partsItems
     .filter(p => p.origin === 'almoxarifado_interno')
-    .reduce((acc, curr) => acc + (curr.totalCost || 0), 0);
+    .reduce((acc, curr) => acc + (Number(curr.totalCost) || 0), 0);
 
   const totalExternalPartsCost = partsItems
     .filter(p => p.origin === 'externo_compra')
-    .reduce((acc, curr) => acc + (curr.totalCost || 0), 0);
+    .reduce((acc, curr) => acc + (Number(curr.totalCost) || 0), 0);
 
   const totalRecoveredExternalCost = partsItems
     .filter(p => p.origin === 'recuperada_externa')
-    .reduce((acc, curr) => acc + (curr.totalCost || 0), 0);
+    .reduce((acc, curr) => acc + (Number(curr.totalCost) || 0), 0);
 
   // Mão de Obra
-  const totalInternalLaborCalculated = laborItems.reduce((acc, curr) => acc + (curr.totalCost || 0), 0);
+  const totalInternalLaborCalculated = laborItems.reduce((acc, curr) => acc + (Number(curr.totalCost) || 0), 0);
   const totalInternalHoursCalculated = Math.round(laborItems.reduce((acc, curr) => acc + (parseFloat(String(curr.hours || 0)) || 0), 0) * 100) / 100;
-  const additionalLabor = parseFloat(laborCost) || 0;
+  const additionalLabor = parseCleanPriceNumber(laborCost);
   const totalLaborCalculated = totalInternalLaborCalculated + additionalLabor;
 
   const grandTotal = totalPartsCalculated + totalLaborCalculated;
@@ -683,7 +718,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-0 overflow-hidden">
       <div 
-        className="bg-white dark:bg-stone-900 w-full max-w-7xl h-screen max-h-screen flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-150 overflow-hidden sm:border-x border-blue-900/40 dark:border-stone-800"
+        className="bg-white dark:bg-stone-900 w-[95%] max-w-[95%] h-screen max-h-screen flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-150 overflow-hidden border-x sm:border border-blue-900/40 dark:border-stone-800 mx-auto"
         role="dialog"
         aria-modal="true"
       >
@@ -777,7 +812,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden bg-stone-100/80 dark:bg-stone-950">
           
           {/* Conteúdo Central com Rolagem Vertical Independente */}
-          <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4 flex flex-col">
           
           {/* ======================================================== */}
           {/* ABA 1 UNIFICADA: DIAGNÓSTICO, EQUIPE & LOCAL (2 COLUNAS) */}
@@ -1337,8 +1372,9 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
           {/* ABA 2: PEÇAS & ESTOQUE (MULTI-ORIGEM) */}
           {/* ======================================================== */}
           {activeTab === 'pecas' && (
-            <div className="space-y-5 animate-in fade-in duration-150">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="min-h-full flex-1 flex flex-col justify-between space-y-3 animate-in fade-in duration-150">
+              <div className="flex-1 flex flex-col space-y-3 min-h-0">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <h4 className="text-xs font-bold text-blue-900 dark:text-stone-100 uppercase tracking-wider flex items-center space-x-2">
                     <span>Peças, Insumos & Serviços de Recuperação</span>
@@ -1637,11 +1673,26 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                                    <span className="text-[11px] text-stone-400 mr-1 font-mono font-medium select-none">R$</span>
                                    <div className="inline-flex items-center rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 shadow-2xs focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 overflow-hidden">
                                      <input
-                                       type="number"
-                                       step="0.01"
-                                       min="0"
-                                       value={item.unitCost === 0 ? '0.00' : (item.unitCost || '')}
-                                       onChange={(e) => handleUpdatePartItem(index, { unitCost: parseFloat(e.target.value) || 0 })}
+                                       type="text"
+                                       inputMode="decimal"
+                                       value={
+                                         unitCostRawInputs[item.id] !== undefined
+                                           ? unitCostRawInputs[item.id]
+                                           : (item.unitCost === 0 ? '' : item.unitCost)
+                                       }
+                                       onChange={(e) => {
+                                         const raw = e.target.value;
+                                         setUnitCostRawInputs(prev => ({ ...prev, [item.id]: raw }));
+                                         const parsed = parseCleanPriceNumber(raw);
+                                         handleUpdatePartItem(index, { unitCost: parsed });
+                                       }}
+                                       onBlur={() => {
+                                         setUnitCostRawInputs(prev => {
+                                           const copy = { ...prev };
+                                           delete copy[item.id];
+                                           return copy;
+                                         });
+                                       }}
                                        placeholder="0,00"
                                        title="Digite o valor unitário manualmente ou clique na seta para escolher na tabela de preços"
                                        className="w-20 px-2 py-1 text-xs font-mono text-right bg-transparent text-stone-900 dark:text-stone-100 font-bold focus:outline-none"
@@ -1732,6 +1783,11 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                                                  key={opt.key}
                                                  type="button"
                                                  onClick={() => {
+                                                   setUnitCostRawInputs(prev => {
+                                                     const copy = { ...prev };
+                                                     delete copy[item.id];
+                                                     return copy;
+                                                   });
                                                    handleUpdatePartItem(index, { unitCost: opt.value });
                                                    setPriceDropdownIndex(null);
                                                  }}
@@ -1785,11 +1841,14 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                               <td className="py-2 px-3 align-middle text-center">
                                 <div className="flex items-center justify-center space-x-1">
                                   <input
-                                    type="number"
-                                    step="any"
-                                    min="0.01"
-                                    value={item.quantity}
-                                    onChange={(e) => handleUpdatePartItem(index, { quantity: parseFloat(e.target.value) || 0 })}
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={item.quantity === 0 ? '' : item.quantity}
+                                    onChange={(e) => {
+                                      const parsed = parseCleanPriceNumber(e.target.value);
+                                      handleUpdatePartItem(index, { quantity: parsed });
+                                    }}
+                                    placeholder="1"
                                     className="w-16 px-1 py-1 text-xs font-mono font-bold text-center rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                   />
                                   <span className="text-[11px] font-medium text-stone-500 uppercase">
@@ -1824,94 +1883,82 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                   </div>
                 </div>
               )}
+              </div>
 
-              {/* Bloco de Mão de Obra e Consolidação Financeira Geral */}
-              <div className="p-4 bg-blue-50/70 dark:bg-stone-800/50 rounded-2xl border border-blue-200 dark:border-stone-800 space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-blue-900 dark:text-stone-300 mb-1">
-                      Mão de Obra Avulsa / Terceira Adicional (R$)
+              {/* FAIXA HORIZONTAL COMPACTA DE RESUMO (Mão de Obra Avulsa, Resumo de Custos e Baixa no Estoque) */}
+              <div className="mt-auto shrink-0 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-3.5 py-2.5 shadow-2xs">
+                <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+                  {/* 1. Mão de Obra Avulsa / Terceira */}
+                  <div className="flex items-center space-x-2">
+                    <label className="text-[11px] font-bold text-stone-700 dark:text-stone-300 whitespace-nowrap">
+                      Mão de Obra Avulsa:
                     </label>
-                    <div className="relative">
-                      <DollarSign className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 dark:text-stone-400" />
+                    <div className="inline-flex items-center bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-md px-2 py-0.5 shadow-2xs focus-within:ring-1 focus-within:ring-blue-500">
+                      <span className="text-[11px] text-stone-400 font-mono font-medium mr-1 select-none">R$</span>
                       <input
-                        type="number"
-                        step="0.01"
+                        type="text"
+                        inputMode="decimal"
                         value={laborCost}
                         onChange={(e) => setLaborCost(e.target.value)}
                         placeholder="0,00"
-                        className="w-full pl-9 pr-3 py-2 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-xl text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600"
+                        className="w-20 py-0.5 text-xs font-mono font-bold text-right bg-transparent text-stone-900 dark:text-stone-100 focus:outline-none"
+                        title="Custo adicional avulso de mão de obra (além da interna da Aba 1)"
                       />
                     </div>
-                    <p className="text-[11px] text-stone-500 mt-1">
-                      {laborItems.length > 0 
-                        ? `Aba 1 já possui R$ ${totalInternalLaborCalculated.toFixed(2)} de mão de obra interna consolidada (${laborItems.length} mecânico(s)). Preencha aqui apenas se houver custo avulso extra.`
-                        : 'Deixe R$ 0,00 se a mão de obra foi detalhada na Aba 1 ou sem custo extra.'}
-                    </p>
+                    {laborItems.length > 0 && (
+                      <span className="text-[10px] text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 font-medium whitespace-nowrap">
+                        + R$ {totalInternalLaborCalculated.toFixed(2)} interna
+                      </span>
+                    )}
                   </div>
 
-                  {/* Resumo Consolidado de Custos da OS */}
-                  <div className="bg-white dark:bg-stone-800 p-3.5 rounded-xl border border-blue-200 dark:border-stone-700 space-y-1.5 shadow-2xs">
-                    <div className="text-xs font-bold text-blue-950 dark:text-stone-300 flex items-center justify-between">
-                      <span>Custo Total Consolidado da OS:</span>
-                      <span className="text-lg font-black text-blue-700 dark:text-blue-400 font-['Outfit']">
-                        {formatCurrencyBRL(grandTotal)}
-                      </span>
+                  {/* 2. Discriminação dos Subtotais */}
+                  <div className="hidden lg:flex items-center space-x-3 text-[11px] text-stone-600 dark:text-stone-400 border-l border-r border-stone-200 dark:border-stone-700 px-3">
+                    <div>
+                      <span>Peças Novas / Estoque: </span>
+                      <strong className="font-mono text-stone-900 dark:text-stone-100">
+                        {formatCurrencyBRL(
+                          partsItems
+                            .filter(p => p.origin !== 'recuperada_externa')
+                            .reduce((acc, p) => acc + (p.totalCost || 0), 0)
+                        )}
+                      </strong>
                     </div>
+                    {totalRecoveredExternalCost > 0 && (
+                      <div>
+                        <span className="text-purple-600 dark:text-purple-400">Recuperação / Torno: </span>
+                        <strong className="font-mono text-purple-700 dark:text-purple-300">
+                          {formatCurrencyBRL(totalRecoveredExternalCost)}
+                        </strong>
+                      </div>
+                    )}
+                  </div>
 
-                    <div className="pt-2 border-t border-blue-100 dark:border-stone-700/60 grid grid-cols-2 gap-2 text-[11px]">
-                      <div>
-                        <span className="text-stone-500 block">Peças Novas / Estoque:</span>
-                        <span className="font-bold text-stone-800 dark:text-stone-200 font-mono">
-                          {formatCurrencyBRL(
-                            partsItems
-                              .filter(p => p.origin !== 'recuperada_externa')
-                              .reduce((acc, p) => acc + (p.totalCost || 0), 0)
-                          )}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-purple-700 dark:text-purple-400 font-medium block">Recuperação / Torno:</span>
-                        <span className="font-bold text-purple-900 dark:text-purple-300 font-mono">
-                          {formatCurrencyBRL(
-                            partsItems
-                              .filter(p => p.origin === 'recuperada_externa')
-                              .reduce((acc, p) => acc + (p.totalCost || 0), 0)
-                          )}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-blue-800 dark:text-blue-400 font-medium block">M. Obra Interna (Aba 1):</span>
-                        <span className="font-bold text-blue-950 dark:text-blue-200 font-mono">
-                          {formatCurrencyBRL(totalInternalLaborCalculated)}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-stone-500 block">M. Obra Extra / Avulsa:</span>
-                        <span className="font-bold text-stone-800 dark:text-stone-200 font-mono">
-                          {formatCurrencyBRL(parseFloat(laborCost) || 0)}
-                        </span>
-                      </div>
-                    </div>
+                  {/* 3. Checkbox de Baixa Automática no Almoxarifado */}
+                  {internalPartsCount > 0 && (
+                    <label className="inline-flex items-center space-x-2 text-[11px] font-semibold text-blue-900 dark:text-blue-200 bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-900/50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        id="deductStock"
+                        checked={deductStock}
+                        onChange={(e) => setDeductStock(e.target.checked)}
+                        className="w-3.5 h-3.5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span>Baixa automática no Almoxarifado ({internalPartsCount})</span>
+                    </label>
+                  )}
+
+                  {/* 4. Custo Total Consolidado da OS */}
+                  <div className="flex items-center space-x-2 ml-auto">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                      Custo Consolidado:
+                    </span>
+                    <span className="text-base font-black text-blue-800 dark:text-blue-300 font-['Outfit'] font-mono">
+                      {formatCurrencyBRL(grandTotal)}
+                    </span>
                   </div>
                 </div>
               </div>
-
-              {/* Checkbox de Baixa no Estoque (Apenas para peças internas do almoxarifado) */}
-              {internalPartsCount > 0 && (
-                <div className="flex items-center space-x-3 p-3.5 bg-blue-100/70 dark:bg-blue-950/30 rounded-xl border border-blue-300 dark:border-blue-900/50">
-                  <input
-                    type="checkbox"
-                    id="deductStock"
-                    checked={deductStock}
-                    onChange={(e) => setDeductStock(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
-                  />
-                  <label htmlFor="deductStock" className="text-xs font-bold text-blue-900 dark:text-blue-200 cursor-pointer">
-                    Dar baixa automática nas {internalPartsCount} peça(s) no Almoxarifado Interno ao salvar esta OS. (Itens terceiros/recuperados não afetam o saldo).
-                  </label>
-                </div>
-              )}
             </div>
           )}
 
