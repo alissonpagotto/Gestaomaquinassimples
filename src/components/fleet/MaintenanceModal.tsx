@@ -29,6 +29,7 @@ import {
   Users,
   Hammer,
   ChevronDown,
+  ChevronUp,
   Receipt,
   ArrowRight,
   CheckCheck
@@ -311,6 +312,14 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   // --- MÃO DE OBRA (LISTA DINÂMICA DE MECÂNICOS & AVULSO) ---
   const [laborItems, setLaborItems] = useState<MaintenanceLaborItem[]>([]);
   const [laborCost, setLaborCost] = useState('');
+  const [expandedLaborPonto, setExpandedLaborPonto] = useState<Record<string, boolean>>({});
+
+  const toggleLaborPonto = (key: string) => {
+    setExpandedLaborPonto(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
 
   // --- INTEGRAÇÃO FISCAL (NF-e) ---
   const [hasNfe, setHasNfe] = useState(false);
@@ -1245,10 +1254,10 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
           {/* ABA 1 UNIFICADA: DIAGNÓSTICO, EQUIPE & LOCAL (2 COLUNAS) */}
           {/* ======================================================== */}
           {activeTab === 'geral' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 sm:gap-3.5 animate-in fade-in duration-150 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 sm:gap-3.5 animate-in fade-in duration-150 items-stretch flex-1 min-h-0">
               
               {/* --- COLUNA DA ESQUERDA: DADOS DO VEÍCULO, AFERIÇÃO, DIAGNÓSTICO, LOCAL E EXECUÇÃO --- */}
-              <div className="space-y-2">
+              <div className="space-y-2 flex flex-col">
                 {/* Bloco 1: Identificação da OS e Veículo */}
                 <div className="p-2.5 bg-[#dcf3ff] dark:bg-stone-900 rounded-xl border border-blue-200 dark:border-stone-800 shadow-2xs">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
@@ -1573,13 +1582,15 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
               </div>
 
               {/* --- COLUNA DA DIREITA: EXCLUSIVAMENTE MÃO DE OBRA INTERNA (MECÂNICOS) --- */}
-              <div className="space-y-2">
+              <div className="flex flex-col h-full min-h-0 space-y-2">
                 {/* Bloco 1: MÃO DE OBRA INTERNA (MECÂNICOS) NO TOPO DIREITO */}
-                <div className="p-2.5 bg-[#2a93ff] dark:bg-stone-900 rounded-xl border border-blue-400/50 dark:border-stone-800 space-y-1.5 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-1.5">
-                      <Users className="w-3.5 h-3.5 text-white" />
-                      <h4 className="text-[10.5px] font-bold text-white uppercase tracking-wider">
+                <div className="p-3 bg-[#2a93ff] dark:bg-stone-900 rounded-2xl border border-blue-400/60 dark:border-stone-800 space-y-2.5 shadow-md flex-1 flex flex-col min-h-[580px] lg:min-h-0">
+                  <div className="flex items-center justify-between shrink-0">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-6 h-6 rounded-md bg-white/20 text-white flex items-center justify-center">
+                        <Users className="w-3.5 h-3.5" />
+                      </div>
+                      <h4 className="text-xs font-black text-white uppercase tracking-wider">
                         Mão de Obra Interna (Mecânicos)
                       </h4>
                     </div>
@@ -1587,287 +1598,328 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                     <button
                       type="button"
                       onClick={handleAddLaborItem}
-                      className="inline-flex items-center space-x-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[10.5px] font-bold rounded-lg shadow-xs border border-blue-400/40 transition active:scale-95 cursor-pointer shrink-0"
+                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-sm border border-blue-300/40 transition active:scale-95 cursor-pointer shrink-0"
                     >
-                      <Plus className="w-3 h-3" />
+                      <Plus className="w-3.5 h-3.5" />
                       <span>+ Mecânico</span>
                     </button>
                   </div>
 
-                  {/* Lista dinâmica com amplo espaço vertical */}
+                  {/* Lista dinâmica com amplo espaço vertical e scrollbar refinada */}
                   {laborItems.length === 0 ? (
-                    <div className="py-4 px-2.5 text-center border border-dashed border-blue-600/40 dark:border-stone-800 bg-blue-900/30 dark:bg-stone-800/30 rounded-lg flex flex-col items-center justify-center space-y-1">
-                      <Users className="w-5 h-5 text-blue-200" />
-                      <p className="text-[11px] text-blue-100 dark:text-stone-300">
-                        Nenhum mecânico listado nesta OS.
+                    <div className="flex-1 min-h-[280px] py-6 px-3 text-center border border-dashed border-blue-300/50 dark:border-stone-800 bg-white/10 dark:bg-stone-800/30 rounded-xl flex flex-col items-center justify-center space-y-1.5">
+                      <Users className="w-6 h-6 text-white/70 dark:text-stone-400" />
+                      <p className="text-xs text-white dark:text-stone-300 font-medium">
+                        Nenhum mecânico listado nesta Ordem de Serviço.
                       </p>
                       <button
                         type="button"
                         onClick={handleAddLaborItem}
-                        className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[11px] font-bold transition cursor-pointer shadow-xs border border-blue-400/40"
+                        className="mt-1 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-sm border border-blue-300/40"
                       >
                         + Adicionar Mão de Obra
                       </button>
                     </div>
                   ) : (
-                    <div className="space-y-1.5 max-h-[50vh] overflow-y-auto pr-1">
-                      {laborItems.map((item, index) => (
-                        <div
-                          key={item.id || index}
-                          className="p-2 bg-white dark:bg-stone-800/70 rounded-xl border border-stone-200 dark:border-stone-700 space-y-1 shadow-2xs"
-                        >
-                          {/* Cabeçalho do Card do Mecânico */}
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold text-stone-800 dark:text-stone-300 uppercase tracking-wider font-mono flex items-center space-x-1.5">
-                              <span className="w-4 h-4 rounded bg-blue-600 text-white flex items-center justify-center text-[9px] font-bold">
-                                {index + 1}
-                              </span>
-                              <span>Mecânico #{index + 1}</span>
-                            </span>
+                    <div className="space-y-2 flex-1 min-h-0 overflow-y-auto pr-1">
+                      {laborItems.map((item, index) => {
+                        const itemKey = item.id || String(index);
+                        const isPontoExpanded = !!expandedLaborPonto[itemKey];
+                        const recordedPeriodsCount = (item.periods || []).filter(p => p.startTime && p.endTime).length;
+                        const itemHoursDisplay = (item.hours !== undefined && item.hours !== null ? Number(item.hours) : 0).toFixed(2).replace('.', ',');
 
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveLaborItem(index)}
-                              className="p-0.5 text-stone-400 hover:text-rose-600 rounded hover:bg-rose-50 dark:hover:bg-stone-700 transition cursor-pointer"
-                              title="Remover mecânico"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-
-                          {/* Grid com Seleção de Funcionário, Data, Horas, Valor/h e Subtotal */}
-                          <div className="grid grid-cols-12 gap-1.5 items-end">
-                            {/* Selecionar Funcionário */}
-                            <div className="col-span-12 sm:col-span-4">
-                              <label className="block text-[9.5px] font-bold text-stone-600 dark:text-stone-400 mb-0.5">
-                                Funcionário / Mecânico
-                              </label>
-                              <select
-                                value={item.employeeId || ''}
-                                onChange={(e) => {
-                                  const selectedId = e.target.value;
-                                  const found = allEmployeesList.find(emp => emp.id === selectedId);
-                                  handleUpdateLaborItem(index, { 
-                                    employeeId: selectedId,
-                                    mechanicName: found ? found.name : (selectedId ? item.mechanicName : '')
-                                  });
-                                }}
-                                className="w-full px-2 py-1 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                              >
-                                <option value="">Selecione funcionário...</option>
-                                {mechanicEmployees.map((emp) => (
-                                  <option key={emp.id} value={emp.id}>
-                                    {emp.name} {emp.role ? `(${emp.role})` : ''}
-                                  </option>
-                                ))}
-                                {item.employeeId && !mechanicEmployees.some(e => e.id === item.employeeId) && (
-                                  <option value={item.employeeId}>
-                                    {allEmployeesList.find(e => e.id === item.employeeId)?.name || item.mechanicName || 'Funcionário selecionado'}
-                                  </option>
-                                )}
-                              </select>
-                              {(!item.employeeId || !allEmployeesList.some(e => e.id === item.employeeId)) && (
-                                <input
-                                  type="text"
-                                  value={item.mechanicName || ''}
-                                  onChange={(e) => handleUpdateLaborItem(index, { mechanicName: e.target.value })}
-                                  placeholder="Ou nome avulso..."
-                                  className="w-full mt-0.5 px-2 py-0.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-md text-[10px] text-stone-900 dark:text-stone-100"
-                                />
-                              )}
-                            </div>
-
-                            {/* Data do Lançamento */}
-                            <div className="col-span-6 sm:col-span-2">
-                              <label className="block text-[9.5px] font-bold text-stone-600 dark:text-stone-400 mb-0.5 text-center">
-                                Data
-                              </label>
-                              <input
-                                type="date"
-                                value={item.dataLancamento || item.date || new Date().toISOString().split('T')[0]}
-                                onChange={(e) => handleUpdateLaborItem(index, { 
-                                  dataLancamento: e.target.value,
-                                  date: e.target.value 
-                                })}
-                                title="Data da execução das horas"
-                                className="w-full px-1.5 py-1 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-center text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                              />
-                            </div>
-
-                            {/* Horas (Total Calculado - Readonly) */}
-                            <div className="col-span-3 sm:col-span-2">
-                              <label className="block text-[9.5px] font-bold text-stone-600 dark:text-stone-400 mb-0.5 text-center">
-                                Horas (Total)
-                              </label>
-                              <input
-                                type="text"
-                                readOnly
-                                value={`${(item.hours !== undefined && item.hours !== null ? Number(item.hours) : 0).toFixed(2)}h`}
-                                placeholder="0.00h"
-                                title="Total de horas calculado automaticamente pela soma dos períodos de Entrada e Saída (somente leitura)"
-                                className="w-full px-1.5 py-1 bg-amber-50/90 dark:bg-stone-900 border border-amber-300 dark:border-amber-700/60 rounded-lg text-xs font-black text-center text-amber-950 dark:text-amber-300 cursor-not-allowed select-none shadow-xs"
-                              />
-                            </div>
-
-                            {/* Valor da Hora */}
-                            <div className="col-span-3 sm:col-span-2">
-                              <label className="block text-[9.5px] font-bold text-stone-600 dark:text-stone-400 mb-0.5 text-right">
-                                R$ / hora
-                              </label>
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={item.hourlyRate !== undefined && item.hourlyRate !== null ? item.hourlyRate : ''}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  handleUpdateLaborItem(index, { hourlyRate: val === '' ? 0 : (parseFloat(val) || 0) });
-                                }}
-                                placeholder="R$/h"
-                                title="Valor da Hora (R$)"
-                                className="w-full px-1.5 py-1 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-bold text-right text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500"
-                              />
-                            </div>
-
-                            {/* Subtotal */}
-                            <div className="col-span-12 sm:col-span-2">
-                              <label className="block text-[9.5px] font-bold text-stone-600 dark:text-stone-400 mb-0.5 text-right">
-                                Subtotal
-                              </label>
-                              <div className="px-2 py-1 bg-blue-50 dark:bg-blue-950/60 rounded-lg text-xs font-black text-blue-700 dark:text-blue-300 font-mono text-right truncate border border-blue-200 dark:border-blue-800">
-                                {formatCurrencyBRL(item.totalCost || 0)}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Bloco de Apontamento de Períodos de Entrada e Saída (Ponto do Mecânico) */}
-                          <div className="mt-2 pt-2 border-t border-stone-200 dark:border-stone-700/70 space-y-1.5 bg-stone-50 dark:bg-stone-900/50 p-2 rounded-lg border border-stone-200/80">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-1.5">
-                                <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                                <span className="text-[10px] font-bold text-stone-800 dark:text-blue-200 uppercase tracking-wider">
-                                  Apontamento de Ponto (Entrada & Saída)
+                        return (
+                          <div
+                            key={itemKey}
+                            className="p-3 bg-white dark:bg-stone-800/90 rounded-xl border border-stone-200 dark:border-stone-700/80 space-y-2 shadow-2xs transition-all hover:border-blue-300 dark:hover:border-blue-700"
+                          >
+                            {/* Cabeçalho do Card do Mecânico */}
+                            <div className="flex items-center justify-between pb-1 border-b border-stone-100 dark:border-stone-700/50">
+                              <span className="text-[11px] font-bold text-stone-800 dark:text-stone-200 uppercase tracking-wider font-mono flex items-center space-x-1.5">
+                                <span className="w-5 h-5 rounded-md bg-blue-600 text-white flex items-center justify-center text-[10px] font-black shadow-2xs">
+                                  #{index + 1}
                                 </span>
-                              </div>
+                                <span>Mecânico #{index + 1}</span>
+                              </span>
 
-                              {/* 2. Botão para adicionar múltiplos períodos (+ INTERVALO) */}
                               <button
                                 type="button"
-                                onClick={() => handleAddLaborPeriod(index)}
-                                className="inline-flex items-center space-x-1 px-2 py-0.5 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold rounded-md shadow-xs border border-blue-500 transition active:scale-95 cursor-pointer"
-                                title="Adiciona novo período/intervalo para este mecânico no mesmo dia (ex: saída e retorno)"
+                                onClick={() => handleRemoveLaborItem(index)}
+                                className="p-1 text-stone-400 hover:text-rose-600 rounded-md hover:bg-rose-50 dark:hover:bg-stone-700 transition cursor-pointer"
+                                title="Remover mecânico"
                               >
-                                <Plus className="w-3 h-3" />
-                                <span>+ Adicionar Período</span>
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
 
-                            {/* Minilinhas de Períodos de Entrada e Saída */}
-                            <div className="space-y-1">
-                              {(item.periods && item.periods.length > 0 
-                                ? item.periods 
-                                : [{ id: `p_${item.id || index}_1`, startTime: '', endTime: '' }]
-                              ).map((period, pIdx) => {
-                                const pNum = pIdx + 1;
-                                const periodHours = calculatePeriodHours(period.startTime, period.endTime);
-                                return (
-                                  <div
-                                    key={period.id || pIdx}
-                                    className="flex flex-wrap items-center justify-between gap-1.5 p-1.5 bg-white dark:bg-stone-800 rounded-md border border-stone-200 dark:border-stone-700 text-xs shadow-2xs"
-                                  >
-                                    <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                                      <span className="text-[10px] font-mono font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/70 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
-                                        Turno #{pNum}
-                                      </span>
+                            {/* Grid com Seleção de Funcionário, Data, Horas, Valor/h e Subtotal */}
+                            <div className="grid grid-cols-12 gap-2 items-end">
+                              {/* Selecionar Funcionário */}
+                              <div className="col-span-12 sm:col-span-4">
+                                <label className="block text-[10px] font-bold text-stone-600 dark:text-stone-400 mb-1">
+                                  Funcionário / Mecânico
+                                </label>
+                                <select
+                                  value={item.employeeId || ''}
+                                  onChange={(e) => {
+                                    const selectedId = e.target.value;
+                                    const found = allEmployeesList.find(emp => emp.id === selectedId);
+                                    handleUpdateLaborItem(index, { 
+                                      employeeId: selectedId,
+                                      mechanicName: found ? found.name : (selectedId ? item.mechanicName : '')
+                                    });
+                                  }}
+                                  className="w-full px-2.5 py-1.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs"
+                                >
+                                  <option value="">Selecione funcionário...</option>
+                                  {mechanicEmployees.map((emp) => (
+                                    <option key={emp.id} value={emp.id}>
+                                      {emp.name} {emp.role ? `(${emp.role})` : ''}
+                                    </option>
+                                  ))}
+                                  {item.employeeId && !mechanicEmployees.some(e => e.id === item.employeeId) && (
+                                    <option value={item.employeeId}>
+                                      {allEmployeesList.find(e => e.id === item.employeeId)?.name || item.mechanicName || 'Funcionário selecionado'}
+                                    </option>
+                                  )}
+                                </select>
+                                {(!item.employeeId || !allEmployeesList.some(e => e.id === item.employeeId)) && (
+                                  <input
+                                    type="text"
+                                    value={item.mechanicName || ''}
+                                    onChange={(e) => handleUpdateLaborItem(index, { mechanicName: e.target.value })}
+                                    placeholder="Ou nome avulso..."
+                                    className="w-full mt-1 px-2 py-1 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-md text-[11px] text-stone-900 dark:text-stone-100"
+                                  />
+                                )}
+                              </div>
 
-                                      {/* Entrada N */}
-                                      <div className="flex items-center space-x-1">
-                                        <label 
-                                          htmlFor={`labor-${index}-start-${pIdx}`} 
-                                          className="text-[9.5px] font-bold text-stone-700 dark:text-stone-300 whitespace-nowrap"
-                                        >
-                                          Entrada {pNum}:
-                                        </label>
-                                        <input
-                                          id={`labor-${index}-start-${pIdx}`}
-                                          type="time"
-                                          value={period.startTime || ''}
-                                          onChange={(e) => handleUpdateLaborPeriod(index, pIdx, 'startTime', e.target.value)}
-                                          className="px-1.5 py-0.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                                        />
-                                      </div>
+                              {/* Data do Lançamento */}
+                              <div className="col-span-6 sm:col-span-2">
+                                <label className="block text-[10px] font-bold text-stone-600 dark:text-stone-400 mb-1 text-center">
+                                  Data
+                                </label>
+                                <input
+                                  type="date"
+                                  value={item.dataLancamento || item.date || new Date().toISOString().split('T')[0]}
+                                  onChange={(e) => handleUpdateLaborItem(index, { 
+                                    dataLancamento: e.target.value,
+                                    date: e.target.value 
+                                  })}
+                                  title="Data da execução das horas"
+                                  className="w-full px-2 py-1.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-center text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs"
+                                />
+                              </div>
 
-                                      <span className="text-stone-400 text-xs font-bold">às</span>
+                              {/* Horas (Total Calculado - Readonly) */}
+                              <div className="col-span-3 sm:col-span-2">
+                                <label className="block text-[10px] font-bold text-stone-600 dark:text-stone-400 mb-1 text-center">
+                                  Horas
+                                </label>
+                                <input
+                                  type="text"
+                                  readOnly
+                                  value={`${itemHoursDisplay}h`}
+                                  placeholder="0,00h"
+                                  title="Total de horas calculado pelos turnos do Apontamento de Ponto"
+                                  className="w-full px-2 py-1.5 bg-amber-50 dark:bg-stone-900 border border-amber-300 dark:border-amber-700/60 rounded-lg text-xs font-black text-center text-amber-950 dark:text-amber-300 cursor-not-allowed select-none shadow-2xs"
+                                />
+                              </div>
 
-                                      {/* Saída N */}
-                                      <div className="flex items-center space-x-1">
-                                        <label 
-                                          htmlFor={`labor-${index}-end-${pIdx}`} 
-                                          className="text-[9.5px] font-bold text-stone-700 dark:text-stone-300 whitespace-nowrap"
-                                        >
-                                          Saída {pNum}:
-                                        </label>
-                                        <input
-                                          id={`labor-${index}-end-${pIdx}`}
-                                          type="time"
-                                          value={period.endTime || ''}
-                                          onChange={(e) => handleUpdateLaborPeriod(index, pIdx, 'endTime', e.target.value)}
-                                          className="px-1.5 py-0.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                                        />
-                                      </div>
-                                    </div>
+                              {/* Valor da Hora */}
+                              <div className="col-span-3 sm:col-span-2">
+                                <label className="block text-[10px] font-bold text-stone-600 dark:text-stone-400 mb-1 text-right">
+                                  $/hora
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={item.hourlyRate !== undefined && item.hourlyRate !== null ? item.hourlyRate : ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    handleUpdateLaborItem(index, { hourlyRate: val === '' ? 0 : (parseFloat(val) || 0) });
+                                  }}
+                                  placeholder="R$/h"
+                                  title="Valor da Hora (R$)"
+                                  className="w-full px-2 py-1.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-bold text-right text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500 shadow-2xs font-mono"
+                                />
+                              </div>
 
-                                    {/* Duração calculada e botão remover período */}
-                                    <div className="flex items-center space-x-1.5 ml-auto">
-                                      {period.startTime && period.endTime ? (
-                                        <span className="px-1.5 py-0.5 rounded text-[10.5px] font-mono font-bold bg-emerald-100 text-emerald-950 dark:bg-emerald-950/80 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800">
-                                          {formatPeriodDuration(period.startTime, period.endTime)} ({periodHours.toFixed(2)}h)
-                                        </span>
-                                      ) : (
-                                        <span className="text-[10px] text-stone-400 italic">
-                                          Preencha horários
-                                        </span>
-                                      )}
+                              {/* Subtotal */}
+                              <div className="col-span-12 sm:col-span-2">
+                                <label className="block text-[10px] font-bold text-stone-600 dark:text-stone-400 mb-1 text-right">
+                                  Subtotal
+                                </label>
+                                <div className="px-2 py-1.5 bg-blue-50 dark:bg-blue-950/60 rounded-lg text-xs font-black text-blue-700 dark:text-blue-300 font-mono text-right truncate border border-blue-200 dark:border-blue-800 shadow-2xs">
+                                  {formatCurrencyBRL(item.totalCost || 0)}
+                                </div>
+                              </div>
+                            </div>
 
-                                      {(item.periods && item.periods.length > 1) && (
-                                        <button
-                                          type="button"
-                                          onClick={() => handleRemoveLaborPeriod(index, pIdx)}
-                                          className="p-1 text-stone-400 hover:text-rose-600 rounded hover:bg-rose-50 dark:hover:bg-stone-700 transition cursor-pointer"
-                                          title={`Excluir Período ${pNum}`}
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                      )}
-                                    </div>
+                            {/* Bloco Acordeom Recolhível de Apontamento de Ponto */}
+                            <div className="mt-1.5 pt-1.5 border-t border-stone-100 dark:border-stone-700/60">
+                              <div
+                                onClick={() => toggleLaborPonto(itemKey)}
+                                className="flex items-center justify-between p-2 rounded-lg bg-stone-50 hover:bg-stone-100 dark:bg-stone-900/60 dark:hover:bg-stone-900 border border-stone-200/80 dark:border-stone-700/60 cursor-pointer transition-colors select-none"
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                  <span className="text-[10.5px] font-bold text-stone-800 dark:text-stone-200 uppercase tracking-wider">
+                                    Apontamento de Ponto
+                                  </span>
+                                  {recordedPeriodsCount > 0 && (
+                                    <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9.5px] font-mono font-bold bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                      {recordedPeriodsCount} {recordedPeriodsCount === 1 ? 'turno' : 'turnos'} ({itemHoursDisplay}h)
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center space-x-1 text-stone-500 dark:text-stone-400">
+                                  <span className="text-[10px] font-semibold">
+                                    {isPontoExpanded ? 'Recolher' : 'Expandir ponto'}
+                                  </span>
+                                  {isPontoExpanded ? (
+                                    <ChevronUp className="w-3.5 h-3.5" />
+                                  ) : (
+                                    <ChevronDown className="w-3.5 h-3.5" />
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Conteúdo Expandido dos Turnos */}
+                              {isPontoExpanded && (
+                                <div className="mt-2 space-y-1.5 pl-1 pr-1 pb-1 animate-in fade-in-50 duration-150">
+                                  <div className="flex items-center justify-between pb-1">
+                                    <span className="text-[10px] text-stone-500 dark:text-stone-400">
+                                      Lançamento detalhado de horários trabalhados (Entrada e Saída)
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAddLaborPeriod(index)}
+                                      className="inline-flex items-center space-x-1 px-2 py-0.5 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold rounded-md shadow-xs border border-blue-500 transition active:scale-95 cursor-pointer"
+                                      title="Adiciona novo turno/intervalo"
+                                    >
+                                      <Plus className="w-3 h-3" />
+                                      <span>+ Adicionar Período</span>
+                                    </button>
                                   </div>
-                                );
-                              })}
+
+                                  {/* Linhas de Turnos */}
+                                  <div className="space-y-1">
+                                    {(item.periods && item.periods.length > 0 
+                                      ? item.periods 
+                                      : [{ id: `p_${item.id || index}_1`, startTime: '', endTime: '' }]
+                                    ).map((period, pIdx) => {
+                                      const pNum = pIdx + 1;
+                                      const periodHours = calculatePeriodHours(period.startTime, period.endTime);
+                                      return (
+                                        <div
+                                          key={period.id || pIdx}
+                                          className="flex flex-wrap items-center justify-between gap-1.5 p-1.5 bg-stone-50 dark:bg-stone-900/80 rounded-md border border-stone-200 dark:border-stone-700 text-xs shadow-2xs"
+                                        >
+                                          <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                                            <span className="text-[10px] font-mono font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/70 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                                              Turno #{pNum}
+                                            </span>
+
+                                            {/* Entrada N */}
+                                            <div className="flex items-center space-x-1">
+                                              <label 
+                                                htmlFor={`labor-${index}-start-${pIdx}`} 
+                                                className="text-[9.5px] font-bold text-stone-700 dark:text-stone-300 whitespace-nowrap"
+                                              >
+                                                Entrada:
+                                              </label>
+                                              <input
+                                                id={`labor-${index}-start-${pIdx}`}
+                                                type="time"
+                                                value={period.startTime || ''}
+                                                onChange={(e) => handleUpdateLaborPeriod(index, pIdx, 'startTime', e.target.value)}
+                                                className="px-1.5 py-0.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                                              />
+                                            </div>
+
+                                            <span className="text-stone-400 text-xs font-bold">às</span>
+
+                                            {/* Saída N */}
+                                            <div className="flex items-center space-x-1">
+                                              <label 
+                                                htmlFor={`labor-${index}-end-${pIdx}`} 
+                                                className="text-[9.5px] font-bold text-stone-700 dark:text-stone-300 whitespace-nowrap"
+                                              >
+                                                Saída:
+                                              </label>
+                                              <input
+                                                id={`labor-${index}-end-${pIdx}`}
+                                                type="time"
+                                                value={period.endTime || ''}
+                                                onChange={(e) => handleUpdateLaborPeriod(index, pIdx, 'endTime', e.target.value)}
+                                                className="px-1.5 py-0.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                                              />
+                                            </div>
+                                          </div>
+
+                                          {/* Duração calculada e botão remover período */}
+                                          <div className="flex items-center space-x-1.5 ml-auto">
+                                            {period.startTime && period.endTime ? (
+                                              <span className="px-1.5 py-0.5 rounded text-[10.5px] font-mono font-bold bg-emerald-100 text-emerald-950 dark:bg-emerald-950/80 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800">
+                                                {formatPeriodDuration(period.startTime, period.endTime)} ({periodHours.toFixed(2).replace('.', ',')}h)
+                                              </span>
+                                            ) : (
+                                              <span className="text-[10px] text-stone-400 italic">
+                                                Preencha horários
+                                              </span>
+                                            )}
+
+                                            {(item.periods && item.periods.length > 1) && (
+                                              <button
+                                                type="button"
+                                                onClick={() => handleRemoveLaborPeriod(index, pIdx)}
+                                                className="p-1 text-stone-400 hover:text-rose-600 rounded hover:bg-rose-50 dark:hover:bg-stone-700 transition cursor-pointer"
+                                                title={`Excluir Período ${pNum}`}
+                                              >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
 
-                  {/* Card de Consolidação da Mão de Obra */}
-                  <div className="p-2.5 bg-blue-800 dark:bg-blue-950/60 rounded-xl border border-blue-700 flex items-center justify-between text-white shadow-xs">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 rounded-lg bg-blue-700 text-white flex items-center justify-center shrink-0 border border-blue-600">
-                        <Clock className="w-3.5 h-3.5" />
+                  {/* Card de Consolidação / Rodapé Escuro da Mão de Obra */}
+                  <div className="mt-auto shrink-0 p-3 bg-[#091ecb] rounded-xl border border-slate-800 text-white flex items-center justify-between shadow-md">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-600/30 text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/40">
+                        <Clock className="w-4 h-4" />
                       </div>
                       <div>
                         <span className="text-xs font-bold text-white block leading-tight">
                           Total Mão de Obra
                         </span>
-                        <span className="text-[10.5px] text-blue-200 leading-tight">
-                          {laborItems.length} mecânico(s) • {totalInternalHoursCalculated}h
-                        </span>
+                        <div className="flex items-center space-x-2 mt-0.5">
+                          <span className="text-[11px] text-slate-400">
+                            {laborItems.length} {laborItems.length === 1 ? 'mecânico' : 'mecânicos'}
+                          </span>
+                          <span className="text-slate-600">•</span>
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-950 text-blue-300 border border-blue-800/80">
+                            {totalInternalHoursCalculated.toFixed(2).replace('.', ',')}h
+                          </span>
+                        </div>
                       </div>
                     </div>
 
                     <div className="text-right">
-                      <span className="text-sm sm:text-base font-black text-white font-['Outfit']">
+                      <span className="text-sm sm:text-base font-black text-white font-mono tracking-tight">
                         {formatCurrencyBRL(totalInternalLaborCalculated)}
                       </span>
                     </div>
