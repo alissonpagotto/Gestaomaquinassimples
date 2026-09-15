@@ -1675,69 +1675,69 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                                 </div>
                               </td>
 
-                              {/* 4. Valor Unitário (Input com Edição Manual + Dropdown Nativo Tabela de Preços no Estilo da Origem) */}
+                              {/* 4. Valor Unitário (Input Unificado com Edição Manual e Seta Dropdown Embutida para Tabela de Preços) */}
                               <td className="py-2 px-3 align-middle">
-                                <div className="space-y-1">
-                                  <div className="flex items-center rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 shadow-2xs focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500 px-2 py-1">
-                                    <span className="text-[11px] text-stone-400 mr-1 font-mono font-medium select-none">R$</span>
-                                    <input
-                                      type="text"
-                                      inputMode="decimal"
-                                      value={
-                                        unitCostRawInputs[item.id] !== undefined
-                                          ? unitCostRawInputs[item.id]
-                                          : (item.unitCost === 0 ? '' : item.unitCost)
-                                      }
-                                      onChange={(e) => {
-                                        const raw = e.target.value;
-                                        setUnitCostRawInputs(prev => ({ ...prev, [item.id]: raw }));
-                                        const parsed = parseCleanPriceNumber(raw);
-                                        handleUpdatePartItem(index, { unitCost: parsed });
-                                      }}
-                                      onBlur={() => {
-                                        setUnitCostRawInputs(prev => {
-                                          const copy = { ...prev };
-                                          delete copy[item.id];
-                                          return copy;
-                                        });
-                                      }}
-                                      placeholder="0,00"
-                                      title="Digite o valor unitário manualmente ou selecione uma opção na tabela abaixo"
-                                      className="w-full text-xs font-mono text-right bg-transparent text-stone-900 dark:text-stone-100 font-bold focus:outline-none"
-                                    />
-                                  </div>
-
-                                  {/* Dropdown de Preço exatamente no mesmo formato do seletor de Origem */}
-                                  <select
+                                <div className="relative flex items-center rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 shadow-2xs focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500 transition-colors">
+                                  <span className="text-[11px] text-stone-400 pl-2 mr-0.5 font-mono font-medium select-none shrink-0">
+                                    R$
+                                  </span>
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
                                     value={
-                                      rowPriceOptions.find(opt => Math.abs((item.unitCost || 0) - opt.value) < 0.009)?.key || ''
+                                      unitCostRawInputs[item.id] !== undefined
+                                        ? unitCostRawInputs[item.id]
+                                        : (item.unitCost === 0 ? '' : item.unitCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
                                     }
                                     onChange={(e) => {
-                                      const selectedKey = e.target.value;
-                                      const matchedOpt = rowPriceOptions.find(opt => opt.key === selectedKey);
-                                      if (matchedOpt) {
-                                        setUnitCostRawInputs(prev => {
-                                          const copy = { ...prev };
-                                          delete copy[item.id];
-                                          return copy;
-                                        });
-                                        handleUpdatePartItem(index, { unitCost: matchedOpt.value });
-                                      }
+                                      const raw = e.target.value;
+                                      setUnitCostRawInputs(prev => ({ ...prev, [item.id]: raw }));
+                                      const parsed = parseCleanPriceNumber(raw);
+                                      handleUpdatePartItem(index, { unitCost: parsed });
                                     }}
-                                    className="w-full text-xs font-semibold py-1.5 px-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer shadow-2xs truncate"
-                                    title="Tabela de Preços: Custo, Venda Final, Atacado e Promocional"
+                                    onBlur={() => {
+                                      setUnitCostRawInputs(prev => {
+                                        const copy = { ...prev };
+                                        delete copy[item.id];
+                                        return copy;
+                                      });
+                                    }}
+                                    placeholder="0,00"
+                                    title="Digite o valor unitário manualmente ou use a seta ao lado para escolher na tabela de preços"
+                                    className="w-full min-w-0 text-xs font-mono text-right bg-transparent text-stone-900 dark:text-stone-100 font-bold focus:outline-none py-1.5 pr-1.5"
+                                  />
+
+                                  {/* Botão de seta embutido nativamente no canto direito para seleção da Tabela de Preços */}
+                                  <div
+                                    className="relative shrink-0 flex items-center justify-center border-l border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/80 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors rounded-r-lg px-2 py-1.5 cursor-pointer group"
+                                    title="Tabela de Preços (Custo, Venda, Atacado, Promocional)"
                                   >
-                                    <option value="" disabled>
-                                      {item.unitCost && !rowPriceOptions.some(opt => Math.abs((item.unitCost || 0) - opt.value) < 0.009)
-                                        ? `Personalizado (${formatCurrencyBRL(item.unitCost)})`
-                                        : 'Tabela de Preços...'}
-                                    </option>
-                                    {rowPriceOptions.map(opt => (
-                                      <option key={opt.key} value={opt.key}>
-                                        {opt.name}: {formatCurrencyBRL(opt.value)}
-                                      </option>
-                                    ))}
-                                  </select>
+                                    <ChevronDown className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400 group-hover:text-stone-800 dark:group-hover:text-stone-200 pointer-events-none transition-colors" />
+                                    <select
+                                      value=""
+                                      onChange={(e) => {
+                                        const selectedKey = e.target.value;
+                                        const matchedOpt = rowPriceOptions.find(opt => opt.key === selectedKey);
+                                        if (matchedOpt) {
+                                          setUnitCostRawInputs(prev => {
+                                            const copy = { ...prev };
+                                            delete copy[item.id];
+                                            return copy;
+                                          });
+                                          handleUpdatePartItem(index, { unitCost: matchedOpt.value });
+                                        }
+                                      }}
+                                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-xs"
+                                      title="Selecione um preço na Tabela de Preços"
+                                    >
+                                      <option value="" disabled>Selecione da Tabela de Preços...</option>
+                                      {rowPriceOptions.map(opt => (
+                                        <option key={opt.key} value={opt.key}>
+                                          {opt.name}: {formatCurrencyBRL(opt.value)}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
                                 </div>
                               </td>
 
