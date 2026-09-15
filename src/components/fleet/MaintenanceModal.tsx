@@ -27,7 +27,8 @@ import {
   Tag,
   Settings2,
   Users,
-  Hammer
+  Hammer,
+  ChevronDown
 } from 'lucide-react';
 import { 
   MaintenanceLog, 
@@ -187,6 +188,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   const [activeSearchRowIndex, setActiveSearchRowIndex] = useState<number | null>(null);
   const [activeSearchInitialQuery, setActiveSearchInitialQuery] = useState('');
   const [autocompleteIndex, setAutocompleteIndex] = useState<number | null>(null);
+  const [priceDropdownIndex, setPriceDropdownIndex] = useState<number | null>(null);
 
   // --- MÃO DE OBRA (LISTA DINÂMICA DE MECÂNICOS & AVULSO) ---
   const [laborItems, setLaborItems] = useState<MaintenanceLaborItem[]>([]);
@@ -1372,15 +1374,15 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="border border-stone-200 dark:border-stone-800 rounded-lg overflow-visible bg-white dark:bg-stone-900 shadow-2xs">
-                  <div className="overflow-x-auto overflow-y-visible">
+                <div className="border border-stone-200 dark:border-stone-800 rounded-lg overflow-visible bg-white dark:bg-stone-900 shadow-2xs min-h-[220px]">
+                  <div className="overflow-x-auto overflow-y-visible pb-10">
                     <table className="w-full text-left border-collapse table-fixed min-w-[760px]">
                       <colgroup>
                         <col className="w-[11%]" />
-                        <col className="w-[45%]" />
-                        <col className="w-[15%]" />
-                        <col className="w-[12%]" />
-                        <col className="w-[13%]" />
+                        <col className="w-[41%]" />
+                        <col className="w-[19%]" />
+                        <col className="w-[11%]" />
+                        <col className="w-[14%]" />
                         <col className="w-[4%]" />
                       </colgroup>
                       <thead>
@@ -1395,8 +1397,70 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                       </thead>
                       <tbody className="divide-y divide-stone-100 dark:divide-stone-800/60 text-xs">
                         {partsItems.map((item, index) => {
-                          const stockItem = item.inventoryItemId ? allInventoryList.find(inv => inv.id === item.inventoryItemId) : null;
+                          const stockItem = item.inventoryItemId 
+                            ? allInventoryList.find(inv => inv.id === item.inventoryItemId) 
+                            : allInventoryList.find(inv => 
+                                (inv.name && item.description && inv.name.trim().toLowerCase() === item.description.trim().toLowerCase()) ||
+                                (inv.code && item.description && inv.code.trim().toLowerCase() === item.description.trim().toLowerCase())
+                              ) || null;
                           const displayCode = stockItem?.code || (item.inventoryItemId ? item.inventoryItemId.slice(0, 8).toUpperCase() : `#${String(index + 1).padStart(3, '0')}`);
+
+                          // Opções de preços sincronizadas com o Estoque e Margens Comerciais
+                          const baseUnitCost = (stockItem?.unitCost !== undefined && stockItem.unitCost > 0)
+                            ? stockItem.unitCost
+                            : (item.unitCost || 0);
+
+                          const costPriceVal = baseUnitCost;
+
+                          const profitMarginVal = stockItem?.profitMargin ?? 30;
+                          const salePriceVal = (stockItem?.salePrice !== undefined && stockItem.salePrice > 0)
+                            ? stockItem.salePrice
+                            : (baseUnitCost > 0 ? Math.round(baseUnitCost * (1 + profitMarginVal / 100) * 100) / 100 : 0);
+
+                          const wholesaleMarginVal = stockItem?.wholesaleMargin ?? 15;
+                          const wholesalePriceVal = (stockItem?.wholesalePrice !== undefined && stockItem.wholesalePrice > 0)
+                            ? stockItem.wholesalePrice
+                            : (baseUnitCost > 0 ? Math.round(baseUnitCost * (1 + wholesaleMarginVal / 100) * 100) / 100 : 0);
+
+                          const promoMarginVal = stockItem?.promoMargin ?? 10;
+                          const promoPriceVal = (stockItem?.promoPrice !== undefined && stockItem.promoPrice > 0)
+                            ? stockItem.promoPrice
+                            : (baseUnitCost > 0 ? Math.round(baseUnitCost * (1 + promoMarginVal / 100) * 100) / 100 : 0);
+
+                          const rowPriceOptions = [
+                            {
+                              key: 'custo',
+                              name: 'Valor de Custo',
+                              detail: stockItem?.unitCost ? 'Custo padrão do estoque' : 'Custo base cadastrado',
+                              value: costPriceVal,
+                              badge: 'Custo',
+                              badgeClass: 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-300 dark:border-stone-700',
+                            },
+                            {
+                              key: 'venda',
+                              name: 'Preço Final / Venda',
+                              detail: stockItem?.salePrice ? `Margem: +${profitMarginVal}% (tabela fixa)` : `Margem padrão: +${profitMarginVal}%`,
+                              value: salePriceVal,
+                              badge: 'Venda Final',
+                              badgeClass: 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800',
+                            },
+                            {
+                              key: 'atacado',
+                              name: 'Preço de Atacado',
+                              detail: stockItem?.wholesalePrice ? `Margem: +${wholesaleMarginVal}% (atacado)` : `Margem atacado: +${wholesaleMarginVal}%`,
+                              value: wholesalePriceVal,
+                              badge: 'Atacado',
+                              badgeClass: 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-800',
+                            },
+                            {
+                              key: 'promocional',
+                              name: 'Preço Promocional',
+                              detail: stockItem?.promoPrice ? `Margem: +${promoMarginVal}% (promocional)` : `Margem promo: +${promoMarginVal}%`,
+                              value: promoPriceVal,
+                              badge: 'Promocional',
+                              badgeClass: 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800',
+                            },
+                          ];
 
                           // Itens correspondentes para autocomplete rápido inline
                           const autocompleteMatches = (autocompleteIndex === index && item.description.trim().length >= 2)
@@ -1561,21 +1625,142 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                                 </div>
                               </td>
 
-                              {/* 3. Valor Unitário (Obrigatoriamente alinhado à direita para leitura financeira) */}
-                              <td className="py-2 px-3 align-middle text-right">
-                                <div className="relative flex items-center justify-end">
-                                  <span className="text-[11px] text-stone-400 mr-1 font-mono font-medium">R$</span>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={item.unitCost === 0 ? '0.00' : (item.unitCost || '')}
-                                    onChange={(e) => handleUpdatePartItem(index, { unitCost: parseFloat(e.target.value) || 0 })}
-                                    placeholder="0,00"
-                                    className="w-24 px-2 py-1 text-xs font-mono text-right rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-bold focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                  />
-                                </div>
-                              </td>
+                               {/* 3. Valor Unitário (Dropdown Interativo de Preços + Edição Manual em Tempo Real) */}
+                               <td className="py-2 px-3 align-middle text-right relative">
+                                 <div className="relative inline-flex items-center justify-end">
+                                   <span className="text-[11px] text-stone-400 mr-1 font-mono font-medium select-none">R$</span>
+                                   <div className="inline-flex items-center rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 shadow-2xs focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 overflow-hidden">
+                                     <input
+                                       type="number"
+                                       step="0.01"
+                                       min="0"
+                                       value={item.unitCost === 0 ? '0.00' : (item.unitCost || '')}
+                                       onChange={(e) => handleUpdatePartItem(index, { unitCost: parseFloat(e.target.value) || 0 })}
+                                       placeholder="0,00"
+                                       title="Digite o valor unitário manualmente ou clique na seta para escolher na tabela de preços"
+                                       className="w-20 px-2 py-1 text-xs font-mono text-right bg-transparent text-stone-900 dark:text-stone-100 font-bold focus:outline-none"
+                                     />
+                                     <button
+                                       type="button"
+                                       onClick={(e) => {
+                                         e.stopPropagation();
+                                         setPriceDropdownIndex(priceDropdownIndex === index ? null : index);
+                                       }}
+                                       className={`px-1.5 py-1.5 flex items-center justify-center border-l border-stone-200 dark:border-stone-700 transition cursor-pointer ${
+                                         priceDropdownIndex === index
+                                           ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
+                                           : 'bg-stone-50 dark:bg-stone-800/80 text-stone-500 dark:text-stone-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-stone-700 dark:hover:text-stone-200'
+                                       }`}
+                                       title="Tabela de Preços: Custo, Venda Final, Atacado e Promocional"
+                                     >
+                                       <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${priceDropdownIndex === index ? 'rotate-180 text-white' : ''}`} />
+                                     </button>
+                                   </div>
+
+                                   {/* Menu Dropdown de Opções de Preço */}
+                                   {priceDropdownIndex === index && (
+                                     <>
+                                       {/* Backdrop para fechar ao clicar fora */}
+                                       <div 
+                                         className="fixed inset-0 z-40 bg-transparent cursor-default" 
+                                         onClick={(e) => {
+                                           e.stopPropagation();
+                                           setPriceDropdownIndex(null);
+                                         }} 
+                                       />
+
+                                       <div 
+                                         onClick={(e) => e.stopPropagation()}
+                                         className="absolute right-0 top-full mt-1.5 z-50 w-72 bg-white dark:bg-stone-900 rounded-xl shadow-2xl border border-stone-200 dark:border-stone-700 overflow-hidden text-left ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-100"
+                                       >
+                                         {/* Cabeçalho do Dropdown */}
+                                         <div className="px-3 py-2 bg-stone-50 dark:bg-stone-800/90 border-b border-stone-200 dark:border-stone-700 flex items-center justify-between">
+                                           <div className="flex items-center space-x-1.5">
+                                             <Tag className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                             <span className="text-[11px] font-bold text-stone-800 dark:text-stone-200 uppercase tracking-wider">
+                                               Tabela de Preços
+                                             </span>
+                                           </div>
+                                           {stockItem ? (
+                                             <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                                               Sincronizado
+                                             </span>
+                                           ) : (
+                                             <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800">
+                                               Margem Padrão
+                                             </span>
+                                           )}
+                                         </div>
+
+                                         {/* Identificação do Item / Saldo Estoque */}
+                                         {stockItem && (
+                                           <div className="px-3 py-1.5 bg-stone-100/60 dark:bg-stone-800/40 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between text-[10px] text-stone-500 dark:text-stone-400">
+                                             <span className="truncate max-w-[170px] font-medium text-stone-700 dark:text-stone-300">
+                                               {stockItem.name}
+                                             </span>
+                                             <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                                               Disp: {stockItem.quantity} {stockItem.unit}
+                                             </span>
+                                           </div>
+                                         )}
+
+                                         {/* Lista de Opções de Preço */}
+                                         <div className="p-1.5 space-y-1">
+                                           {rowPriceOptions.map((opt) => {
+                                             const isSelected = Math.abs((item.unitCost || 0) - opt.value) < 0.009;
+                                             return (
+                                               <button
+                                                 key={opt.key}
+                                                 type="button"
+                                                 onClick={() => {
+                                                   handleUpdatePartItem(index, { unitCost: opt.value });
+                                                   setPriceDropdownIndex(null);
+                                                 }}
+                                                 className={`w-full px-2.5 py-2 rounded-lg text-left transition flex items-center justify-between cursor-pointer group ${
+                                                   isSelected 
+                                                     ? 'bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 text-blue-950 dark:text-blue-100' 
+                                                     : 'hover:bg-stone-50 dark:hover:bg-stone-800 border border-transparent text-stone-800 dark:text-stone-200'
+                                                 }`}
+                                               >
+                                                 <div className="min-w-0 pr-2">
+                                                   <div className="flex items-center space-x-1.5">
+                                                     <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase font-mono ${opt.badgeClass}`}>
+                                                       {opt.badge}
+                                                     </span>
+                                                     <span className="text-xs font-semibold truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                                       {opt.name}
+                                                     </span>
+                                                   </div>
+                                                   <div className="text-[9.5px] text-stone-500 dark:text-stone-400 mt-0.5 pl-0.5">
+                                                     {opt.detail}
+                                                   </div>
+                                                 </div>
+
+                                                 <div className="text-right whitespace-nowrap pl-2">
+                                                   <span className={`text-xs font-bold font-mono ${isSelected ? 'text-blue-600 dark:text-blue-400 font-extrabold' : 'text-stone-900 dark:text-stone-100'}`}>
+                                                     {formatCurrencyBRL(opt.value)}
+                                                   </span>
+                                                   {isSelected && (
+                                                     <span className="block text-[9px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider">
+                                                       ✓ Ativo
+                                                     </span>
+                                                   )}
+                                                 </div>
+                                               </button>
+                                             );
+                                           })}
+                                         </div>
+
+                                         {/* Rodapé informativo */}
+                                         <div className="px-3 py-2 bg-stone-50/80 dark:bg-stone-800/80 border-t border-stone-200 dark:border-stone-700 text-[10px] text-stone-500 dark:text-stone-400 flex items-center justify-between">
+                                           <span>Edição manual liberada</span>
+                                           <span className="font-mono text-[9px] text-stone-400">Clique fora p/ fechar</span>
+                                         </div>
+                                       </div>
+                                     </>
+                                   )}
+                                 </div>
+                               </td>
 
                               {/* 4. Qtde */}
                               <td className="py-2 px-3 align-middle text-center">
