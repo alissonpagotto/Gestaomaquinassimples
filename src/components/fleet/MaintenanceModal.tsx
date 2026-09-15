@@ -2906,21 +2906,36 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 )}
               </button>
 
-              {/* 2. Botão de Destaque: Conclui a OS, persiste e leva para a Aba 3 para faturar */}
-              <button
-                type="button"
-                id="btn-fechar-e-faturar-os"
-                onClick={() => {
-                  setStatus('concluida');
-                  executeSave({ markAsCompleted: true, redirectToFinance: true, triggerExpense: false });
-                }}
-                className="inline-flex items-center justify-center space-x-2 px-5 py-2 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95 cursor-pointer bg-blue-600 hover:bg-blue-500 border border-blue-400/50"
-                title="Conclui a manutenção, salva o estado final e abre a Aba 3 para faturamento e formas de pagamento"
-              >
-                <Receipt className="w-4 h-4 text-white" />
-                <span>Fechar OS e faturar</span>
-                <ArrowRight className="w-3.5 h-3.5 text-white" />
-              </button>
+              {/* 2. Botão de Destaque: Navegação contextual entre abas mantendo o mesmo estilo visual */}
+              {activeTab === 'geral' ? (
+                <button
+                  type="button"
+                  id="btn-incluir-pecas-os"
+                  onClick={() => {
+                    setActiveTab('pecas');
+                  }}
+                  className="inline-flex items-center justify-center space-x-2 px-5 py-2 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95 cursor-pointer bg-blue-600 hover:bg-blue-500 border border-blue-400/50"
+                  title="Avançar para a aba 2. Peças & Estoque"
+                >
+                  <span>Incluir peças</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-white" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  id="btn-fechar-e-faturar-os"
+                  onClick={() => {
+                    setStatus('concluida');
+                    executeSave({ markAsCompleted: true, redirectToFinance: true, triggerExpense: false });
+                  }}
+                  className="inline-flex items-center justify-center space-x-2 px-5 py-2 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95 cursor-pointer bg-blue-600 hover:bg-blue-500 border border-blue-400/50"
+                  title="Conclui a manutenção, salva o estado final e abre a Aba 3 para faturamento e formas de pagamento"
+                >
+                  <Receipt className="w-4 h-4 text-white" />
+                  <span>Fechar OS e faturar</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-white" />
+                </button>
+              )}
             </div>
           </div>
         </form>
