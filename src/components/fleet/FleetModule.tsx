@@ -31,7 +31,9 @@ import {
   getStoredTireRotationLogs, 
   saveStoredTireRotationLogs,
   getStoredPurchaseRequests,
-  saveStoredPurchaseRequests
+  saveStoredPurchaseRequests,
+  getStoredInventory,
+  saveStoredInventory
 } from '../../lib/storage';
 
 export type FleetSubTab = 'painel' | 'veiculos' | 'motoristas' | 'equipe' | 'combustivel' | 'manutencoes' | 'rodizio';
@@ -341,31 +343,37 @@ export const FleetModule: React.FC<FleetModuleProps> = ({
       onSaveMaintenanceLogs(updated);
     } else {
       onSaveMaintenanceLogs([log, ...maintenanceLogs]);
+    }
 
-      // Update vehicle status and maintenance expenses
-      const targetVehicle = machineries.find(m => m.id === log.machineryId);
-      if (targetVehicle) {
-        const updatedVehicle: Machinery = {
-          ...targetVehicle,
-          status: log.status === 'em_andamento' ? 'em_manutencao' : targetVehicle.status,
-          totalMaintenanceExpenses: (targetVehicle.totalMaintenanceExpenses || 0) + log.totalCost,
-        };
-        onSaveMachineries(machineries.map(m => m.id === targetVehicle.id ? updatedVehicle : m));
-      }
+    // Update vehicle status and maintenance expenses
+    const targetVehicle = machineries.find(m => m.id === log.machineryId);
+    if (targetVehicle) {
+      const updatedVehicle: Machinery = {
+        ...targetVehicle,
+        status: log.status === 'em_andamento' ? 'em_manutencao' : targetVehicle.status,
+        totalMaintenanceExpenses: (targetVehicle.totalMaintenanceExpenses || 0) + log.totalCost,
+      };
+      onSaveMachineries(machineries.map(m => m.id === targetVehicle.id ? updatedVehicle : m));
+    }
 
-      // 1. Automatically deduct internal parts from inventory if requested
-      if (shouldDeductStock && onSaveInventory && log.partsItems && log.partsItems.length > 0) {
-        const internalParts = log.partsItems.filter(p => p.origin === 'almoxarifado_interno');
+    // 1. Sincronização e Baixa Automática no Almoxarifado Interno
+    if (shouldDeductStock && onSaveInventory) {
+      const latestInventory = getStoredInventory();
+      if (latestInventory && latestInventory.length > 0) {
+        onSaveInventory(latestInventory);
+      } else if (log.partsItems && log.partsItems.length > 0) {
+        const internalParts = log.partsItems.filter(p => p.origin === 'almoxarifado_interno' || !p.origin);
         if (internalParts.length > 0 && inventory.length > 0) {
           let updatedInventory = [...inventory];
           internalParts.forEach(part => {
             const idx = updatedInventory.findIndex(
               i => (part.inventoryItemId && i.id === part.inventoryItemId) || 
-                   i.name.toLowerCase() === part.description.toLowerCase()
+                   (part.description && i.code && i.code.trim().toLowerCase() === part.description.trim().toLowerCase()) ||
+                   (part.description && i.name.trim().toLowerCase() === part.description.trim().toLowerCase())
             );
             if (idx !== -1) {
               const currentItem = updatedInventory[idx];
-              const newQty = Math.max(0, currentItem.quantity - (part.quantity || 1));
+              const newQty = Math.max(0, currentItem.quantity - (Number(part.quantity) || 1));
               updatedInventory[idx] = {
                 ...currentItem,
                 quantity: newQty,
@@ -373,54 +381,55 @@ export const FleetModule: React.FC<FleetModuleProps> = ({
               };
             }
           });
+          saveStoredInventory(updatedInventory);
           onSaveInventory(updatedInventory);
         }
       }
+    }
 
-      // 2. Automatically create purchase request for external parts
-      if (shouldCreatePurchase && log.partsItems && log.partsItems.length > 0) {
-        const externalParts = log.partsItems.filter(p => p.origin === 'externo_compra' || p.requiresPurchase);
-        if (externalParts.length > 0) {
-          const newRequest: MaintenancePurchaseRequest = {
-            id: `purch_${Date.now()}`,
-            osId: log.id,
-            osNumber: log.osNumber,
-            vehicleId: log.machineryId,
-            vehiclePlateOrName: log.machineryPlateOrName,
-            status: 'cotacao',
-            urgency: log.status === 'em_andamento' ? 'urgente_veiculo_parado' : 'alta',
-            items: externalParts.map(p => ({
-              description: p.description,
-              quantity: p.quantity,
-              unit: p.unit,
-              estimatedUnitCost: p.unitCost,
-              suggestedSupplier: p.supplierName
-            })),
-            notes: `Gerado via OS ${log.osNumber || log.id}. Local: ${log.location === 'roca' ? 'Roça / Campo' : log.location === 'estrada' ? 'Estrada / Socorro' : 'Oficina'}`,
-            createdAt: new Date().toISOString()
-          };
-          handleSavePurchaseRequests([newRequest, ...purchaseRequests]);
-        }
+    // 2. Automatically create purchase request for external parts
+    if (shouldCreatePurchase && log.partsItems && log.partsItems.length > 0) {
+      const externalParts = log.partsItems.filter(p => p.origin === 'externo_compra' || p.requiresPurchase);
+      if (externalParts.length > 0) {
+        const newRequest: MaintenancePurchaseRequest = {
+          id: `purch_${Date.now()}`,
+          osId: log.id,
+          osNumber: log.osNumber,
+          vehicleId: log.machineryId,
+          vehiclePlateOrName: log.machineryPlateOrName,
+          status: 'cotacao',
+          urgency: log.status === 'em_andamento' ? 'urgente_veiculo_parado' : 'alta',
+          items: externalParts.map(p => ({
+            description: p.description,
+            quantity: p.quantity,
+            unit: p.unit,
+            estimatedUnitCost: p.unitCost,
+            suggestedSupplier: p.supplierName
+          })),
+          notes: `Gerado via OS ${log.osNumber || log.id}. Local: ${log.location === 'roca' ? 'Roça / Campo' : log.location === 'estrada' ? 'Estrada / Socorro' : 'Oficina'}`,
+          createdAt: new Date().toISOString()
+        };
+        handleSavePurchaseRequests([newRequest, ...purchaseRequests]);
       }
+    }
 
-      // 3. Automatically create expense in finance (Contas a Pagar) if requested
-      if (shouldCreateExpense && onAddExpense && log.totalCost > 0) {
-        const cond = log.financialConditions;
-        const nfe = log.nfeLink;
+    // 3. Automatically create expense in finance (Contas a Pagar) if requested
+    if (shouldCreateExpense && onAddExpense && log.totalCost > 0) {
+      const cond = log.financialConditions;
+      const nfe = log.nfeLink;
 
-        onAddExpense({
-          date: log.date,
-          category: 'Manutenção de Máquinas',
-          description: `OS ${log.osNumber || log.id} [${log.serviceCategory}] - ${log.machineryPlateOrName}${nfe?.nfeNumber ? ` (NF-e ${nfe.nfeNumber})` : ''}`,
-          amount: log.totalCost,
-          paymentMethod: cond?.paymentMethod || 'boleto',
-          dueDate: cond?.firstDueDate || log.date,
-          supplier: nfe?.supplierName || log.workshopOrMechanic || 'Oficina Mecânica',
-          invoiceNumber: nfe?.nfeNumber || log.osNumber,
-          status: cond?.paymentTerm === 'a_vista' ? 'pago' : 'pendente',
-          notes: `Lançamento automático de OS de frotas. Local: ${log.location}. Condição: ${cond?.paymentTerm || 'À Vista'}. Executante: ${log.workshopOrMechanic}`,
-        });
-      }
+      onAddExpense({
+        date: log.date,
+        category: 'Manutenção de Máquinas',
+        description: `OS ${log.osNumber || log.id} [${log.serviceCategory}] - ${log.machineryPlateOrName}${nfe?.nfeNumber ? ` (NF-e ${nfe.nfeNumber})` : ''}`,
+        amount: log.totalCost,
+        paymentMethod: cond?.paymentMethod || 'boleto',
+        dueDate: cond?.firstDueDate || log.date,
+        supplier: nfe?.supplierName || log.workshopOrMechanic || 'Oficina Mecânica',
+        invoiceNumber: nfe?.nfeNumber || log.osNumber,
+        status: cond?.paymentTerm === 'a_vista' ? 'pago' : 'pendente',
+        notes: `Lançamento automático de OS de frotas. Local: ${log.location}. Condição: ${cond?.paymentTerm || 'À Vista'}. Executante: ${log.workshopOrMechanic}`,
+      });
     }
   };
 

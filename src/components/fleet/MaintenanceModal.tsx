@@ -51,10 +51,68 @@ import {
   getStoredMaintenanceCategories, 
   saveStoredMaintenanceCategories,
   getStoredEmployees,
-  getStoredInventory
+  getStoredInventory,
+  saveStoredInventory
 } from '../../lib/storage';
 import { MaintenanceCategoriesModal } from './MaintenanceCategoriesModal';
 import { ProductSearchModal } from './ProductSearchModal';
+
+export const parseCleanPriceNumber = (val: any): number => {
+  if (val === undefined || val === null || val === '') return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  let str = String(val).trim().replace(/[R$\s]/g, '');
+  if (!str) return 0;
+  if (str.includes(',') && str.includes('.')) {
+    const lastComma = str.lastIndexOf(',');
+    const lastDot = str.lastIndexOf('.');
+    if (lastComma > lastDot) {
+      str = str.replace(/\./g, '').replace(',', '.');
+    } else {
+      str = str.replace(/,/g, '');
+    }
+  } else if (str.includes(',')) {
+    str = str.replace(',', '.');
+  }
+  const parsed = parseFloat(str);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
+export type DefaultOsPriceType = 'venda' | 'custo' | 'atacado' | 'promocional';
+
+export const getPriceForProductByRule = (
+  stockItem: InventoryItem | null | undefined,
+  priceType: DefaultOsPriceType,
+  fallbackCost: number = 0
+): number => {
+  if (!stockItem) return fallbackCost;
+  const baseCost = parseCleanPriceNumber(stockItem.unitCost || fallbackCost);
+  if (!baseCost || baseCost <= 0) return 0;
+
+  switch (priceType) {
+    case 'custo':
+      return baseCost;
+    case 'venda': {
+      const profitMargin = stockItem.profitMargin ?? 30;
+      return (stockItem.salePrice !== undefined && stockItem.salePrice > 0)
+        ? parseCleanPriceNumber(stockItem.salePrice)
+        : Math.round(baseCost * (1 + profitMargin / 100) * 100) / 100;
+    }
+    case 'atacado': {
+      const wholesaleMargin = stockItem.wholesaleMargin ?? 15;
+      return (stockItem.wholesalePrice !== undefined && stockItem.wholesalePrice > 0)
+        ? parseCleanPriceNumber(stockItem.wholesalePrice)
+        : Math.round(baseCost * (1 + wholesaleMargin / 100) * 100) / 100;
+    }
+    case 'promocional': {
+      const promoMargin = stockItem.promoMargin ?? 10;
+      return (stockItem.promoPrice !== undefined && stockItem.promoPrice > 0)
+        ? parseCleanPriceNumber(stockItem.promoPrice)
+        : Math.round(baseCost * (1 + promoMargin / 100) * 100) / 100;
+    }
+    default:
+      return baseCost;
+  }
+};
 
 interface MaintenanceModalProps {
   isOpen: boolean;
@@ -115,6 +173,19 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
     saveStoredMaintenanceCategories(updated);
   };
 
+  // --- CONFIGURAÇÃO GLOBAL DE PREÇO PADRÃO DA OS ---
+  const [defaultPriceType, setDefaultPriceType] = useState<DefaultOsPriceType>(() => {
+    try {
+      const saved = localStorage.getItem('crm_os_default_price_type');
+      if (saved === 'custo' || saved === 'venda' || saved === 'atacado' || saved === 'promocional') {
+        return saved;
+      }
+    } catch (e) {
+      // ignore
+    }
+    return 'venda';
+  });
+
   // --- CARREGAMENTO GLOBAL E SINCRONIZAÇÃO DE FUNCIONÁRIOS E ESTOQUE ---
   const [storedEmployees, setStoredEmployees] = useState<Employee[]>([]);
   const [storedInventory, setStoredInventory] = useState<InventoryItem[]>([]);
@@ -126,12 +197,49 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
     }
   }, [isOpen]);
 
-  // Lista consolidada de itens de estoque (via props ou localStorage)
+  useEffect(() => {
+    if (inventory && inventory.length > 0) {
+      setStoredInventory(inventory);
+    }
+  }, [inventory]);
+
+  // Lista consolidada de itens de estoque (prioriza o estado mais recente em storedInventory)
   const allInventoryList = useMemo(() => {
-    if (inventory && inventory.length > 0) return inventory;
     if (storedInventory.length > 0) return storedInventory;
+    if (inventory && inventory.length > 0) return inventory;
     return getStoredInventory();
   }, [inventory, storedInventory]);
+
+  // Alteração do Preço Padrão da OS: salva preferência e recalcula itens da tabela automaticamente
+  const handleDefaultPriceTypeChange = (newType: DefaultOsPriceType) => {
+    setDefaultPriceType(newType);
+    try {
+      localStorage.setItem('crm_os_default_price_type', newType);
+    } catch (e) {
+      // ignore
+    }
+
+    setPartsItems(prev => prev.map(item => {
+      if (item.origin === 'almoxarifado_interno' || !item.origin) {
+        const stockItem = item.inventoryItemId 
+          ? allInventoryList.find(inv => inv.id === item.inventoryItemId) 
+          : allInventoryList.find(inv => 
+              (inv.name && item.description && inv.name.trim().toLowerCase() === item.description.trim().toLowerCase()) ||
+              (inv.code && item.description && inv.code.trim().toLowerCase() === item.description.trim().toLowerCase())
+            );
+        if (stockItem) {
+          const newPrice = getPriceForProductByRule(stockItem, newType);
+          const qty = Number(item.quantity) || 1;
+          return {
+            ...item,
+            unitCost: newPrice,
+            totalCost: Math.round(qty * newPrice * 100) / 100
+          };
+        }
+      }
+      return item;
+    }));
+  };
 
   // Lista consolidada de todos os funcionários (via props ou localStorage)
   const allEmployeesList = useMemo(() => {
@@ -339,32 +447,6 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
     setSaveSuccess(false);
   }, [editingLog, isOpen, machineries]);
 
-  // Sanitização e parsing em tempo real de valores monetários / números digitados ou selecionados
-  // Remove formatação de moeda (R$, espaços), trata vírgula decimal e pontos de milhar
-  const parseCleanPriceNumber = (val: any): number => {
-    if (val === undefined || val === null || val === '') return 0;
-    if (typeof val === 'number') return isNaN(val) ? 0 : val;
-    let str = String(val).trim().replace(/[R$\s]/g, '');
-    if (!str) return 0;
-    // Se possui ponto e vírgula (ex: 1.250,50 ou 1,250.50):
-    if (str.includes(',') && str.includes('.')) {
-      const lastComma = str.lastIndexOf(',');
-      const lastDot = str.lastIndexOf('.');
-      if (lastComma > lastDot) {
-        // Padrão pt-BR: 1.250,50 -> remove ponto, substitui vírgula por ponto
-        str = str.replace(/\./g, '').replace(',', '.');
-      } else {
-        // Padrão americano: 1,250.50 -> remove vírgula
-        str = str.replace(/,/g, '');
-      }
-    } else if (str.includes(',')) {
-      // Padrão brasileiro sem milhar: 150,50 -> 150.50
-      str = str.replace(',', '.');
-    }
-    const parsed = parseFloat(str);
-    return isNaN(parsed) ? 0 : parsed;
-  };
-
   // Máscara visual de milhar em tempo real (padrão pt-BR, ex: 5000 vira "5.000"; 12550 vira "12.550")
   const formatThousand = (val: string | number | undefined): string => {
     if (val === undefined || val === null || val === '') return '';
@@ -504,13 +586,15 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
         if (!item.quantity) item.quantity = 1;
       }
 
-      // Se selecionou do almoxarifado interno, puxa nome, unidade e custo padrão
+      // Se selecionou do almoxarifado interno, puxa nome, unidade e preço padrão configurado
       if (updates.inventoryItemId) {
         const stockItem = allInventoryList.find(i => i.id === updates.inventoryItemId);
         if (stockItem) {
           item.description = stockItem.name;
           item.unit = stockItem.unit || 'un';
-          item.unitCost = parseCleanPriceNumber(stockItem.unitCost);
+          if (updates.unitCost === undefined) {
+            item.unitCost = getPriceForProductByRule(stockItem, defaultPriceType);
+          }
         }
       }
 
@@ -541,14 +625,15 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
     setIsProductSearchOpen(true);
   };
 
-  // Selecionar produto a partir do Modal
+  // Selecionar produto a partir do Modal aplicando automaticamente o Preço Padrão da OS
   const handleSelectProductFromModal = (product: InventoryItem) => {
     if (activeSearchRowIndex !== null && partsItems[activeSearchRowIndex]) {
+      const calculatedPrice = getPriceForProductByRule(product, defaultPriceType);
       handleUpdatePartItem(activeSearchRowIndex, {
         inventoryItemId: product.id,
         description: product.name,
         unit: product.unit || 'un',
-        unitCost: parseCleanPriceNumber(product.unitCost),
+        unitCost: calculatedPrice,
         origin: 'almoxarifado_interno',
       });
     }
@@ -676,6 +761,68 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
         notes: `OS ${osNumber} - ${machName}`,
       } : undefined,
     };
+
+    // 1. Executa a baixa real no Almoxarifado Interno se selecionado
+    if (deductStock && partsItems.length > 0) {
+      const currentStored = getStoredInventory();
+      const baseStock = currentStored.length > 0 ? currentStored : (inventory && inventory.length > 0 ? inventory : []);
+      if (baseStock.length > 0) {
+        let updatedStock = [...baseStock];
+        let hasDeductions = false;
+
+        // Se a OS já tinha tido baixa anterior registrada em edição, restaura os itens anteriores para calcular a diferença
+        if (editingLog && editingLog.stockDeducted && editingLog.partsItems) {
+          editingLog.partsItems.forEach(oldPart => {
+            if (oldPart.origin === 'almoxarifado_interno' || !oldPart.origin) {
+              const oldQty = parseCleanPriceNumber(oldPart.quantity);
+              if (oldQty > 0) {
+                const targetIdx = updatedStock.findIndex(inv => 
+                  (oldPart.inventoryItemId && inv.id === oldPart.inventoryItemId) ||
+                  (inv.code && oldPart.description && inv.code.trim().toLowerCase() === oldPart.description.trim().toLowerCase()) ||
+                  (inv.name && oldPart.description && inv.name.trim().toLowerCase() === oldPart.description.trim().toLowerCase())
+                );
+                if (targetIdx !== -1) {
+                  updatedStock[targetIdx] = {
+                    ...updatedStock[targetIdx],
+                    quantity: (Number(updatedStock[targetIdx].quantity) || 0) + oldQty,
+                  };
+                }
+              }
+            }
+          });
+        }
+
+        // Subtrai as quantidades atuais da OS do saldo do estoque
+        partsItems.forEach(part => {
+          if (part.origin === 'almoxarifado_interno' || !part.origin) {
+            const qty = parseCleanPriceNumber(part.quantity);
+            if (qty > 0) {
+              const targetIdx = updatedStock.findIndex(inv => 
+                (part.inventoryItemId && inv.id === part.inventoryItemId) ||
+                (inv.code && part.description && inv.code.trim().toLowerCase() === part.description.trim().toLowerCase()) ||
+                (inv.name && part.description && inv.name.trim().toLowerCase() === part.description.trim().toLowerCase())
+              );
+              if (targetIdx !== -1) {
+                const currentQty = Number(updatedStock[targetIdx].quantity) || 0;
+                const newQty = Math.max(0, currentQty - qty);
+                updatedStock[targetIdx] = {
+                  ...updatedStock[targetIdx],
+                  quantity: newQty,
+                  updatedAt: new Date().toISOString()
+                };
+                hasDeductions = true;
+              }
+            }
+          }
+        });
+
+        if (hasDeductions) {
+          saveStoredInventory(updatedStock);
+          setStoredInventory(updatedStock);
+          log.stockDeducted = true;
+        }
+      }
+    }
 
     onSave(log, {
       createExpense: createExpense && (status === 'concluida' || status === 'em_andamento') && (totalPartsCalculated > 0 || totalLaborCalculated > 0),
@@ -1382,7 +1529,26 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                   </p>
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Seletor Dropdown de Preço Padrão da OS */}
+                  <div className="flex items-center space-x-1.5 bg-stone-100 dark:bg-stone-800/80 px-2.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 shadow-2xs">
+                    <Tag className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <span className="text-[11px] font-bold text-stone-600 dark:text-stone-300 whitespace-nowrap">
+                      Preço Padrão da OS:
+                    </span>
+                    <select
+                      value={defaultPriceType}
+                      onChange={(e) => handleDefaultPriceTypeChange(e.target.value as DefaultOsPriceType)}
+                      className="text-xs font-bold bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-100 border border-stone-300 dark:border-stone-600 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer shadow-2xs"
+                      title="Selecione qual tabela de preço será preenchida automaticamente ao adicionar itens na OS"
+                    >
+                      <option value="venda">Preço de Venda (Final)</option>
+                      <option value="custo">Preço de Custo</option>
+                      <option value="atacado">Preço de Atacado</option>
+                      <option value="promocional">Preço Promocional</option>
+                    </select>
+                  </div>
+
                   <button
                     type="button"
                     onClick={handleAddPartItem}
@@ -1549,6 +1715,24 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                                             setAutocompleteIndex(null);
                                           }
                                         }, 250);
+
+                                        // Reconhecimento inteligente se digitado código ou nome exato do estoque
+                                        const text = item.description.trim().toLowerCase();
+                                        if (text && (item.origin === 'almoxarifado_interno' || !item.origin)) {
+                                          const matched = allInventoryList.find(inv => 
+                                            (inv.code && inv.code.trim().toLowerCase() === text) ||
+                                            (inv.name && inv.name.trim().toLowerCase() === text)
+                                          );
+                                          if (matched && (!item.inventoryItemId || item.unitCost === 0)) {
+                                            handleUpdatePartItem(index, {
+                                              inventoryItemId: matched.id,
+                                              description: matched.name,
+                                              unit: matched.unit || 'un',
+                                              unitCost: getPriceForProductByRule(matched, defaultPriceType),
+                                              origin: 'almoxarifado_interno'
+                                            });
+                                          }
+                                        }
                                       }}
                                       onKeyDown={(e) => {
                                         // Tecla F4 ou Enter com campo vazio abre a busca avançada por modal
@@ -1593,7 +1777,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                                               inventoryItemId: match.id,
                                               description: match.name,
                                               unit: match.unit || 'un',
-                                              unitCost: match.unitCost || 0,
+                                              unitCost: getPriceForProductByRule(match, defaultPriceType),
                                               origin: 'almoxarifado_interno',
                                             });
                                             setAutocompleteIndex(null);
@@ -1610,7 +1794,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                                           </div>
                                           <div className="text-right whitespace-nowrap pl-2">
                                             <span className="font-mono font-bold text-stone-800 dark:text-stone-200">
-                                              {formatCurrencyBRL(match.unitCost || 0)}
+                                              {formatCurrencyBRL(getPriceForProductByRule(match, defaultPriceType))}
                                             </span>
                                             <span className="text-[10px] text-stone-400 ml-1.5 font-mono">
                                               ({match.quantity} {match.unit})
