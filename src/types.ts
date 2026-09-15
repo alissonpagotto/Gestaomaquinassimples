@@ -420,7 +420,9 @@ export interface InventoryItem {
   barcode?: string;
   profitMargin?: number;
   salePrice?: number;
+  wholesaleMargin?: number; // % Atac. (Margem de lucro para Atacado)
   wholesalePrice?: number; // Preço de Venda em Atacado (V. Atacado)
+  promoMargin?: number; // % Promo. (Margem de lucro para Promoção)
   promoPrice?: number; // Preço Promocional (V. Promo)
   maxQuantity?: number;
 }

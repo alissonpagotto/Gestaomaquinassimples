@@ -56,6 +56,12 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
   const [minQuantity, setMinQuantity] = useState<number | ''>(50);
   const [unitCost, setUnitCost] = useState<number | ''>(6.20);
   const [location, setLocation] = useState('Barracão Principal');
+  const [profitMargin, setProfitMargin] = useState<number | ''>(30);
+  const [salePrice, setSalePrice] = useState<number | ''>(8.06);
+  const [wholesaleMargin, setWholesaleMargin] = useState<number | ''>(15);
+  const [wholesalePrice, setWholesalePrice] = useState<number | ''>(7.13);
+  const [promoMargin, setPromoMargin] = useState<number | ''>(10);
+  const [promoPrice, setPromoPrice] = useState<number | ''>(6.82);
 
   // Logs para histórico
   const maintenanceLogs = useMemo<MaintenanceLog[]>(() => {
@@ -143,6 +149,12 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
     setMinQuantity(50);
     setUnitCost(6.20);
     setLocation('Barracão Principal');
+    setProfitMargin(30);
+    setSalePrice(8.06);
+    setWholesaleMargin(15);
+    setWholesalePrice(7.13);
+    setPromoMargin(10);
+    setPromoPrice(6.82);
     setIsCreateModalOpen(true);
   };
 
@@ -154,8 +166,24 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
     setQuantity(item.quantity ?? 0);
     setUnit(item.unit || 'un');
     setMinQuantity(item.minQuantity ?? 0);
-    setUnitCost(item.unitCost ?? 0);
+    const uCost = item.unitCost ?? 0;
+    setUnitCost(uCost);
     setLocation(item.location || 'Barracão Principal');
+
+    // Margem & Preço Final
+    const pMargin = item.profitMargin !== undefined ? item.profitMargin : (uCost > 0 && item.salePrice ? Math.round(((item.salePrice - uCost) / uCost) * 100 * 10) / 10 : 30);
+    setProfitMargin(pMargin);
+    setSalePrice(item.salePrice !== undefined ? item.salePrice : (uCost > 0 ? Math.round(uCost * (1 + pMargin / 100) * 100) / 100 : ''));
+
+    // Margem & Atacado
+    const wMargin = item.wholesaleMargin !== undefined ? item.wholesaleMargin : (uCost > 0 && item.wholesalePrice ? Math.round(((item.wholesalePrice - uCost) / uCost) * 100 * 10) / 10 : 15);
+    setWholesaleMargin(wMargin);
+    setWholesalePrice(item.wholesalePrice !== undefined ? item.wholesalePrice : (uCost > 0 ? Math.round(uCost * (1 + wMargin / 100) * 100) / 100 : ''));
+
+    // Margem & Promoção
+    const prMargin = item.promoMargin !== undefined ? item.promoMargin : (uCost > 0 && item.promoPrice ? Math.round(((item.promoPrice - uCost) / uCost) * 100 * 10) / 10 : 10);
+    setPromoMargin(prMargin);
+    setPromoPrice(item.promoPrice !== undefined ? item.promoPrice : (uCost > 0 ? Math.round(uCost * (1 + prMargin / 100) * 100) / 100 : ''));
   };
 
   // Salvar Novo Item
@@ -172,6 +200,12 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
       minQuantity: Number(minQuantity) || 0,
       unitCost: Number(unitCost) || 0,
       location: location.trim() || 'Barracão Principal',
+      profitMargin: profitMargin !== '' ? Number(profitMargin) : undefined,
+      salePrice: salePrice !== '' ? Number(salePrice) : undefined,
+      wholesaleMargin: wholesaleMargin !== '' ? Number(wholesaleMargin) : undefined,
+      wholesalePrice: wholesalePrice !== '' ? Number(wholesalePrice) : undefined,
+      promoMargin: promoMargin !== '' ? Number(promoMargin) : undefined,
+      promoPrice: promoPrice !== '' ? Number(promoPrice) : undefined,
     };
 
     onSaveInventory([...inventory, newItem]);
@@ -192,6 +226,12 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
       minQuantity: Number(minQuantity) || 0,
       unitCost: Number(unitCost) || 0,
       location: location.trim() || 'Barracão Principal',
+      profitMargin: profitMargin !== '' ? Number(profitMargin) : undefined,
+      salePrice: salePrice !== '' ? Number(salePrice) : undefined,
+      wholesaleMargin: wholesaleMargin !== '' ? Number(wholesaleMargin) : undefined,
+      wholesalePrice: wholesalePrice !== '' ? Number(wholesalePrice) : undefined,
+      promoMargin: promoMargin !== '' ? Number(promoMargin) : undefined,
+      promoPrice: promoPrice !== '' ? Number(promoPrice) : undefined,
     };
 
     const updatedInventory = inventory.map(item => 
@@ -219,6 +259,59 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
         setViewingItem(null);
       }
     }
+  };
+
+  // Atualização rápida de margens e precificação diretamente nas linhas da tabela de Estoque
+  const handlePricingChange = (
+    itemId: string,
+    field: 'profitMargin' | 'salePrice' | 'wholesaleMargin' | 'wholesalePrice' | 'promoMargin' | 'promoPrice',
+    rawVal: string
+  ) => {
+    const sanitized = rawVal.replace(',', '.');
+    const num = sanitized === '' ? undefined : parseFloat(sanitized);
+    const validNum = num === undefined || isNaN(num) ? undefined : num;
+
+    const updated = inventory.map(item => {
+      if (item.id !== itemId) return item;
+      const copy: InventoryItem = { ...item };
+      const unit = copy.unitCost || 0;
+
+      if (field === 'profitMargin') {
+        copy.profitMargin = validNum;
+        if (validNum !== undefined && unit > 0) {
+          copy.salePrice = Math.round((unit * (1 + validNum / 100)) * 100) / 100;
+        }
+      } else if (field === 'salePrice') {
+        copy.salePrice = validNum;
+        if (validNum !== undefined && unit > 0) {
+          copy.profitMargin = Math.round(((validNum - unit) / unit) * 100 * 10) / 10;
+        }
+      } else if (field === 'wholesaleMargin') {
+        copy.wholesaleMargin = validNum;
+        if (validNum !== undefined && unit > 0) {
+          copy.wholesalePrice = Math.round((unit * (1 + validNum / 100)) * 100) / 100;
+        }
+      } else if (field === 'wholesalePrice') {
+        copy.wholesalePrice = validNum;
+        if (validNum !== undefined && unit > 0) {
+          copy.wholesaleMargin = Math.round(((validNum - unit) / unit) * 100 * 10) / 10;
+        }
+      } else if (field === 'promoMargin') {
+        copy.promoMargin = validNum;
+        if (validNum !== undefined && unit > 0) {
+          copy.promoPrice = Math.round((unit * (1 + validNum / 100)) * 100) / 100;
+        }
+      } else if (field === 'promoPrice') {
+        copy.promoPrice = validNum;
+        if (validNum !== undefined && unit > 0) {
+          copy.promoMargin = Math.round(((validNum - unit) / unit) * 100 * 10) / 10;
+        }
+      }
+
+      return copy;
+    });
+
+    onSaveInventory(updated);
   };
 
   const getCategoryIcon = (cat: InventoryItem['category']) => {
@@ -316,23 +409,75 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
 
       {/* Inventory Table */}
       <div className="crm-card bg-[#87AFE3] dark:bg-stone-900 border border-blue-200/80 dark:border-stone-800 rounded-xl overflow-hidden shadow-2xs text-black dark:text-white">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs sm:text-sm">
-            <thead className="bg-[#87AFE3] dark:bg-stone-900 border-b-2 border-blue-200/80 dark:border-stone-800 text-black dark:text-white uppercase text-xs font-black tracking-wider">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="bg-[#87AFE3] dark:bg-stone-900 border-b-2 border-blue-200/80 dark:border-stone-800 text-black dark:text-white uppercase text-[10px] font-black tracking-wider whitespace-nowrap">
               <tr>
-                <th className="py-1.5 px-3 text-black dark:text-white font-black">ITEM & LOCAL</th>
-                <th className="py-1.5 px-3 text-black dark:text-white font-black">CATEGORIA</th>
-                <th className="py-1.5 px-3 text-black dark:text-white font-black">QUANTIDADE</th>
-                <th className="py-1.5 px-3 text-black dark:text-white font-black">ESTOQUE MÍNIMO</th>
-                <th className="py-1.5 px-3 text-black dark:text-white font-black">CUSTO UNITÁRIO</th>
-                <th className="py-1.5 px-3 text-black dark:text-white font-black">VALOR TOTAL</th>
-                <th className="py-1.5 px-3 text-right text-black dark:text-white font-black">AÇÕES</th>
+                {/* 1. ITEM & LOCAL */}
+                <th className="py-1.5 px-2 text-black dark:text-white font-black w-[15%] min-w-[120px]">
+                  ITEM & LOCAL
+                </th>
+
+                {/* 2. CATEGORIA */}
+                <th className="py-1.5 px-2 text-black dark:text-white font-black w-[10%] min-w-[90px]">
+                  CATEGORIA
+                </th>
+
+                {/* 3. QUANTIDADE */}
+                <th className="py-1.5 px-2 text-right text-black dark:text-white font-black w-[8%] min-w-[70px]">
+                  QUANTIDADE
+                </th>
+
+                {/* 4. CUSTO UNITÁRIO (R$) */}
+                <th className="py-1.5 px-2 text-right text-black dark:text-white font-black w-[9%] min-w-[75px]">
+                  CUSTO UNIT. (R$)
+                </th>
+
+                {/* 5. VALOR TOTAL (R$) */}
+                <th className="py-1.5 px-2 text-right text-black dark:text-white font-black w-[9%] min-w-[80px]">
+                  VALOR TOTAL (R$)
+                </th>
+
+                {/* 6. % CÁLC. */}
+                <th className="py-1.5 px-1 text-right w-[6%] min-w-[55px] bg-purple-200/60 dark:bg-purple-950/40 text-purple-950 dark:text-purple-200 border-l border-purple-300/60 dark:border-purple-800">
+                  % CÁLC.
+                </th>
+
+                {/* 7. V. FINAL (R$) */}
+                <th className="py-1.5 px-1.5 text-right w-[8%] min-w-[75px] bg-rose-200/60 dark:bg-rose-950/40 text-rose-950 dark:text-rose-200">
+                  V. FINAL (R$)
+                </th>
+
+                {/* 8. % ATAC. */}
+                <th className="py-1.5 px-1 text-right w-[6%] min-w-[55px] bg-cyan-200/60 dark:bg-cyan-950/40 text-cyan-950 dark:text-cyan-200 border-l border-cyan-300/60 dark:border-cyan-800">
+                  % ATAC.
+                </th>
+
+                {/* 9. V. ATACADO (R$) */}
+                <th className="py-1.5 px-1.5 text-right w-[8%] min-w-[75px] bg-cyan-100/50 dark:bg-stone-800 text-stone-900 dark:text-stone-200">
+                  V. ATACADO (R$)
+                </th>
+
+                {/* 10. % PROMO. */}
+                <th className="py-1.5 px-1 text-right w-[6%] min-w-[55px] bg-orange-200/60 dark:bg-orange-950/40 text-orange-950 dark:text-orange-200 border-l border-orange-300/60 dark:border-orange-800">
+                  % PROMO.
+                </th>
+
+                {/* 11. V. PROMO (R$) */}
+                <th className="py-1.5 px-1.5 text-right w-[8%] min-w-[75px] bg-orange-100/50 dark:bg-stone-800 text-stone-900 dark:text-stone-200">
+                  V. PROMO (R$)
+                </th>
+
+                {/* 12. AÇÕES */}
+                <th className="py-1.5 px-2 text-right text-black dark:text-white font-black w-[7%] min-w-[75px]">
+                  AÇÕES
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-blue-200/60 dark:divide-stone-800 bg-[#87AFE3] dark:bg-stone-900 text-black dark:text-white">
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-black/70 dark:text-stone-400 font-bold">
+                  <td colSpan={12} className="py-8 text-center text-black/70 dark:text-stone-400 font-bold">
                     Nenhum item encontrado no estoque.
                   </td>
                 </tr>
@@ -341,50 +486,171 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                   const isLow = item.quantity <= item.minQuantity;
                   const itemTotal = item.quantity * item.unitCost;
 
+                  // Valores de margem e precificação derivados/sincronizados
+                  const curProfitMargin = item.profitMargin !== undefined 
+                    ? item.profitMargin 
+                    : (item.unitCost > 0 && item.salePrice ? Math.round(((item.salePrice - item.unitCost) / item.unitCost) * 100 * 10) / 10 : '');
+                  
+                  const curSalePrice = item.salePrice !== undefined 
+                    ? item.salePrice 
+                    : (item.unitCost > 0 && curProfitMargin !== '' ? Math.round(item.unitCost * (1 + Number(curProfitMargin) / 100) * 100) / 100 : '');
+
+                  const curWholesaleMargin = item.wholesaleMargin !== undefined 
+                    ? item.wholesaleMargin 
+                    : (item.unitCost > 0 && item.wholesalePrice ? Math.round(((item.wholesalePrice - item.unitCost) / item.unitCost) * 100 * 10) / 10 : '');
+
+                  const curWholesalePrice = item.wholesalePrice !== undefined 
+                    ? item.wholesalePrice 
+                    : (item.unitCost > 0 && curWholesaleMargin !== '' ? Math.round(item.unitCost * (1 + Number(curWholesaleMargin) / 100) * 100) / 100 : '');
+
+                  const curPromoMargin = item.promoMargin !== undefined 
+                    ? item.promoMargin 
+                    : (item.unitCost > 0 && item.promoPrice ? Math.round(((item.promoPrice - item.unitCost) / item.unitCost) * 100 * 10) / 10 : '');
+
+                  const curPromoPrice = item.promoPrice !== undefined 
+                    ? item.promoPrice 
+                    : (item.unitCost > 0 && curPromoMargin !== '' ? Math.round(item.unitCost * (1 + Number(curPromoMargin) / 100) * 100) / 100 : '');
+
                   return (
                     <tr key={item.id} className="hover:bg-blue-300/30 dark:hover:bg-stone-800/40 transition">
-                      <td className="py-1.5 px-3">
-                        <div className="font-black text-black dark:text-stone-100">{item.name}</div>
-                        <span className="text-[10px] font-bold text-black/70 dark:text-stone-400">{item.location || 'Geral'}</span>
+                      {/* 1. ITEM & LOCAL (Enxuto) */}
+                      <td className="py-1 px-2">
+                        <div className="font-black text-black dark:text-stone-100 text-xs truncate max-w-[170px]" title={item.name}>
+                          {item.name}
+                        </div>
+                        <span className="text-[9.5px] font-bold text-black/70 dark:text-stone-400 block truncate max-w-[170px]">
+                          {item.location || 'Geral'}
+                        </span>
                       </td>
 
-                      <td className="py-1.5 px-3">
-                        <div className="flex items-center space-x-1 capitalize font-black text-black dark:text-stone-200">
+                      {/* 2. CATEGORIA (Compacta) */}
+                      <td className="py-1 px-2">
+                        <div className="flex items-center space-x-1 capitalize font-bold text-[11px] text-black dark:text-stone-200">
                           {getCategoryIcon(item.category)}
-                          <span>{item.category.replace('_', ' ')}</span>
+                          <span className="truncate max-w-[90px]">{item.category.replace('_', ' ')}</span>
                         </div>
                       </td>
 
-                      <td className="py-1.5 px-3">
-                        <span className={`font-black ${isLow ? 'text-rose-950 dark:text-rose-400' : 'text-black dark:text-stone-100'}`}>
+                      {/* 3. QUANTIDADE */}
+                      <td className="py-1 px-2 text-right">
+                        <span className={`font-black font-mono text-xs ${isLow ? 'text-rose-950 dark:text-rose-400' : 'text-black dark:text-stone-100'}`}>
                           {item.quantity} {item.unit}
                         </span>
                         {isLow && (
-                          <span className="block text-[9px] font-black text-rose-900 dark:text-rose-400">
-                            Estoque Baixo!
+                          <span className="block text-[8.5px] font-black text-rose-900 dark:text-rose-400">
+                            Baixo!
                           </span>
                         )}
                       </td>
 
-                      <td className="py-1.5 px-3 font-bold text-black/80 dark:text-stone-300">
-                        {item.minQuantity} {item.unit}
-                      </td>
-
-                      <td className="py-1.5 px-3 font-black text-black dark:text-stone-300 font-mono">
+                      {/* 4. CUSTO UNITÁRIO (R$) */}
+                      <td className="py-1 px-2 text-right font-black text-black dark:text-stone-300 font-mono text-xs">
                         {formatCurrencyBRL(item.unitCost)}
                       </td>
 
-                      <td className="py-1.5 px-3 font-black text-black dark:text-stone-100 font-mono">
+                      {/* 5. VALOR TOTAL (R$) */}
+                      <td className="py-1 px-2 text-right font-black text-black dark:text-stone-100 font-mono text-xs">
                         {formatCurrencyBRL(itemTotal)}
                       </td>
 
-                      <td className="py-1.5 px-3 text-right">
-                        <div className="inline-flex items-center space-x-2">
+                      {/* 6. % CÁLC. (Input Rápido de Margem de Lucro Padrão) */}
+                      <td className="py-1 px-1 text-right align-middle bg-purple-50/40 dark:bg-purple-950/20 border-l border-purple-200/60 dark:border-purple-800/40">
+                        <div className="flex items-center justify-end space-x-0.5">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={curProfitMargin}
+                            onChange={(e) => handlePricingChange(item.id, 'profitMargin', e.target.value)}
+                            placeholder="0"
+                            className="w-full max-w-[46px] h-6 px-0.5 text-[10px] text-right rounded border border-purple-300 dark:border-purple-700 bg-purple-50/90 dark:bg-stone-900 text-purple-950 dark:text-purple-200 font-mono font-bold focus:ring-1 focus:ring-purple-500 ml-auto block"
+                            title="Margem Padrão (%): V. Final = Custo + (Custo * % / 100)"
+                          />
+                          <span className="text-[8.5px] font-black text-purple-900 dark:text-purple-300 shrink-0">%</span>
+                        </div>
+                      </td>
+
+                      {/* 7. V. FINAL (R$) (Preço de Venda Final com Ajuste Sincronizado) */}
+                      <td className="py-1 px-1.5 text-right align-middle bg-rose-50/40 dark:bg-rose-950/20">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={curSalePrice}
+                          onChange={(e) => handlePricingChange(item.id, 'salePrice', e.target.value)}
+                          placeholder="0.00"
+                          className="w-full max-w-[68px] h-6 px-1 text-[10px] text-right rounded border border-rose-300 dark:border-rose-700 bg-rose-50/90 dark:bg-stone-900 text-rose-950 dark:text-stone-100 font-mono font-bold focus:ring-1 focus:ring-rose-500 ml-auto block"
+                          title="Preço de Venda Final (R$)"
+                        />
+                      </td>
+
+                      {/* 8. % ATAC. (Input Rápido de Margem Atacado) */}
+                      <td className="py-1 px-1 text-right align-middle bg-cyan-50/40 dark:bg-cyan-950/20 border-l border-cyan-200/60 dark:border-cyan-800/40">
+                        <div className="flex items-center justify-end space-x-0.5">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={curWholesaleMargin}
+                            onChange={(e) => handlePricingChange(item.id, 'wholesaleMargin', e.target.value)}
+                            placeholder="0"
+                            className="w-full max-w-[46px] h-6 px-0.5 text-[10px] text-right rounded border border-cyan-300 dark:border-cyan-700 bg-cyan-50/90 dark:bg-stone-900 text-cyan-950 dark:text-cyan-200 font-mono font-bold focus:ring-1 focus:ring-cyan-500 ml-auto block"
+                            title="Margem Atacado (%): V. Atacado = Custo + (Custo * % / 100)"
+                          />
+                          <span className="text-[8.5px] font-black text-cyan-900 dark:text-cyan-300 shrink-0">%</span>
+                        </div>
+                      </td>
+
+                      {/* 9. V. ATACADO (R$) */}
+                      <td className="py-1 px-1.5 text-right align-middle">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={curWholesalePrice}
+                          onChange={(e) => handlePricingChange(item.id, 'wholesalePrice', e.target.value)}
+                          placeholder="0.00"
+                          className="w-full max-w-[68px] h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white/90 dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-[#0963cb] ml-auto block"
+                          title="Preço de Atacado (R$)"
+                        />
+                      </td>
+
+                      {/* 10. % PROMO. (Input Rápido de Margem Promoção) */}
+                      <td className="py-1 px-1 text-right align-middle bg-orange-50/40 dark:bg-orange-950/20 border-l border-orange-200/60 dark:border-orange-800/40">
+                        <div className="flex items-center justify-end space-x-0.5">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={curPromoMargin}
+                            onChange={(e) => handlePricingChange(item.id, 'promoMargin', e.target.value)}
+                            placeholder="0"
+                            className="w-full max-w-[46px] h-6 px-0.5 text-[10px] text-right rounded border border-orange-300 dark:border-orange-700 bg-orange-50/90 dark:bg-stone-900 text-orange-950 dark:text-orange-200 font-mono font-bold focus:ring-1 focus:ring-orange-500 ml-auto block"
+                            title="Margem Promocional (%): V. Promo = Custo + (Custo * % / 100)"
+                          />
+                          <span className="text-[8.5px] font-black text-orange-900 dark:text-orange-300 shrink-0">%</span>
+                        </div>
+                      </td>
+
+                      {/* 11. V. PROMO (R$) */}
+                      <td className="py-1 px-1.5 text-right align-middle">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={curPromoPrice}
+                          onChange={(e) => handlePricingChange(item.id, 'promoPrice', e.target.value)}
+                          placeholder="0.00"
+                          className="w-full max-w-[68px] h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white/90 dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-[#0963cb] ml-auto block"
+                          title="Preço Promocional (R$)"
+                        />
+                      </td>
+
+                      {/* 12. AÇÕES (Olho, Lápis, Lixeira) */}
+                      <td className="py-1 px-2 text-right align-middle">
+                        <div className="inline-flex items-center space-x-1.5 justify-end">
                           {/* 1. Botão Detalhes (Olho) */}
                           <button
                             type="button"
                             onClick={() => setViewingItem(item)}
-                            className="p-1 text-blue-900/80 hover:text-blue-700 dark:text-sky-400 dark:hover:text-sky-300 hover:bg-blue-100/60 dark:hover:bg-sky-950/60 rounded-md transition cursor-pointer"
+                            className="p-1 text-blue-900/90 hover:text-blue-700 dark:text-sky-400 dark:hover:text-sky-300 hover:bg-blue-100/60 dark:hover:bg-sky-950/60 rounded transition cursor-pointer"
                             title="Ver detalhes completos do produto"
                           >
                             <Eye className="w-3.5 h-3.5" />
@@ -394,7 +660,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                           <button
                             type="button"
                             onClick={() => handleOpenEditModal(item)}
-                            className="p-1 text-amber-900/80 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 hover:bg-amber-100/60 dark:hover:bg-amber-950/60 rounded-md transition cursor-pointer"
+                            className="p-1 text-amber-900/90 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 hover:bg-amber-100/60 dark:hover:bg-amber-950/60 rounded transition cursor-pointer"
                             title="Editar dados do produto"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
@@ -404,7 +670,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                           <button
                             type="button"
                             onClick={() => handleDelete(item.id)}
-                            className="p-1 text-black/70 hover:text-rose-900 dark:text-stone-400 dark:hover:text-rose-400 hover:bg-rose-100/60 dark:hover:bg-rose-950/60 rounded-md transition cursor-pointer"
+                            className="p-1 text-black/70 hover:text-rose-900 dark:text-stone-400 dark:hover:text-rose-400 hover:bg-rose-100/60 dark:hover:bg-rose-950/60 rounded transition cursor-pointer"
                             title="Excluir item"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -538,9 +804,165 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                     step="0.01"
                     min="0"
                     value={unitCost}
-                    onChange={(e) => setUnitCost(e.target.value === '' ? '' : Number(e.target.value))}
+                    onChange={(e) => {
+                      const costVal = e.target.value === '' ? '' : Number(e.target.value);
+                      setUnitCost(costVal);
+                      if (typeof costVal === 'number' && costVal > 0) {
+                        if (profitMargin !== '') setSalePrice(Math.round(costVal * (1 + Number(profitMargin) / 100) * 100) / 100);
+                        if (wholesaleMargin !== '') setWholesalePrice(Math.round(costVal * (1 + Number(wholesaleMargin) / 100) * 100) / 100);
+                        if (promoMargin !== '') setPromoPrice(Math.round(costVal * (1 + Number(promoMargin) / 100) * 100) / 100);
+                      }
+                    }}
                     className="w-full px-3.5 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#009688]"
                   />
+                </div>
+              </div>
+
+              {/* Seção de Precificação Sincronizada */}
+              <div className="p-3 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200 dark:border-stone-700/60 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-stone-700 dark:text-stone-300">
+                    Precificação & Margens de Venda
+                  </span>
+                  <span className="text-[10px] text-stone-500">Cálculo Automático Baseado no Custo</span>
+                </div>
+
+                {/* Margem Padrão / Venda Final */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[10px] font-bold text-purple-900 dark:text-purple-300 uppercase mb-1">
+                      % Margem Padrão
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={profitMargin}
+                        onChange={(e) => {
+                          const marginVal = e.target.value === '' ? '' : Number(e.target.value);
+                          setProfitMargin(marginVal);
+                          if (marginVal !== '' && typeof unitCost === 'number' && unitCost > 0) {
+                            setSalePrice(Math.round(unitCost * (1 + Number(marginVal) / 100) * 100) / 100);
+                          }
+                        }}
+                        placeholder="30"
+                        className="w-full pr-6 pl-2.5 py-1.5 bg-white dark:bg-stone-900 border border-purple-300 dark:border-purple-700 rounded-lg text-xs font-mono font-bold"
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-purple-900">%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-rose-900 dark:text-rose-300 uppercase mb-1">
+                      V. Final (R$)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={salePrice}
+                      onChange={(e) => {
+                        const priceVal = e.target.value === '' ? '' : Number(e.target.value);
+                        setSalePrice(priceVal);
+                        if (priceVal !== '' && typeof unitCost === 'number' && unitCost > 0) {
+                          setProfitMargin(Math.round(((Number(priceVal) - unitCost) / unitCost) * 100 * 10) / 10);
+                        }
+                      }}
+                      placeholder="0.00"
+                      className="w-full px-2.5 py-1.5 bg-white dark:bg-stone-900 border border-rose-300 dark:border-rose-700 rounded-lg text-xs font-mono font-bold"
+                    />
+                  </div>
+                </div>
+
+                {/* Atacado */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[10px] font-bold text-cyan-900 dark:text-cyan-300 uppercase mb-1">
+                      % Margem Atacado
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={wholesaleMargin}
+                        onChange={(e) => {
+                          const marginVal = e.target.value === '' ? '' : Number(e.target.value);
+                          setWholesaleMargin(marginVal);
+                          if (marginVal !== '' && typeof unitCost === 'number' && unitCost > 0) {
+                            setWholesalePrice(Math.round(unitCost * (1 + Number(marginVal) / 100) * 100) / 100);
+                          }
+                        }}
+                        placeholder="15"
+                        className="w-full pr-6 pl-2.5 py-1.5 bg-white dark:bg-stone-900 border border-cyan-300 dark:border-cyan-700 rounded-lg text-xs font-mono font-bold"
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-cyan-900">%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-700 dark:text-stone-300 uppercase mb-1">
+                      V. Atacado (R$)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={wholesalePrice}
+                      onChange={(e) => {
+                        const priceVal = e.target.value === '' ? '' : Number(e.target.value);
+                        setWholesalePrice(priceVal);
+                        if (priceVal !== '' && typeof unitCost === 'number' && unitCost > 0) {
+                          setWholesaleMargin(Math.round(((Number(priceVal) - unitCost) / unitCost) * 100 * 10) / 10);
+                        }
+                      }}
+                      placeholder="0.00"
+                      className="w-full px-2.5 py-1.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-mono font-medium"
+                    />
+                  </div>
+                </div>
+
+                {/* Promoção */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[10px] font-bold text-orange-900 dark:text-orange-300 uppercase mb-1">
+                      % Margem Promoção
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={promoMargin}
+                        onChange={(e) => {
+                          const marginVal = e.target.value === '' ? '' : Number(e.target.value);
+                          setPromoMargin(marginVal);
+                          if (marginVal !== '' && typeof unitCost === 'number' && unitCost > 0) {
+                            setPromoPrice(Math.round(unitCost * (1 + Number(marginVal) / 100) * 100) / 100);
+                          }
+                        }}
+                        placeholder="10"
+                        className="w-full pr-6 pl-2.5 py-1.5 bg-white dark:bg-stone-900 border border-orange-300 dark:border-orange-700 rounded-lg text-xs font-mono font-bold"
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-orange-900">%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-700 dark:text-stone-300 uppercase mb-1">
+                      V. Promo (R$)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={promoPrice}
+                      onChange={(e) => {
+                        const priceVal = e.target.value === '' ? '' : Number(e.target.value);
+                        setPromoPrice(priceVal);
+                        if (priceVal !== '' && typeof unitCost === 'number' && unitCost > 0) {
+                          setPromoMargin(Math.round(((Number(priceVal) - unitCost) / unitCost) * 100 * 10) / 10);
+                        }
+                      }}
+                      placeholder="0.00"
+                      className="w-full px-2.5 py-1.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-mono font-medium"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -696,9 +1118,165 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                     step="0.01"
                     min="0"
                     value={unitCost}
-                    onChange={(e) => setUnitCost(e.target.value === '' ? '' : Number(e.target.value))}
+                    onChange={(e) => {
+                      const costVal = e.target.value === '' ? '' : Number(e.target.value);
+                      setUnitCost(costVal);
+                      if (typeof costVal === 'number' && costVal > 0) {
+                        if (profitMargin !== '') setSalePrice(Math.round(costVal * (1 + Number(profitMargin) / 100) * 100) / 100);
+                        if (wholesaleMargin !== '') setWholesalePrice(Math.round(costVal * (1 + Number(wholesaleMargin) / 100) * 100) / 100);
+                        if (promoMargin !== '') setPromoPrice(Math.round(costVal * (1 + Number(promoMargin) / 100) * 100) / 100);
+                      }
+                    }}
                     className="w-full px-3.5 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
+                </div>
+              </div>
+
+              {/* Seção de Precificação Sincronizada */}
+              <div className="p-3 bg-amber-50/50 dark:bg-stone-800/60 rounded-xl border border-amber-200/80 dark:border-stone-700/60 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-stone-700 dark:text-stone-300">
+                    Precificação & Margens de Venda
+                  </span>
+                  <span className="text-[10px] text-stone-500">Cálculo Automático Baseado no Custo</span>
+                </div>
+
+                {/* Margem Padrão / Venda Final */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[10px] font-bold text-purple-900 dark:text-purple-300 uppercase mb-1">
+                      % Margem Padrão
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={profitMargin}
+                        onChange={(e) => {
+                          const marginVal = e.target.value === '' ? '' : Number(e.target.value);
+                          setProfitMargin(marginVal);
+                          if (marginVal !== '' && typeof unitCost === 'number' && unitCost > 0) {
+                            setSalePrice(Math.round(unitCost * (1 + Number(marginVal) / 100) * 100) / 100);
+                          }
+                        }}
+                        placeholder="30"
+                        className="w-full pr-6 pl-2.5 py-1.5 bg-white dark:bg-stone-900 border border-purple-300 dark:border-purple-700 rounded-lg text-xs font-mono font-bold"
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-purple-900">%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-rose-900 dark:text-rose-300 uppercase mb-1">
+                      V. Final (R$)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={salePrice}
+                      onChange={(e) => {
+                        const priceVal = e.target.value === '' ? '' : Number(e.target.value);
+                        setSalePrice(priceVal);
+                        if (priceVal !== '' && typeof unitCost === 'number' && unitCost > 0) {
+                          setProfitMargin(Math.round(((Number(priceVal) - unitCost) / unitCost) * 100 * 10) / 10);
+                        }
+                      }}
+                      placeholder="0.00"
+                      className="w-full px-2.5 py-1.5 bg-white dark:bg-stone-900 border border-rose-300 dark:border-rose-700 rounded-lg text-xs font-mono font-bold"
+                    />
+                  </div>
+                </div>
+
+                {/* Atacado */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[10px] font-bold text-cyan-900 dark:text-cyan-300 uppercase mb-1">
+                      % Margem Atacado
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={wholesaleMargin}
+                        onChange={(e) => {
+                          const marginVal = e.target.value === '' ? '' : Number(e.target.value);
+                          setWholesaleMargin(marginVal);
+                          if (marginVal !== '' && typeof unitCost === 'number' && unitCost > 0) {
+                            setWholesalePrice(Math.round(unitCost * (1 + Number(marginVal) / 100) * 100) / 100);
+                          }
+                        }}
+                        placeholder="15"
+                        className="w-full pr-6 pl-2.5 py-1.5 bg-white dark:bg-stone-900 border border-cyan-300 dark:border-cyan-700 rounded-lg text-xs font-mono font-bold"
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-cyan-900">%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-700 dark:text-stone-300 uppercase mb-1">
+                      V. Atacado (R$)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={wholesalePrice}
+                      onChange={(e) => {
+                        const priceVal = e.target.value === '' ? '' : Number(e.target.value);
+                        setWholesalePrice(priceVal);
+                        if (priceVal !== '' && typeof unitCost === 'number' && unitCost > 0) {
+                          setWholesaleMargin(Math.round(((Number(priceVal) - unitCost) / unitCost) * 100 * 10) / 10);
+                        }
+                      }}
+                      placeholder="0.00"
+                      className="w-full px-2.5 py-1.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-mono font-medium"
+                    />
+                  </div>
+                </div>
+
+                {/* Promoção */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[10px] font-bold text-orange-900 dark:text-orange-300 uppercase mb-1">
+                      % Margem Promoção
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={promoMargin}
+                        onChange={(e) => {
+                          const marginVal = e.target.value === '' ? '' : Number(e.target.value);
+                          setPromoMargin(marginVal);
+                          if (marginVal !== '' && typeof unitCost === 'number' && unitCost > 0) {
+                            setPromoPrice(Math.round(unitCost * (1 + Number(marginVal) / 100) * 100) / 100);
+                          }
+                        }}
+                        placeholder="10"
+                        className="w-full pr-6 pl-2.5 py-1.5 bg-white dark:bg-stone-900 border border-orange-300 dark:border-orange-700 rounded-lg text-xs font-mono font-bold"
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-orange-900">%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-700 dark:text-stone-300 uppercase mb-1">
+                      V. Promo (R$)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={promoPrice}
+                      onChange={(e) => {
+                        const priceVal = e.target.value === '' ? '' : Number(e.target.value);
+                        setPromoPrice(priceVal);
+                        if (priceVal !== '' && typeof unitCost === 'number' && unitCost > 0) {
+                          setPromoMargin(Math.round(((Number(priceVal) - unitCost) / unitCost) * 100 * 10) / 10);
+                        }
+                      }}
+                      placeholder="0.00"
+                      className="w-full px-2.5 py-1.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-mono font-medium"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -847,6 +1425,59 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                   </div>
                   <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
                     <BarChart3 className="w-4 h-4" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Precificação Sincronizada (Margens de Venda, Atacado e Promoção) */}
+              <div className="p-3.5 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200 dark:border-stone-800 space-y-2.5">
+                <div className="text-[11px] font-black uppercase tracking-wider text-stone-700 dark:text-stone-300">
+                  Tabela de Preços & Margens Sincronizadas
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  {/* V. Final */}
+                  <div className="p-2.5 rounded-lg bg-purple-50/80 dark:bg-purple-950/30 border border-purple-200/70 dark:border-purple-900/50">
+                    <span className="text-[9.5px] font-bold text-purple-900 dark:text-purple-300 uppercase block">
+                      Venda Final (% Padrão)
+                    </span>
+                    <div className="text-sm font-black text-purple-950 dark:text-purple-100 font-mono mt-0.5">
+                      {viewingItem.salePrice !== undefined 
+                        ? formatCurrencyBRL(viewingItem.salePrice) 
+                        : (viewingItem.unitCost > 0 ? formatCurrencyBRL(viewingItem.unitCost * 1.3) : 'R$ 0,00')}
+                    </div>
+                    <span className="text-[9.5px] font-semibold text-purple-800 dark:text-purple-300">
+                      Margem: +{viewingItem.profitMargin ?? (viewingItem.salePrice && viewingItem.unitCost > 0 ? Math.round(((viewingItem.salePrice - viewingItem.unitCost) / viewingItem.unitCost) * 100 * 10) / 10 : 30)}%
+                    </span>
+                  </div>
+
+                  {/* V. Atacado */}
+                  <div className="p-2.5 rounded-lg bg-cyan-50/80 dark:bg-cyan-950/30 border border-cyan-200/70 dark:border-cyan-900/50">
+                    <span className="text-[9.5px] font-bold text-cyan-900 dark:text-cyan-300 uppercase block">
+                      Atacado (% Atac.)
+                    </span>
+                    <div className="text-sm font-black text-cyan-950 dark:text-cyan-100 font-mono mt-0.5">
+                      {viewingItem.wholesalePrice !== undefined 
+                        ? formatCurrencyBRL(viewingItem.wholesalePrice) 
+                        : (viewingItem.unitCost > 0 ? formatCurrencyBRL(viewingItem.unitCost * 1.15) : 'R$ 0,00')}
+                    </div>
+                    <span className="text-[9.5px] font-semibold text-cyan-800 dark:text-cyan-300">
+                      Margem: +{viewingItem.wholesaleMargin ?? (viewingItem.wholesalePrice && viewingItem.unitCost > 0 ? Math.round(((viewingItem.wholesalePrice - viewingItem.unitCost) / viewingItem.unitCost) * 100 * 10) / 10 : 15)}%
+                    </span>
+                  </div>
+
+                  {/* V. Promoção */}
+                  <div className="p-2.5 rounded-lg bg-orange-50/80 dark:bg-orange-950/30 border border-orange-200/70 dark:border-orange-900/50">
+                    <span className="text-[9.5px] font-bold text-orange-900 dark:text-orange-300 uppercase block">
+                      Promoção (% Promo.)
+                    </span>
+                    <div className="text-sm font-black text-orange-950 dark:text-orange-100 font-mono mt-0.5">
+                      {viewingItem.promoPrice !== undefined 
+                        ? formatCurrencyBRL(viewingItem.promoPrice) 
+                        : (viewingItem.unitCost > 0 ? formatCurrencyBRL(viewingItem.unitCost * 1.10) : 'R$ 0,00')}
+                    </div>
+                    <span className="text-[9.5px] font-semibold text-orange-800 dark:text-orange-300">
+                      Margem: +{viewingItem.promoMargin ?? (viewingItem.promoPrice && viewingItem.unitCost > 0 ? Math.round(((viewingItem.promoPrice - viewingItem.unitCost) / viewingItem.unitCost) * 100 * 10) / 10 : 10)}%
+                    </span>
                   </div>
                 </div>
               </div>
