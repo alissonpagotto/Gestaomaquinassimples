@@ -49,9 +49,11 @@ import {
   formatCurrencyBRL, 
   getStoredMaintenanceCategories, 
   saveStoredMaintenanceCategories,
-  getStoredEmployees
+  getStoredEmployees,
+  getStoredInventory
 } from '../../lib/storage';
 import { MaintenanceCategoriesModal } from './MaintenanceCategoriesModal';
+import { ProductSearchModal } from './ProductSearchModal';
 
 interface MaintenanceModalProps {
   isOpen: boolean;
@@ -112,14 +114,23 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
     saveStoredMaintenanceCategories(updated);
   };
 
-  // --- CARREGAMENTO GLOBAL E SINCRONIZAÇÃO DE FUNCIONÁRIOS ---
+  // --- CARREGAMENTO GLOBAL E SINCRONIZAÇÃO DE FUNCIONÁRIOS E ESTOQUE ---
   const [storedEmployees, setStoredEmployees] = useState<Employee[]>([]);
+  const [storedInventory, setStoredInventory] = useState<InventoryItem[]>([]);
 
   useEffect(() => {
     if (isOpen) {
       setStoredEmployees(getStoredEmployees());
+      setStoredInventory(getStoredInventory());
     }
   }, [isOpen]);
+
+  // Lista consolidada de itens de estoque (via props ou localStorage)
+  const allInventoryList = useMemo(() => {
+    if (inventory && inventory.length > 0) return inventory;
+    if (storedInventory.length > 0) return storedInventory;
+    return getStoredInventory();
+  }, [inventory, storedInventory]);
 
   // Lista consolidada de todos os funcionários (via props ou localStorage)
   const allEmployeesList = useMemo(() => {
@@ -172,6 +183,10 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   const [partsItems, setPartsItems] = useState<MaintenancePartItem[]>([]);
   const [partsCostManual, setPartsCostManual] = useState('');
   const [usePartsItemList, setUsePartsItemList] = useState(true);
+  const [isProductSearchOpen, setIsProductSearchOpen] = useState(false);
+  const [activeSearchRowIndex, setActiveSearchRowIndex] = useState<number | null>(null);
+  const [activeSearchInitialQuery, setActiveSearchInitialQuery] = useState('');
+  const [autocompleteIndex, setAutocompleteIndex] = useState<number | null>(null);
 
   // --- MÃO DE OBRA (LISTA DINÂMICA DE MECÂNICOS & AVULSO) ---
   const [laborItems, setLaborItems] = useState<MaintenanceLaborItem[]>([]);
@@ -456,11 +471,11 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
 
       // Se selecionou do almoxarifado interno, puxa nome, unidade e custo padrão
       if (updates.inventoryItemId) {
-        const stockItem = inventory?.find(i => i.id === updates.inventoryItemId);
+        const stockItem = allInventoryList.find(i => i.id === updates.inventoryItemId);
         if (stockItem) {
           item.description = stockItem.name;
-          item.unit = stockItem.unit;
-          item.unitCost = stockItem.unitCost;
+          item.unit = stockItem.unit || 'un';
+          item.unitCost = stockItem.unitCost || 0;
         }
       }
 
@@ -481,6 +496,27 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       updated[index] = item;
       return updated;
     });
+  };
+
+  // Abrir Modal Avançado de Busca de Peças / Produtos
+  const handleOpenProductSearch = (index: number, initialQuery = '') => {
+    setActiveSearchRowIndex(index);
+    setActiveSearchInitialQuery(initialQuery);
+    setIsProductSearchOpen(true);
+  };
+
+  // Selecionar produto a partir do Modal
+  const handleSelectProductFromModal = (product: InventoryItem) => {
+    if (activeSearchRowIndex !== null && partsItems[activeSearchRowIndex]) {
+      handleUpdatePartItem(activeSearchRowIndex, {
+        inventoryItemId: product.id,
+        description: product.name,
+        unit: product.unit || 'un',
+        unitCost: product.unitCost || 0,
+        origin: 'almoxarifado_interno',
+      });
+    }
+    setActiveSearchRowIndex(null);
   };
 
   const handleRemovePartItem = (index: number) => {
@@ -1318,224 +1354,267 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 </div>
               </div>
 
-              {/* Tabela / Grid de Peças Horizontal Compacta (Padrão ERP) */}
+              {/* Tabela / Grid de Peças Horizontal Compacta (Padrão ERP Clássico) */}
               {partsItems.length === 0 ? (
-                <div className="p-6 text-center border-2 border-dashed border-blue-200 dark:border-stone-800 bg-blue-50/40 dark:bg-stone-800/20 rounded-2xl space-y-3">
-                  <Package className="w-8 h-8 mx-auto text-blue-400" />
+                <div className="p-8 text-center border-2 border-dashed border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/30 rounded-xl space-y-3">
+                  <Package className="w-8 h-8 mx-auto text-stone-400" />
                   <p className="text-xs text-stone-600 dark:text-stone-400 font-medium">
-                    Nenhuma peça ou serviço externo adicionado nesta OS.
+                    Nenhum produto ou serviço lançado nesta Ordem de Serviço.
                   </p>
                   <div className="flex justify-center gap-3">
                     <button
                       type="button"
                       onClick={handleAddPartItem}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition cursor-pointer shadow-xs"
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition cursor-pointer shadow-xs"
                     >
-                      + Adicionar Peça / Insumo / Recuperação
+                      + Adicionar Produto / Peça (Linha)
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="border border-stone-200 dark:border-stone-800 rounded-xl overflow-hidden bg-white dark:bg-stone-900 shadow-2xs">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse table-fixed min-w-[820px]">
+                <div className="border border-stone-200 dark:border-stone-800 rounded-lg overflow-visible bg-white dark:bg-stone-900 shadow-2xs">
+                  <div className="overflow-x-auto overflow-y-visible">
+                    <table className="w-full text-left border-collapse table-fixed min-w-[760px]">
                       <colgroup>
-                        <col className="w-[18%]" />
-                        <col className="w-[36%]" />
-                        <col className="w-[8%]" />
-                        <col className="w-[11%]" />
-                        <col className="w-[12%]" />
-                        <col className="w-[11%]" />
-                        <col className="w-[4%]" />
+                        <col className="w-[11%]" /> {/* Num. (ID) */}
+                        <col className="w-[45%]" /> {/* Descrição */}
+                        <col className="w-[15%]" /> {/* Valor Unitário */}
+                        <col className="w-[12%]" /> {/* Qtde */}
+                        <col className="w-[13%]" /> {/* Total */}
+                        <col className="w-[4%]" />  {/* Ações */}
                       </colgroup>
                       <thead>
-                        <tr className="bg-stone-100/80 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-700 text-[10px] font-bold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
-                          <th className="py-2 px-2.5">Origem</th>
-                          <th className="py-2 px-2.5">Descrição da Peça / Serviço</th>
-                          <th className="py-2 px-1 text-center">Qtd.</th>
-                          <th className="py-2 px-1.5">Unidade</th>
-                          <th className="py-2 px-2 text-right">Valor Unit. (R$)</th>
-                          <th className="py-2 px-2.5 text-right">Subtotal</th>
-                          <th className="py-2 px-1 text-center"></th>
+                        <tr className="bg-stone-100 dark:bg-stone-800/90 border-b border-stone-200 dark:border-stone-700 text-[10px] font-bold text-stone-600 dark:text-stone-300 uppercase tracking-wider select-none">
+                          <th className="py-2.5 px-3">NUM. (ID)</th>
+                          <th className="py-2.5 px-3">DESCRIÇÃO</th>
+                          <th className="py-2.5 px-3 text-right">VALOR UNITÁRIO</th>
+                          <th className="py-2.5 px-3 text-center">QTDE</th>
+                          <th className="py-2.5 px-3 text-right">TOTAL</th>
+                          <th className="py-2.5 px-2 text-center"></th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-stone-100 dark:divide-stone-800 text-xs">
-                        {partsItems.map((item, index) => (
-                          <tr 
-                            key={item.id || index}
-                            className={`transition-colors hover:bg-stone-50/70 dark:hover:bg-stone-800/40 ${
-                              item.origin === 'recuperada_externa'
-                                ? 'bg-purple-50/40 dark:bg-purple-950/15'
-                                : item.origin === 'externo_compra'
-                                ? 'bg-amber-50/30 dark:bg-amber-950/15'
-                                : ''
-                            }`}
-                          >
-                            {/* 1. Origem do Item */}
-                            <td className="py-1.5 px-2 align-middle">
-                              <select
-                                value={item.origin}
-                                onChange={(e) => handleUpdatePartItem(index, { origin: e.target.value as any })}
-                                className={`w-full px-2 py-1 text-xs font-semibold rounded-md border focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                                  item.origin === 'recuperada_externa'
-                                    ? 'bg-purple-100/70 dark:bg-purple-900/40 text-purple-900 dark:text-purple-300 border-purple-300 dark:border-purple-800'
-                                    : item.origin === 'externo_compra'
-                                    ? 'bg-amber-100/70 dark:bg-amber-900/40 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-800'
-                                    : 'bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 border-stone-300 dark:border-stone-700'
-                                }`}
-                              >
-                                <option value="almoxarifado_interno">📦 Almoxarifado</option>
-                                <option value="externo_compra">🛒 Compra Nova</option>
-                                <option value="recuperada_externa">🔧 Torno / Recuperada</option>
-                              </select>
-                            </td>
+                      <tbody className="divide-y divide-stone-100 dark:divide-stone-800/60 text-xs">
+                        {partsItems.map((item, index) => {
+                          const stockItem = item.inventoryItemId ? allInventoryList.find(inv => inv.id === item.inventoryItemId) : null;
+                          const displayCode = stockItem?.code || (item.inventoryItemId ? item.inventoryItemId.slice(0, 8).toUpperCase() : `#${String(index + 1).padStart(3, '0')}`);
 
-                            {/* 2. Descrição do Item com Busca / Seleção Integrada */}
-                            <td className="py-1.5 px-2 align-middle">
-                              {item.origin === 'almoxarifado_interno' ? (
+                          // Itens correspondentes para autocomplete rápido inline
+                          const autocompleteMatches = (autocompleteIndex === index && item.description.trim().length >= 2)
+                            ? allInventoryList.filter(inv => 
+                                inv.name.toLowerCase().includes(item.description.toLowerCase()) ||
+                                (inv.code && inv.code.toLowerCase().includes(item.description.toLowerCase()))
+                              ).slice(0, 6)
+                            : [];
+
+                          return (
+                            <tr 
+                              key={item.id || index}
+                              className={`transition-colors hover:bg-stone-50/80 dark:hover:bg-stone-800/40 ${
+                                item.origin === 'recuperada_externa'
+                                  ? 'bg-purple-50/30 dark:bg-purple-950/10'
+                                  : item.origin === 'externo_compra'
+                                  ? 'bg-amber-50/20 dark:bg-amber-950/10'
+                                  : 'bg-white dark:bg-stone-900'
+                              }`}
+                            >
+                              {/* 1. Num. (ID) */}
+                              <td className="py-2 px-3 align-middle font-mono text-[11px] font-semibold text-stone-600 dark:text-stone-400 whitespace-nowrap">
+                                <div className="flex items-center space-x-1">
+                                  <span className="bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 rounded border border-stone-200 dark:border-stone-700">
+                                    {displayCode}
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* 2. Descrição (com Autocomplete, Busca Rápida e Botão de Lupa Modal F4/Enter) */}
+                              <td className="py-2 px-3 align-middle relative">
                                 <div className="space-y-1">
                                   <div className="relative flex items-center">
                                     <input
                                       type="text"
                                       value={item.description}
-                                      onChange={(e) => handleUpdatePartItem(index, { description: e.target.value })}
-                                      placeholder="Descrição ou código da peça..."
-                                      className="w-full px-2 py-1 pr-6 text-xs rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                      onChange={(e) => {
+                                        handleUpdatePartItem(index, { description: e.target.value });
+                                        setAutocompleteIndex(index);
+                                      }}
+                                      onFocus={() => setAutocompleteIndex(index)}
+                                      onBlur={() => {
+                                        // Fechar autocomplete com atraso para permitir clique nos itens
+                                        setTimeout(() => {
+                                          if (autocompleteIndex === index) {
+                                            setAutocompleteIndex(null);
+                                          }
+                                        }, 250);
+                                      }}
+                                      onKeyDown={(e) => {
+                                        // Tecla F4 ou Enter com campo vazio abre a busca avançada por modal
+                                        if (e.key === 'F4' || (e.key === 'Enter' && !item.description.trim())) {
+                                          e.preventDefault();
+                                          handleOpenProductSearch(index, item.description);
+                                        }
+                                      }}
+                                      placeholder="Digite o código ou nome da peça (F4 busca modal)..."
+                                      className="w-full pl-2.5 pr-8 py-1 text-xs rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder:text-stone-400"
                                       required
                                     />
-                                    <span className="absolute right-1.5 text-stone-400 pointer-events-none">
-                                      <Search className="w-3.5 h-3.5" />
-                                    </span>
-                                  </div>
-                                  {inventory && inventory.length > 0 && (
-                                    <select
-                                      value={item.inventoryItemId || ''}
-                                      onChange={(e) => handleUpdatePartItem(index, { inventoryItemId: e.target.value })}
-                                      className="w-full px-1.5 py-0.5 text-[11px] text-stone-600 dark:text-stone-400 bg-stone-50 dark:bg-stone-800/70 border border-stone-200 dark:border-stone-700 rounded focus:outline-none"
+                                    {/* Botão de Lupa para abrir Modal de Busca Avançada */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenProductSearch(index, item.description)}
+                                      className="absolute right-1 p-1 text-stone-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-stone-700 rounded transition cursor-pointer"
+                                      title="Abrir Consulta Avançada de Produtos (F4)"
                                     >
-                                      <option value="">Vincular saldo do estoque interno...</option>
-                                      {inventory.map(inv => (
-                                        <option key={inv.id} value={inv.id}>
-                                          {inv.name} (Saldo: {inv.quantity} {inv.unit} • {formatCurrencyBRL(inv.unitCost)})
-                                        </option>
-                                      ))}
+                                      <Search className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+
+                                  {/* Sub-informações adicionais e seletor de origem/fornecedor ERP */}
+                                  <div className="flex items-center gap-1.5">
+                                    <select
+                                      value={item.origin}
+                                      onChange={(e) => handleUpdatePartItem(index, { origin: e.target.value as any })}
+                                      className="text-[10px] px-1.5 py-0.5 rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-600 dark:text-stone-400 font-medium focus:outline-none"
+                                    >
+                                      <option value="almoxarifado_interno">Estoque Interno</option>
+                                      <option value="externo_compra">Compra Nova</option>
+                                      <option value="recuperada_externa">Torno / Recuperada</option>
                                     </select>
+
+                                    {item.origin === 'externo_compra' && (
+                                      <input
+                                        type="text"
+                                        placeholder="Fornecedor da peça..."
+                                        value={item.supplierName || ''}
+                                        onChange={(e) => handleUpdatePartItem(index, { supplierName: e.target.value })}
+                                        className="flex-1 text-[10px] px-1.5 py-0.5 rounded border border-amber-200 dark:border-stone-700 bg-amber-50/50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 focus:outline-none"
+                                      />
+                                    )}
+
+                                    {item.origin === 'recuperada_externa' && (
+                                      <input
+                                        type="text"
+                                        placeholder="Prestador do serviço externo..."
+                                        value={item.serviceProvider || item.supplierName || ''}
+                                        onChange={(e) => handleUpdatePartItem(index, { 
+                                          serviceProvider: e.target.value,
+                                          supplierName: e.target.value
+                                        })}
+                                        className="flex-1 text-[10px] px-1.5 py-0.5 rounded border border-purple-200 dark:border-stone-700 bg-purple-50/50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 focus:outline-none"
+                                      />
+                                    )}
+
+                                    {stockItem && (
+                                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-medium truncate">
+                                        Saldo: {stockItem.quantity} {stockItem.unit}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Pop-up de Autocomplete Inteligente ao digitar */}
+                                  {autocompleteMatches.length > 0 && (
+                                    <div className="absolute left-3 right-3 top-9 z-50 bg-white dark:bg-stone-800 rounded-lg shadow-xl border border-stone-200 dark:border-stone-700 divide-y divide-stone-100 dark:divide-stone-700 overflow-hidden">
+                                      <div className="px-2 py-1 bg-stone-50 dark:bg-stone-800/90 text-[10px] font-bold text-stone-500 uppercase tracking-wider flex justify-between items-center">
+                                        <span>Sugestões Rápidas do Estoque</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenProductSearch(index, item.description)}
+                                          className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                                        >
+                                          Ver todas (F4) →
+                                        </button>
+                                      </div>
+                                      {autocompleteMatches.map((match) => (
+                                        <div
+                                          key={match.id}
+                                          onMouseDown={() => {
+                                            handleUpdatePartItem(index, {
+                                              inventoryItemId: match.id,
+                                              description: match.name,
+                                              unit: match.unit || 'un',
+                                              unitCost: match.unitCost || 0,
+                                              origin: 'almoxarifado_interno',
+                                            });
+                                            setAutocompleteIndex(null);
+                                          }}
+                                          className="px-2.5 py-1.5 text-xs hover:bg-blue-50 dark:hover:bg-stone-700/60 cursor-pointer flex items-center justify-between transition-colors"
+                                        >
+                                          <div className="truncate pr-2">
+                                            <span className="font-mono text-[10px] font-bold text-stone-500 mr-1.5">
+                                              [{match.code || match.id.slice(0, 6).toUpperCase()}]
+                                            </span>
+                                            <span className="font-medium text-stone-900 dark:text-stone-100">
+                                              {match.name}
+                                            </span>
+                                          </div>
+                                          <div className="text-right whitespace-nowrap pl-2">
+                                            <span className="font-mono font-bold text-stone-800 dark:text-stone-200">
+                                              {formatCurrencyBRL(match.unitCost || 0)}
+                                            </span>
+                                            <span className="text-[10px] text-stone-400 ml-1.5 font-mono">
+                                              ({match.quantity} {match.unit})
+                                            </span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
                                   )}
                                 </div>
-                              ) : item.origin === 'externo_compra' ? (
-                                <div className="space-y-1">
+                              </td>
+
+                              {/* 3. Valor Unitário (Obrigatoriamente alinhado à direita para leitura financeira) */}
+                              <td className="py-2 px-3 align-middle text-right">
+                                <div className="relative flex items-center justify-end">
+                                  <span className="text-[11px] text-stone-400 mr-1 font-mono font-medium">R$</span>
                                   <input
-                                    type="text"
-                                    value={item.description}
-                                    onChange={(e) => handleUpdatePartItem(index, { description: e.target.value })}
-                                    placeholder="Ex: Rolamento Cônico, Correia Dentada..."
-                                    className="w-full px-2 py-1 text-xs rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-medium focus:outline-none focus:ring-1 focus:ring-amber-500"
-                                    required
-                                  />
-                                  <input
-                                    type="text"
-                                    placeholder="Fornecedor / Loja de Peças..."
-                                    value={item.supplierName || ''}
-                                    onChange={(e) => handleUpdatePartItem(index, { supplierName: e.target.value })}
-                                    className="w-full px-1.5 py-0.5 text-[11px] text-stone-600 dark:text-stone-400 bg-stone-50 dark:bg-stone-800/70 border border-stone-200 dark:border-stone-700 rounded focus:outline-none"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={item.unitCost === 0 ? '0.00' : (item.unitCost || '')}
+                                    onChange={(e) => handleUpdatePartItem(index, { unitCost: parseFloat(e.target.value) || 0 })}
+                                    placeholder="0,00"
+                                    className="w-24 px-2 py-1 text-xs font-mono text-right rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-bold focus:outline-none focus:ring-1 focus:ring-blue-500"
                                   />
                                 </div>
-                              ) : (
-                                <div className="space-y-1">
+                              </td>
+
+                              {/* 4. Qtde */}
+                              <td className="py-2 px-3 align-middle text-center">
+                                <div className="flex items-center justify-center space-x-1">
                                   <input
-                                    type="text"
-                                    value={item.description}
-                                    onChange={(e) => handleUpdatePartItem(index, { description: e.target.value })}
-                                    placeholder="Componente (ex: Cilindro Hidráulico, Cardan)..."
-                                    className="w-full px-2 py-1 text-xs rounded-md border border-purple-300 dark:border-purple-800 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-medium focus:outline-none focus:ring-1 focus:ring-purple-500"
-                                    required
+                                    type="number"
+                                    step="any"
+                                    min="0.01"
+                                    value={item.quantity}
+                                    onChange={(e) => handleUpdatePartItem(index, { quantity: parseFloat(e.target.value) || 0 })}
+                                    className="w-16 px-1 py-1 text-xs font-mono font-bold text-center rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                   />
-                                  <div className="flex gap-1">
-                                    <input
-                                      type="text"
-                                      placeholder="Torno / Prestador *"
-                                      value={item.serviceProvider || item.supplierName || ''}
-                                      onChange={(e) => handleUpdatePartItem(index, { 
-                                        serviceProvider: e.target.value,
-                                        supplierName: e.target.value
-                                      })}
-                                      className="w-1/2 px-1.5 py-0.5 text-[11px] text-purple-900 dark:text-purple-300 bg-purple-50/60 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded focus:outline-none"
-                                      required
-                                    />
-                                    <input
-                                      type="text"
-                                      placeholder="Serviço (ex: usinagem)..."
-                                      value={item.serviceDescription || ''}
-                                      onChange={(e) => handleUpdatePartItem(index, { serviceDescription: e.target.value })}
-                                      className="w-1/2 px-1.5 py-0.5 text-[11px] text-stone-600 dark:text-stone-400 bg-stone-50 dark:bg-stone-800/70 border border-stone-200 dark:border-stone-700 rounded focus:outline-none"
-                                    />
-                                  </div>
+                                  <span className="text-[11px] font-medium text-stone-500 uppercase">
+                                    {item.unit || 'un'}
+                                  </span>
                                 </div>
-                              )}
-                            </td>
+                              </td>
 
-                            {/* 3. Quantidade */}
-                            <td className="py-1.5 px-1 align-middle">
-                              <input
-                                type="number"
-                                step="any"
-                                min="0.01"
-                                value={item.quantity}
-                                onChange={(e) => handleUpdatePartItem(index, { quantity: parseFloat(e.target.value) || 0 })}
-                                className="w-full px-1.5 py-1 text-xs font-mono font-bold text-center rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                              />
-                            </td>
+                              {/* 5. Total (Obrigatoriamente alinhado à direita para leitura financeira) */}
+                              <td className="py-2 px-3 align-middle text-right font-mono">
+                                <span className="text-xs font-bold text-stone-900 dark:text-stone-100 whitespace-nowrap">
+                                  {formatCurrencyBRL(item.totalCost || 0)}
+                                </span>
+                              </td>
 
-                            {/* 4. Unidade */}
-                            <td className="py-1.5 px-1.5 align-middle">
-                              <select
-                                value={item.unit}
-                                onChange={(e) => handleUpdatePartItem(index, { unit: e.target.value })}
-                                className="w-full px-1.5 py-1 text-xs rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                              >
-                                <option value="un">UN</option>
-                                <option value="serv">SERV</option>
-                                <option value="L">L</option>
-                                <option value="kg">KG</option>
-                                <option value="cx">CX</option>
-                                <option value="par">PAR</option>
-                                <option value="kit">KIT</option>
-                              </select>
-                            </td>
-
-                            {/* 5. Valor Unitário */}
-                            <td className="py-1.5 px-2 align-middle">
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={item.unitCost || ''}
-                                onChange={(e) => handleUpdatePartItem(index, { unitCost: parseFloat(e.target.value) || 0 })}
-                                placeholder="0,00"
-                                className="w-full px-2 py-1 text-xs font-mono text-right rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500"
-                              />
-                            </td>
-
-                            {/* 6. Subtotal Calculado */}
-                            <td className="py-1.5 px-2.5 align-middle text-right">
-                              <span className="text-xs font-mono font-bold text-stone-800 dark:text-stone-200 whitespace-nowrap">
-                                {formatCurrencyBRL(item.totalCost || 0)}
-                              </span>
-                            </td>
-
-                            {/* 7. Exclusão rápida */}
-                            <td className="py-1.5 px-1 align-middle text-center">
-                              <button
-                                type="button"
-                                onClick={() => handleRemovePartItem(index)}
-                                className="p-1 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded-md transition cursor-pointer"
-                                title="Remover item da OS"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                              {/* 6. Ações (Exclusão rápida) */}
+                              <td className="py-2 px-2 align-middle text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemovePartItem(index)}
+                                  className="p-1 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded transition cursor-pointer"
+                                  title="Excluir item da lista"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -1951,6 +2030,18 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
         onSelectCategory={(catName) => {
           setServiceCategory(catName);
         }}
+      />
+
+      {/* Modal de Busca Avançada de Produtos / Peças no Estoque (F4 / Enter) */}
+      <ProductSearchModal
+        isOpen={isProductSearchOpen}
+        onClose={() => {
+          setIsProductSearchOpen(false);
+          setActiveSearchRowIndex(null);
+        }}
+        inventory={allInventoryList}
+        initialQuery={activeSearchInitialQuery}
+        onSelectProduct={handleSelectProductFromModal}
       />
     </div>
   );
