@@ -1416,19 +1416,21 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
               ) : (
                 <div className="border border-stone-200 dark:border-stone-800 rounded-lg overflow-visible bg-white dark:bg-stone-900 shadow-2xs min-h-[220px]">
                   <div className="overflow-x-auto overflow-y-visible pb-10">
-                    <table className="w-full text-left border-collapse table-fixed min-w-[760px]">
+                    <table className="w-full text-left border-collapse table-fixed min-w-[840px]">
                       <colgroup>
-                        <col className="w-[11%]" />
-                        <col className="w-[41%]" />
-                        <col className="w-[19%]" />
-                        <col className="w-[11%]" />
-                        <col className="w-[14%]" />
+                        <col className="w-[9%]" />
+                        <col className="w-[35%]" />
+                        <col className="w-[18%]" />
+                        <col className="w-[16%]" />
+                        <col className="w-[9%]" />
+                        <col className="w-[9%]" />
                         <col className="w-[4%]" />
                       </colgroup>
                       <thead>
                         <tr className="bg-stone-100 dark:bg-stone-800/90 border-b border-stone-200 dark:border-stone-700 text-[10px] font-bold text-stone-600 dark:text-stone-300 uppercase tracking-wider select-none">
                           <th className="py-2.5 px-3">NUM. (ID)</th>
                           <th className="py-2.5 px-3">DESCRIÇÃO</th>
+                          <th className="py-2.5 px-3">ORIGEM</th>
                           <th className="py-2.5 px-3 text-right">VALOR UNITÁRIO</th>
                           <th className="py-2.5 px-3 text-center">QTDE</th>
                           <th className="py-2.5 px-3 text-right">TOTAL</th>
@@ -1574,48 +1576,6 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                                     </button>
                                   </div>
 
-                                  {/* Sub-informações adicionais e seletor de origem/fornecedor ERP */}
-                                  <div className="flex items-center gap-1.5">
-                                    <select
-                                      value={item.origin}
-                                      onChange={(e) => handleUpdatePartItem(index, { origin: e.target.value as any })}
-                                      className="text-[10px] px-1.5 py-0.5 rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-600 dark:text-stone-400 font-medium focus:outline-none"
-                                    >
-                                      <option value="almoxarifado_interno">Estoque Interno</option>
-                                      <option value="externo_compra">Compra Nova</option>
-                                      <option value="recuperada_externa">Torno / Recuperada</option>
-                                    </select>
-
-                                    {item.origin === 'externo_compra' && (
-                                      <input
-                                        type="text"
-                                        placeholder="Fornecedor da peça..."
-                                        value={item.supplierName || ''}
-                                        onChange={(e) => handleUpdatePartItem(index, { supplierName: e.target.value })}
-                                        className="flex-1 text-[10px] px-1.5 py-0.5 rounded border border-amber-200 dark:border-stone-700 bg-amber-50/50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 focus:outline-none"
-                                      />
-                                    )}
-
-                                    {item.origin === 'recuperada_externa' && (
-                                      <input
-                                        type="text"
-                                        placeholder="Prestador do serviço externo..."
-                                        value={item.serviceProvider || item.supplierName || ''}
-                                        onChange={(e) => handleUpdatePartItem(index, { 
-                                          serviceProvider: e.target.value,
-                                          supplierName: e.target.value
-                                        })}
-                                        className="flex-1 text-[10px] px-1.5 py-0.5 rounded border border-purple-200 dark:border-stone-700 bg-purple-50/50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 focus:outline-none"
-                                      />
-                                    )}
-
-                                    {stockItem && (
-                                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-medium truncate">
-                                        Saldo: {stockItem.quantity} {stockItem.unit}
-                                      </span>
-                                    )}
-                                  </div>
-
                                   {/* Pop-up de Autocomplete Inteligente ao digitar */}
                                   {autocompleteMatches.length > 0 && (
                                     <div className="absolute left-3 right-3 top-9 z-50 bg-white dark:bg-stone-800 rounded-lg shadow-xl border border-stone-200 dark:border-stone-700 divide-y divide-stone-100 dark:divide-stone-700 overflow-hidden">
@@ -1667,7 +1627,59 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                                 </div>
                               </td>
 
-                               {/* 3. Valor Unitário (Dropdown Interativo de Preços + Edição Manual em Tempo Real) */}
+                              {/* 3. Origem (Coluna Oficial Integrada na Linha) */}
+                              <td className="py-2 px-3 align-middle">
+                                <div className="space-y-1">
+                                  <select
+                                    value={item.origin || 'almoxarifado_interno'}
+                                    onChange={(e) => handleUpdatePartItem(index, { origin: e.target.value as any })}
+                                    className={`w-full text-xs font-semibold py-1.5 px-2 rounded-lg border cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors shadow-2xs ${
+                                      item.origin === 'recuperada_externa'
+                                        ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-200'
+                                        : item.origin === 'externo_compra'
+                                        ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200'
+                                        : 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200'
+                                    }`}
+                                  >
+                                    <option value="almoxarifado_interno">Estoque Interno</option>
+                                    <option value="externo_compra">Compra Nova</option>
+                                    <option value="recuperada_externa">Torno / Recuperada</option>
+                                  </select>
+
+                                  {item.origin === 'externo_compra' && (
+                                    <input
+                                      type="text"
+                                      placeholder="Fornecedor..."
+                                      value={item.supplierName || ''}
+                                      onChange={(e) => handleUpdatePartItem(index, { supplierName: e.target.value })}
+                                      className="w-full text-[10px] px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 focus:outline-none placeholder:text-stone-400"
+                                      title="Fornecedor ou Autopeça"
+                                    />
+                                  )}
+
+                                  {item.origin === 'recuperada_externa' && (
+                                    <input
+                                      type="text"
+                                      placeholder="Oficina / Torno..."
+                                      value={item.serviceProvider || item.supplierName || ''}
+                                      onChange={(e) => handleUpdatePartItem(index, { 
+                                        serviceProvider: e.target.value,
+                                        supplierName: e.target.value
+                                      })}
+                                      className="w-full text-[10px] px-2 py-0.5 rounded border border-purple-200 dark:border-purple-900/60 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 focus:outline-none placeholder:text-stone-400"
+                                      title="Tornearia ou oficina externa"
+                                    />
+                                  )}
+
+                                  {item.origin === 'almoxarifado_interno' && stockItem && (
+                                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-medium block truncate">
+                                      Saldo: {stockItem.quantity} {stockItem.unit}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* 4. Valor Unitário (Dropdown Interativo de Preços + Edição Manual em Tempo Real) */}
                                <td className={`py-2 px-3 align-middle text-right relative ${priceDropdownIndex === index ? 'z-40' : ''}`}>
                                  <div className={`relative inline-flex items-center justify-end ${priceDropdownIndex === index ? 'z-50' : ''}`}>
                                    <span className="text-[11px] text-stone-400 mr-1 font-mono font-medium select-none">R$</span>
@@ -1837,7 +1849,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                                  </div>
                                </td>
 
-                              {/* 4. Qtde */}
+                              {/* 5. Qtde */}
                               <td className="py-2 px-3 align-middle text-center">
                                 <div className="flex items-center justify-center space-x-1">
                                   <input
@@ -1857,14 +1869,14 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                                 </div>
                               </td>
 
-                              {/* 5. Total (Obrigatoriamente alinhado à direita para leitura financeira) */}
+                              {/* 6. Total (Obrigatoriamente alinhado à direita para leitura financeira) */}
                               <td className="py-2 px-3 align-middle text-right font-mono">
                                 <span className="text-xs font-bold text-stone-900 dark:text-stone-100 whitespace-nowrap">
                                   {formatCurrencyBRL(item.totalCost || 0)}
                                 </span>
                               </td>
 
-                              {/* 6. Ações (Exclusão rápida) */}
+                              {/* 7. Ações (Exclusão rápida) */}
                               <td className="py-2 px-2 align-middle text-center">
                                 <button
                                   type="button"
