@@ -680,9 +680,9 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-1 sm:p-3 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-0 overflow-hidden">
       <div 
-        className="bg-white dark:bg-stone-900 rounded-2xl border border-blue-200 dark:border-stone-800 w-full max-w-7xl max-h-[96vh] flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200 overflow-hidden"
+        className="bg-white dark:bg-stone-900 w-full max-w-7xl h-screen max-h-screen flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-150 overflow-hidden sm:border-x border-blue-900/40 dark:border-stone-800"
         role="dialog"
         aria-modal="true"
       >
@@ -772,8 +772,11 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-2.5 sm:p-3 space-y-2 bg-[#0a8bc1]">
+        {/* Form Body com Estrutura Flexível: Topo e Base Fixos, Centro Rolável */}
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden bg-stone-100/80 dark:bg-stone-950">
+          
+          {/* Conteúdo Central com Rolagem Vertical Independente */}
+          <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4">
           
           {/* ======================================================== */}
           {/* ABA 1 UNIFICADA: DIAGNÓSTICO, EQUIPE & LOCAL (2 COLUNAS) */}
@@ -2145,28 +2148,41 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
               </div>
             </div>
           )}
+          </div>
 
-          {/* Footer Actions */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-2.5 border-t border-blue-200 dark:border-stone-800 shrink-0">
-            <div className="flex items-center space-x-2 text-xs text-blue-900 dark:text-stone-400">
-              <span className="font-bold">Total da OS:</span>
-              <span className="text-base font-black text-blue-950 dark:text-stone-100 font-['Outfit']">
-                {formatCurrencyBRL(grandTotal)}
-              </span>
+          {/* Rodapé Azul Fixo da OS */}
+          <div className="shrink-0 bg-blue-800 dark:bg-stone-900 border-t border-blue-900/70 dark:border-stone-800 px-5 py-3 text-white flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg z-20">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-blue-200 dark:text-stone-400">
+                  Total Geral da OS:
+                </span>
+                <span className="text-lg sm:text-xl font-black text-white font-['Outfit'] tracking-tight">
+                  {formatCurrencyBRL(grandTotal)}
+                </span>
+              </div>
+
+              {/* Sub-totais discriminados */}
+              <div className="hidden md:flex items-center space-x-2 text-[11px] text-blue-200/90 dark:text-stone-400 bg-blue-900/60 dark:bg-stone-800/80 px-2.5 py-1 rounded-lg border border-blue-700/50 dark:border-stone-700">
+                <span>Peças: <strong className="text-white font-mono">{formatCurrencyBRL(totalPartsCalculated)}</strong></span>
+                <span>•</span>
+                <span>M. Obra: <strong className="text-white font-mono">{formatCurrencyBRL(totalLaborCalculated)}</strong></span>
+              </div>
+
               {saveSuccess && (
-                <span className="ml-3 inline-flex items-center space-x-1.5 px-2.5 py-0.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-bold animate-in fade-in duration-150">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span className="inline-flex items-center space-x-1.5 px-3 py-1 bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 rounded-lg text-xs font-bold animate-in fade-in duration-150">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-300" />
                   <span>OS Salva com Sucesso!</span>
                 </span>
               )}
             </div>
 
-            <div className="flex items-center space-x-2.5 w-full sm:w-auto">
+            <div className="flex items-center space-x-2.5 w-full sm:w-auto justify-end">
               <button
                 type="button"
                 id="btn-cancelar-os"
                 onClick={onClose}
-                className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl border border-blue-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-blue-100/50 dark:hover:bg-stone-800 text-xs font-bold transition cursor-pointer"
+                className="px-4 py-2 rounded-xl border border-blue-400/30 bg-blue-900/50 hover:bg-blue-700/60 text-blue-100 text-xs font-bold transition cursor-pointer"
               >
                 Cancelar
               </button>
@@ -2174,19 +2190,19 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 type="button"
                 id="btn-sair-fechar-os"
                 onClick={onClose}
-                className="flex-1 sm:flex-none inline-flex items-center justify-center space-x-1.5 px-3.5 py-2 rounded-xl border border-blue-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-blue-950 dark:text-stone-200 hover:bg-blue-50 dark:hover:bg-stone-700 text-xs font-bold transition cursor-pointer shadow-xs"
+                className="inline-flex items-center justify-center space-x-1.5 px-4 py-2 rounded-xl border border-blue-300/40 bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition cursor-pointer shadow-xs"
                 title="Fechar formulário de Ordem de Serviço"
               >
-                <X className="w-3.5 h-3.5 text-blue-800 dark:text-stone-400" />
+                <X className="w-3.5 h-3.5 text-blue-200" />
                 <span>Sair / Fechar</span>
               </button>
               <button
                 type="submit"
                 id="btn-salvar-os"
-                className={`flex-1 sm:flex-none inline-flex items-center justify-center space-x-2 px-5 py-2 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95 cursor-pointer ${
+                className={`inline-flex items-center justify-center space-x-2 px-6 py-2 text-white text-xs font-bold rounded-xl shadow-lg transition active:scale-95 cursor-pointer ${
                   saveSuccess
-                    ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-900/20'
-                    : 'bg-blue-600 hover:bg-blue-700 shadow-blue-900/20'
+                    ? 'bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/40'
+                    : 'bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/40'
                 }`}
               >
                 {saveSuccess ? (
