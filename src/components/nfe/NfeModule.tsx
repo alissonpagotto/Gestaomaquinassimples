@@ -2081,6 +2081,51 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
 
     updatedItems[index] = currentItem;
 
+    // Se o usuário estiver alterando a primeira linha (Linha 1, index === 0) em uma das colunas de porcentagem (% LUC, % ATACADO, % PROMO),
+    // replica esse valor automaticamente como sugestão para todas as linhas seguintes da mesma nota
+    if (index === 0) {
+      if (field === 'markupPercent') {
+        const val = currentItem.markupPercent;
+        for (let i = 1; i < updatedItems.length; i++) {
+          const it = { ...updatedItems[i] };
+          it.markupPercent = val;
+          const u = it.unitPrice || 0;
+          if (val !== undefined && u > 0) {
+            it.salePrice = Math.round((u * (1 + val / 100)) * 100) / 100;
+          } else if (val === undefined) {
+            it.salePrice = undefined;
+          }
+          updatedItems[i] = it;
+        }
+      } else if (field === 'wholesaleMarkupPercent') {
+        const val = currentItem.wholesaleMarkupPercent;
+        for (let i = 1; i < updatedItems.length; i++) {
+          const it = { ...updatedItems[i] };
+          it.wholesaleMarkupPercent = val;
+          const u = it.unitPrice || 0;
+          if (val !== undefined && u > 0) {
+            it.wholesalePrice = Math.round((u * (1 + val / 100)) * 100) / 100;
+          } else if (val === undefined) {
+            it.wholesalePrice = undefined;
+          }
+          updatedItems[i] = it;
+        }
+      } else if (field === 'promoMarkupPercent') {
+        const val = currentItem.promoMarkupPercent;
+        for (let i = 1; i < updatedItems.length; i++) {
+          const it = { ...updatedItems[i] };
+          it.promoMarkupPercent = val;
+          const u = it.unitPrice || 0;
+          if (val !== undefined && u > 0) {
+            it.promoPrice = Math.round((u * (1 + val / 100)) * 100) / 100;
+          } else if (val === undefined) {
+            it.promoPrice = undefined;
+          }
+          updatedItems[i] = it;
+        }
+      }
+    }
+
     // Recalcula o valor total da NF-e e dos produtos somando todas as linhas recalculadas
     const newTotalAmount = Math.round(
       updatedItems.reduce((acc, it) => acc + (it.totalPrice || 0), 0) * 100
