@@ -1206,10 +1206,10 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
         </div>
 
         {/* Form Body com Estrutura Flexível: Topo e Base Fixos, Centro Rolável */}
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#46aff5] dark:bg-stone-950">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#b0d2ed] dark:bg-stone-950">
           
           {/* Conteúdo Central com Rolagem Vertical Independente */}
-          <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4 flex flex-col bg-[#46aff5] dark:bg-stone-950">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4 flex flex-col bg-[#b0d2ed] dark:bg-stone-950">
 
             {/* Banner de Feedback de Ação */}
             {feedbackBanner && (
