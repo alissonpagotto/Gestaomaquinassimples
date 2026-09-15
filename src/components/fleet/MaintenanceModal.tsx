@@ -157,7 +157,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   const [serviceCategory, setServiceCategory] = useState<string>('Troca de Óleo & Filtros');
   const [customCategory, setCustomCategory] = useState('');
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<MaintenanceLog['status']>('concluida');
+  const [status, setStatus] = useState<MaintenanceLog['status']>('em_andamento');
   const [currentHourMeterOrKm, setCurrentHourMeterOrKm] = useState('');
   const [nextServiceDue, setNextServiceDue] = useState('');
   const [notes, setNotes] = useState('');
@@ -983,12 +983,35 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-blue-200 hover:text-white dark:text-stone-400 dark:hover:text-stone-200 rounded-lg hover:bg-blue-700/60 dark:hover:bg-stone-800 transition cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          {/* Canto superior direito: Seletor Global de Status da OS + Botão Fechar */}
+          <div className="flex items-center space-x-2.5 sm:space-x-3">
+            <div className="flex items-center space-x-1.5 bg-blue-950/50 dark:bg-stone-800/80 px-2 py-1 rounded-lg border border-blue-600/50 dark:border-stone-700 shadow-inner">
+              <span className="text-[10.5px] font-bold text-blue-200 dark:text-stone-300 uppercase tracking-wider whitespace-nowrap hidden sm:inline">
+                Status:
+              </span>
+              <select
+                id="maintenance-status-select"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+                className={`px-2 py-0.5 border rounded-md text-xs font-bold transition-all duration-150 cursor-pointer focus:ring-2 focus:ring-white/40 focus:outline-hidden shadow-xs ${getStatusSelectStyle(status)}`}
+                title="Status da Ordem de Serviço (Fixo em todas as abas)"
+              >
+                <option value="em_andamento" className="bg-white text-amber-950 dark:bg-stone-900 dark:text-amber-300 font-bold">⏳ Em Andamento</option>
+                <option value="concluida" className="bg-white text-emerald-950 dark:bg-stone-900 dark:text-emerald-300 font-bold">✓ Concluída (Liberado)</option>
+                <option value="aguardando_pecas" className="bg-white text-purple-950 dark:bg-stone-900 dark:text-purple-300 font-bold">📦 Aguardando Peças</option>
+                <option value="agendada" className="bg-white text-blue-950 dark:bg-stone-900 dark:text-blue-300 font-bold">📅 Agendada</option>
+                <option value="cancelada" className="bg-white text-rose-950 dark:bg-stone-900 dark:text-rose-300 font-bold">✕ Cancelada</option>
+              </select>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="p-1.5 text-blue-200 hover:text-white dark:text-stone-400 dark:hover:text-stone-200 rounded-lg hover:bg-blue-700/60 dark:hover:bg-stone-800 transition cursor-pointer"
+              title="Fechar janela"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Subtabs de Navegação do Formulário (3 Abas Unificadas) */}
@@ -1161,9 +1184,9 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                   </div>
                 </div>
 
-                {/* Bloco 2: Aferição e Controle (Horímetro, Próxima Revisão e Status) - REPOSICIONADO */}
+                {/* Bloco 2: Aferição e Controle (Horímetro e Próxima Revisão) */}
                 <div className="p-2.5 bg-blue-50/70 dark:bg-stone-800/40 rounded-xl border border-blue-200 dark:border-stone-800">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
                       <label className="block text-[10.5px] font-bold text-blue-900 dark:text-stone-300 mb-0.5 truncate">
                         Horímetro / KM Atual
@@ -1190,24 +1213,6 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                         placeholder="Ex: 6.000"
                         className="w-full px-2 py-1 bg-white dark:bg-stone-800 border border-blue-200 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
                       />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10.5px] font-bold text-blue-900 dark:text-stone-300 mb-0.5 truncate">
-                        Status da Ordem
-                      </label>
-                      <select
-                        id="maintenance-status-select"
-                        value={status}
-                        onChange={(e) => setStatus(e.target.value as any)}
-                        className={`w-full px-2 py-1 border rounded-lg text-xs font-bold transition-all duration-150 cursor-pointer focus:ring-2 focus:ring-blue-600 focus:outline-hidden ${getStatusSelectStyle(status)}`}
-                      >
-                        <option value="concluida" className="bg-white text-emerald-950 dark:bg-stone-900 dark:text-emerald-300 font-bold">✓ Concluída (Liberado)</option>
-                        <option value="em_andamento" className="bg-white text-amber-950 dark:bg-stone-900 dark:text-amber-300 font-bold">⏳ Em Andamento</option>
-                        <option value="aguardando_pecas" className="bg-white text-purple-950 dark:bg-stone-900 dark:text-purple-300 font-bold">📦 Aguardando Peças</option>
-                        <option value="agendada" className="bg-white text-blue-950 dark:bg-stone-900 dark:text-blue-300 font-bold">📅 Agendada</option>
-                        <option value="cancelada" className="bg-white text-rose-950 dark:bg-stone-900 dark:text-rose-300 font-bold">✕ Cancelada</option>
-                      </select>
                     </div>
                   </div>
                 </div>
@@ -2583,7 +2588,10 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
               <button
                 type="button"
                 id="btn-fechar-e-faturar-os"
-                onClick={() => executeSave({ markAsCompleted: true, redirectToFinance: true, triggerExpense: false })}
+                onClick={() => {
+                  setStatus('concluida');
+                  executeSave({ markAsCompleted: true, redirectToFinance: true, triggerExpense: false });
+                }}
                 className="inline-flex items-center justify-center space-x-2 px-5 py-2 text-white text-xs font-bold rounded-xl shadow-lg transition active:scale-95 cursor-pointer bg-blue-600 hover:bg-blue-500 border border-blue-400/50 hover:shadow-blue-500/20"
                 title="Conclui a manutenção, salva o estado final e abre a Aba 3 para faturamento e formas de pagamento"
               >
