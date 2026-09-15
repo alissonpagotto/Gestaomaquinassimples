@@ -2828,42 +2828,82 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                           </span>
                         </div>
                       </div>
-                      <div className="overflow-x-auto max-h-80 overflow-y-auto w-full">
+                      <div className="overflow-x-auto max-h-[380px] overflow-y-auto w-full">
                         <table className="w-full text-left text-xs border-collapse">
                           <thead className="bg-[#b0d2ed] dark:bg-stone-800 text-black uppercase text-[9.5px] font-black border-b border-[#96c1e5] dark:border-stone-700 sticky top-0 z-10 whitespace-nowrap">
                             <tr>
-                              <th className="py-1 px-1.5 w-10 text-center">Cód</th>
-                              <th className="py-1 px-1.5 min-w-[150px]">Descrição do Produto</th>
-                              <th className="py-1 px-1.5 min-w-[200px]">Produto no Sistema (De-Para)</th>
-                              <th className="py-1 px-1 text-center w-14">NCM</th>
-                              <th className="py-1 px-1 text-right w-20 bg-sky-100/70 dark:bg-sky-950/40 text-[#0963cb] dark:text-sky-300">V. Final (R$)</th>
+                              {/* 1. Área Verde: Identificação & De-Para (Compactas w-1/12 e w-3/12) */}
+                              <th className="py-1 px-1 w-1/12 min-w-[48px] text-center bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 border-r border-emerald-200/60 dark:border-emerald-800">
+                                Cód
+                              </th>
+                              <th className="py-1 px-1.5 w-3/12 min-w-[140px] bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 border-r border-emerald-200/60 dark:border-emerald-800">
+                                Descrição do Produto
+                              </th>
+                              <th className="py-1 px-1.5 w-3/12 min-w-[150px] bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 border-r border-emerald-300 dark:border-emerald-700">
+                                Produto no Sistema (De-Para)
+                              </th>
+
+                              {/* 2. Área Amarela: 1º. QTD (Quantidade + Unidade) */}
+                              <th className="py-1 px-1.5 w-[11%] min-w-[85px] text-right bg-amber-100/90 dark:bg-amber-950/50 text-amber-950 dark:text-amber-200 border-r border-amber-200 dark:border-amber-800">
+                                Qtd
+                              </th>
+
+                              {/* 3. 2º. V. UNIT (R$) */}
+                              <th className="py-1 px-1 w-[11%] min-w-[80px] text-right bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 border-r border-stone-200 dark:border-stone-700">
+                                V. Unit (R$)
+                              </th>
+
+                              {/* 4. 3º. V. TOTAL (R$) */}
+                              <th className="py-1 px-1 w-[11%] min-w-[80px] text-right bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 border-r border-stone-200 dark:border-stone-700">
+                                V. Total (R$)
+                              </th>
+
+                              {/* 5. Área Rosa: 4º. V. FINAL (R$) */}
+                              <th className="py-1 px-1 w-[12%] min-w-[85px] text-right bg-rose-100/90 dark:bg-rose-950/50 text-rose-950 dark:text-rose-200">
+                                V. Final (R$)
+                              </th>
+
+                              {/* Opcionais: Atacado & Promoção */}
                               {showExtraPrices && (
                                 <>
-                                  <th className="py-1 px-1 text-right w-20 bg-sky-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300">V. Atacado (R$)</th>
-                                  <th className="py-1 px-1 text-right w-20 bg-sky-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300">V. Promo (R$)</th>
+                                  <th className="py-1 px-1 text-right w-[9%] min-w-[80px] bg-sky-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-l border-stone-200 dark:border-stone-700">
+                                    V. Atacado (R$)
+                                  </th>
+                                  <th className="py-1 px-1 text-right w-[9%] min-w-[80px] bg-sky-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-l border-stone-200 dark:border-stone-700">
+                                    V. Promo (R$)
+                                  </th>
                                 </>
                               )}
-                              <th className="py-1 px-1 text-right w-20">V. Unit (R$)</th>
-                              <th className="py-1 px-1 text-right w-22">V. Total (R$)</th>
-                              <th className="py-1 px-1.5 text-right w-20">Qtd</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-[#96c1e5]/30 bg-white/95 dark:bg-stone-900 text-black">
                             {parsedData.items.map((item, idx) => (
                               <tr key={idx} className="hover:bg-sky-50/50 dark:hover:bg-stone-800/30 transition-colors">
-                                <td className="py-0.5 px-1 font-mono text-black text-[9.5px] text-center align-middle">
-                                  {item.code || '-'}
+                                {/* CÓD & NCM (Área Verde) */}
+                                <td className="py-0.5 px-1 font-mono text-black text-[9.5px] text-center align-middle bg-emerald-50/20 dark:bg-emerald-950/10 border-r border-emerald-100/60 dark:border-emerald-900/30">
+                                  <div className="font-bold text-black dark:text-stone-100 truncate" title={item.code || '-'}>
+                                    {item.code || '-'}
+                                  </div>
+                                  {item.ncm && (
+                                    <div className="text-[8px] text-stone-500 dark:text-stone-400 font-normal leading-tight truncate" title={`NCM: ${item.ncm}`}>
+                                      {item.ncm}
+                                    </div>
+                                  )}
                                 </td>
-                                <td className="py-0.5 px-1 align-middle">
+
+                                {/* DESCRIÇÃO DO PRODUTO (Área Verde) */}
+                                <td className="py-0.5 px-1 align-middle bg-emerald-50/20 dark:bg-emerald-950/10 border-r border-emerald-100/60 dark:border-emerald-900/30">
                                   <input
                                     type="text"
                                     value={item.description}
                                     onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
-                                    className="w-full h-6 px-1.5 text-[10px] rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 focus:ring-1 focus:ring-[#0963cb] font-medium"
+                                    className="w-full h-6 px-1.5 text-[10px] rounded border border-emerald-200/80 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 focus:ring-1 focus:ring-emerald-500 font-medium"
                                     placeholder="Descrição do produto"
                                   />
                                 </td>
-                                <td className="py-0.5 px-1 align-middle">
+
+                                {/* PRODUTO NO SISTEMA DE-PARA (Área Verde) */}
+                                <td className="py-0.5 px-1 align-middle bg-emerald-50/20 dark:bg-emerald-950/10 border-r border-emerald-200/60 dark:border-emerald-900/40">
                                   {item.linkedInventoryId ? (
                                     (() => {
                                       const linked = localInventory.find(p => p.id === item.linkedInventoryId);
@@ -2900,7 +2940,7 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                             handleLinkProduct(idx, e.target.value);
                                           }
                                         }}
-                                        className="flex-1 h-6 min-w-[120px] px-1 text-[9.5px] rounded border border-amber-300 dark:border-amber-700 bg-amber-50/60 dark:bg-stone-900 text-black dark:text-stone-100 focus:ring-1 focus:ring-[#0963cb] font-medium"
+                                        className="flex-1 h-6 min-w-[100px] px-1 text-[9.5px] rounded border border-amber-300 dark:border-amber-700 bg-amber-50/60 dark:bg-stone-900 text-black dark:text-stone-100 focus:ring-1 focus:ring-[#0963cb] font-medium"
                                       >
                                         <option value="">Selecione no estoque...</option>
                                         <option value="__NEW__" className="font-bold text-[#0963cb]">
@@ -2924,74 +2964,9 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                     </div>
                                   )}
                                 </td>
-                                <td className="py-0.5 px-1 text-center font-mono text-black text-[9.5px] align-middle">
-                                  {item.ncm || '-'}
-                                </td>
-                                <td className="py-0.5 px-1 text-right align-middle">
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={item.salePrice ?? ''}
-                                    onChange={(e) => handleItemChange(idx, 'salePrice', e.target.value)}
-                                    placeholder="0.00"
-                                    className="w-18 h-6 px-1 text-[10px] text-right rounded border border-sky-300 dark:border-sky-700 bg-sky-50/70 dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-bold focus:ring-1 focus:ring-[#0963cb]"
-                                    title="Preço de Venda Final / Balcão (V. Final)"
-                                  />
-                                </td>
-                                {showExtraPrices && (
-                                  <>
-                                    <td className="py-0.5 px-1 text-right align-middle">
-                                      <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={item.wholesalePrice ?? ''}
-                                        onChange={(e) => handleItemChange(idx, 'wholesalePrice', e.target.value)}
-                                        placeholder="0.00"
-                                        className="w-18 h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-[#0963cb]"
-                                        title="Preço de Venda em Atacado (V. Atacado)"
-                                      />
-                                    </td>
-                                    <td className="py-0.5 px-1 text-right align-middle">
-                                      <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={item.promoPrice ?? ''}
-                                        onChange={(e) => handleItemChange(idx, 'promoPrice', e.target.value)}
-                                        placeholder="0.00"
-                                        className="w-18 h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-[#0963cb]"
-                                        title="Preço Promocional (V. Promo)"
-                                      />
-                                    </td>
-                                  </>
-                                )}
-                                <td className="py-0.5 px-1 text-right align-middle">
-                                  <input
-                                    type="number"
-                                    step="any"
-                                    min="0"
-                                    value={item.unitPrice}
-                                    onChange={(e) => handleItemChange(idx, 'unitPrice', e.target.value)}
-                                    className="w-18 h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-semibold focus:ring-1 focus:ring-[#0963cb]"
-                                    placeholder="0.00"
-                                    title="Valor Unitário Original da NF (V. Unit)"
-                                  />
-                                </td>
-                                <td className="py-0.5 px-1 text-right align-middle">
-                                  <input
-                                    type="number"
-                                    step="any"
-                                    min="0"
-                                    value={item.totalPrice}
-                                    onChange={(e) => handleItemChange(idx, 'totalPrice', e.target.value)}
-                                    className="w-20 h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-bold focus:ring-1 focus:ring-[#0963cb]"
-                                    placeholder="0.00"
-                                    title="Valor Total do Item na NF (V. Total)"
-                                  />
-                                </td>
-                                <td className="py-0.5 px-1.5 text-right align-middle">
+
+                                {/* 1º. QTD (Quantidade + Unidade de medida) - Área Amarela */}
+                                <td className="py-0.5 px-1 text-right align-middle bg-amber-50/40 dark:bg-amber-950/20 border-r border-amber-200/60 dark:border-amber-800/40">
                                   <div className="flex items-center justify-end space-x-1">
                                     <input
                                       type="number"
@@ -2999,15 +2974,87 @@ export const NfeModule: React.FC<NfeModuleProps> = ({
                                       min="0"
                                       value={item.quantity}
                                       onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)}
-                                      className="w-14 h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-semibold focus:ring-1 focus:ring-[#0963cb]"
+                                      className="w-13 h-6 px-1 text-[10px] text-right rounded border border-amber-300 dark:border-amber-700 bg-amber-50/80 dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-bold focus:ring-1 focus:ring-amber-500"
                                       placeholder="0"
                                       title="Quantidade"
                                     />
-                                    <span className="text-[9.5px] text-black font-black uppercase shrink-0 w-5 text-left">
+                                    <span className="text-[9px] text-amber-950 dark:text-amber-200 font-black uppercase shrink-0 px-1 py-0.5 bg-amber-100/90 dark:bg-amber-900/60 rounded border border-amber-200/80 dark:border-amber-800/80 text-center min-w-[22px]">
                                       {item.unit || 'UN'}
                                     </span>
                                   </div>
                                 </td>
+
+                                {/* 2º. V. UNIT (R$) (Valor unitário do item) */}
+                                <td className="py-0.5 px-1 text-right align-middle border-r border-stone-200/60 dark:border-stone-800">
+                                  <input
+                                    type="number"
+                                    step="any"
+                                    min="0"
+                                    value={item.unitPrice}
+                                    onChange={(e) => handleItemChange(idx, 'unitPrice', e.target.value)}
+                                    className="w-full max-w-[85px] h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-semibold focus:ring-1 focus:ring-[#0963cb] ml-auto block"
+                                    placeholder="0.00"
+                                    title="Valor Unitário Original da NF (V. Unit)"
+                                  />
+                                </td>
+
+                                {/* 3º. V. TOTAL (R$) (Valor total calculado) */}
+                                <td className="py-0.5 px-1 text-right align-middle border-r border-stone-200/60 dark:border-stone-800">
+                                  <input
+                                    type="number"
+                                    step="any"
+                                    min="0"
+                                    value={item.totalPrice}
+                                    onChange={(e) => handleItemChange(idx, 'totalPrice', e.target.value)}
+                                    className="w-full max-w-[90px] h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-bold focus:ring-1 focus:ring-[#0963cb] ml-auto block"
+                                    placeholder="0.00"
+                                    title="Valor Total do Item na NF (V. Total)"
+                                  />
+                                </td>
+
+                                {/* 4º. V. FINAL (R$) (O valor final sincronizado ao estoque - Área Rosa) */}
+                                <td className="py-0.5 px-1 text-right align-middle bg-rose-50/40 dark:bg-rose-950/20">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={item.salePrice ?? ''}
+                                    onChange={(e) => handleItemChange(idx, 'salePrice', e.target.value)}
+                                    placeholder="0.00"
+                                    className="w-full max-w-[90px] h-6 px-1 text-[10px] text-right rounded border border-rose-300 dark:border-rose-700 bg-rose-50/80 dark:bg-stone-900 text-rose-950 dark:text-stone-100 font-mono font-bold focus:ring-1 focus:ring-rose-500 ml-auto block"
+                                    title="Preço de Venda Final / Balcão (V. Final)"
+                                  />
+                                </td>
+
+                                {/* Opcionais: Atacado & Promoção */}
+                                {showExtraPrices && (
+                                  <>
+                                    <td className="py-0.5 px-1 text-right align-middle border-l border-stone-200 dark:border-stone-700">
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={item.wholesalePrice ?? ''}
+                                        onChange={(e) => handleItemChange(idx, 'wholesalePrice', e.target.value)}
+                                        placeholder="0.00"
+                                        className="w-full max-w-[85px] h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-[#0963cb] ml-auto block"
+                                        title="Preço de Venda em Atacado (V. Atacado)"
+                                      />
+                                    </td>
+                                    <td className="py-0.5 px-1 text-right align-middle border-l border-stone-200 dark:border-stone-700">
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={item.promoPrice ?? ''}
+                                        onChange={(e) => handleItemChange(idx, 'promoPrice', e.target.value)}
+                                        placeholder="0.00"
+                                        className="w-full max-w-[85px] h-6 px-1 text-[10px] text-right rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-black dark:text-stone-100 font-mono font-medium focus:ring-1 focus:ring-[#0963cb] ml-auto block"
+                                        title="Preço Promocional (V. Promo)"
+                                      />
+                                    </td>
+                                  </>
+                                )}
                               </tr>
                             ))}
                           </tbody>
